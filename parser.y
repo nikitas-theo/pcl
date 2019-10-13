@@ -7,23 +7,24 @@
 	char* str;
 	double real;
 	int num;
-	char* op; /* to handle ":=" and other 2 chars operators */
-
+	char* op; /* to handle T_decl and other 2 chars operators */
 }
+%locations
+
 /*  syntax: %token <type> token_name  "string"
 	"string" and token_name can be used interchangably
+
+	%left, %right, %precedence, or %nonassoc : to specify precedence
 */
 
 
-%token T_and 			"and"
 %token T_array		"array"
 %token T_begin		"begin"
 %token T_boolean	"boolean"
 %token T_char			"char"
 %token T_dispose	"dispose"
-%token T_div			"div"
 %token T_do				"do"
-%token T_else			"else"
+
 %token T_end			"end"
 %token T_false		"false"
 %token T_forward	"forward"
@@ -32,18 +33,17 @@
 %token T_if 			"if"
 %token T_integer	"integer"
 %token T_label		"label"
-%token T_mod			"mod"
+
 %token T_new			"new"
 %token T_nil			"nil"
-%token T_not			"not"
+
 %token T_of 			"of"
-%token T_or				"or"
 %token T_procedure "procedure"
 %token T_program	"program"
 %token T_real			"real"
 %token T_result		"result"
 %token T_return		"return"
-%token T_then			"then"
+
 %token T_true			"true"
 %token T_var			"var"
 %token T_while		"while"
@@ -54,13 +54,20 @@
 %token T_const_char "char-const"
 %token T_string 	"string-literal"
 
-%token T_decl 	":="
-%token T_geq 		">="
-%token T_leq		"<="
-%token T_neq		"<>"
+%precedence T_then
+%precedence T_else
 
-%left '-' '+'
-%left '*' '/'
+%left T_decl T_geq T_leq T_neq '<' '>' '='
+%left '-' '+' T_or
+%left T_div T_mod T_and '*' '/'
+%left T_not
+%left USIGN
+%precedence '^'
+%precedence '@'
+%precedence '[' ']'
+
+%token END 0 "end of file" /* nice error messages */
+
 
 %%
 
@@ -111,7 +118,7 @@ formal :
 	;
 
 type :
-	  "integer" | "boolean" | "char"
+	  "integer" | "real" | "boolean" | "char"
 	| "array" "of" type
 	| "array" '[' "integer-const" ']' "of" type
 	| '^' type
@@ -127,19 +134,27 @@ stmt_list :
 
 stmt :
 	  %empty
-	| l-value ":=" expr  | block | call
-	| "if" expr "then" stmt
-	| "if" expr "then" stmt "else" stmt
-	// Resolve dangling else ?
+	| l-value T_decl expr  | block | call
+	| "if" expr T_then stmt
+	| "if" expr T_then stmt T_else stmt
+
 	| "while" expr "do" stmt
 	| "id" ':' stmt | "goto" "id" | "return"
 	| "new" l-value | "new" '[' expr ']' l-value
 	| "dispose" l-value | "dispose" '[' ']' l-value
+	;
 
-/*  this operator need to be definied explicitely
-	as it is not a character like '+'.
-	Make it 2 operators ':', '=' instead..?
+
+/* This rule is explicitly put here to take advantage of default bison behavior. Due to rules: { r-value: '@' l-value, expr: l-value } we have a reduce/reduce conflict.
+	If we reduce with r-value rule we are okay. #TODO: Try to fix this in the future.
 */
+
+r-value:
+	  "integer-const" | "true" | "false" | "real-const" | "char-const"
+	| '(' r-value ')' | "nil" | call | '@' l-value
+	| T_not expr |  sign expr %prec USIGN |  expr binop_1 expr %prec '='| expr binop_2 expr %prec '+'| expr binop_3 expr %prec '*';
+	;
+
 
 expr :
 	  l-value
@@ -150,35 +165,33 @@ expr_list:
 	  expr
 	| expr ',' expr
 	;
+
+
 l-value:
 	  "id" | "result" | "string-literal" | l-value '[' expr ']'
 	| expr '^' | '(' l-value ')'
 	;
 
-r-value:
-	  "integer-const" | "true" | "false" | "real-const" | "char-const"
-	|  '(' r-value ')' | "nil" | call | '@' l-value
-	| unop expr |  expr binop expr
-	;
+
 
 call :
 	  "id" '(' ')'
 	| "id" '(' expr_list ')'
 	;
 
-unop :
-	  "not" | '+' | '-'
+sign :
+	  '+'   | '-'
 	;
 
-binop :
-	  '+' | '-' | '*' | '/' | "div" | "mod" | "or" | "and"
-	| '=' | "<>" | '<' | "<=" | '>' | ">="
-	;
+binop_1 : 	  '=' | T_neq | '<' | T_leq | '>' | T_geq ;
+binop_2 : 	  '+' | '-' | T_or ;
+binop_3 : 	  '*' | '/' | T_div | T_mod | T_and ;
+
 
 %%
 
 
 int main() {
-	printf("Started the parsing\n");
 	yyparse();
+	printf("Parse successful.\n");
 }

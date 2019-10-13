@@ -5,7 +5,22 @@
 #include "header.hpp" // define yylex(),yyerror()
 #include <string.h>
 
-#define YY_USER_ACTION ; // will be used for location
+static void update_loc(YYLTYPE loc, char *txt){
+	yylloc.first_line = loc.last_line;
+	yylloc.first_column = yylloc.last_column;
+	for(int i = 0; yytext[i] != '\0'; i++) {
+			if(yytext[i] == '\n') {
+					yylloc.last_line++;
+					yylloc.last_column = 0;
+			}
+			else {
+					yylloc.last_column++;
+			}
+	}
+}
+#define YY_USER_ACTION  update_loc(yylloc,yytext);
+
+
 %}
 
 L [[:alpha:]]
@@ -17,7 +32,7 @@ W [ \t\r\n]
 /* C = common chars = printable chars except { ",',\,*,/ } , E = escape, D = digits, L = letters , W = white characters */
 
 
-%x comment str
+%x COMMENT STRING
 
 %%
 
@@ -60,10 +75,10 @@ W [ \t\r\n]
 "var"       { return T_var; }
 "while"     { return T_while; }
 
-{L}([[:alnum:]]|_)*     	{ yylval.str = strdup(yytext); return T_id; }			/* Identifiers */
-{D}+                		{ yylval.num = atoi(yytext); return T_const_int; } 	/* Integers */
-{D}+\.{D}+([eE][+-]?{D}+)?  { yylval.real = atof(yytext); return T_const_real; } /* Reals */
-\'({C}|{E})\'           	{ yylval.op = strdup(yytext); return T_const_char; }	/* chars */
+{L}([[:alnum:]]|_)*     	{ yylval.str = strdup(yytext); return T_id; 	/* Identifiers */ }
+{D}+                		{ yylval.num = atoi(yytext); return T_const_int; 	/* Integers */ }
+{D}+\.{D}+([eE][+-]?{D}+)?  { yylval.real = atof(yytext); return T_const_real;  /* Reals */ }
+\'({C}|{E})\'           	{ yylval.op = strdup(yytext); return T_const_char; 	/* chars */ }
 
 
 [+\-*//^@><=] 	|   /* same as the action of next rule */
@@ -102,10 +117,10 @@ W [ \t\r\n]
 
 
 {W} 		{ /* do nothing */ }
-<*>.        { yyerror("lexical error"); }
+<*>.    { yyerror("lexical error"); }
 
 %%
 
-void yyerror (const char *msg) {
-    fprintf (stderr, "%s\n", msg);
+void yyerror ( const char *msg) {
+    fprintf (stderr, "At %d:%d : %s\n",yylloc.first_line, yylloc.first_column, msg);
 }
