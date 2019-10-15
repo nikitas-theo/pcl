@@ -145,31 +145,28 @@ stmt :
 	;
 
 
-/* This rule is explicitly put here to take advantage of default bison behavior. Due to rules: { r-value: '@' l-value, expr: l-value } we have a reduce/reduce conflict.
-	If we reduce with r-value rule we are okay. #TODO: Try to fix this in the future.
-*/
-
-r-value:
-	  "integer-const" | "true" | "false" | "real-const" | "char-const"
-	| '(' r-value ')' | "nil" | call | '@' l-value
-	| T_not expr |  sign expr %prec USIGN |  expr binop_1 expr %prec '='| expr binop_2 expr %prec '+'| expr binop_3 expr %prec '*';
-	;
-
-
 expr :
 	  l-value
 	| r-value
+	| expr '^'
 	;
+
 
 expr_list:
 	  expr
 	| expr ',' expr
 	;
 
-
 l-value:
 	  "id" | "result" | "string-literal" | l-value '[' expr ']'
-	| expr '^' | '(' l-value ')'
+	 | '(' l-value ')'
+	;
+
+
+r-value:
+	  "integer-const" | "true" | "false" | "real-const" | "char-const"
+	| '(' r-value ')' | "nil" | call | '@' l-value
+	| T_not expr |  sign expr %prec USIGN |  expr binop_1 expr %prec '='| expr binop_2 expr %prec '+'| expr binop_3 expr %prec '*';
 	;
 
 
@@ -188,10 +185,15 @@ binop_2 : 	  '+' | '-' | T_or ;
 binop_3 : 	  '*' | '/' | T_div | T_mod | T_and ;
 
 
+
+
 %%
 
 
 int main() {
-	yyparse();
+	#ifdef YYDEBUG
+  	yydebug = 1;
+	#endif
+	if(!yyparse())
 	printf("Parse successful.\n");
 }

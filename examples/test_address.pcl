@@ -1,5 +1,5 @@
 program test_address ;
-var i : integer ;  x : ^integer;
+
 begin
-  x := @ i
+  i := i <= x^
 end.

@@ -4,7 +4,7 @@ FLAGS=Wall
 default: pcl
 
 parser.cpp parser.hpp : parser.y
-	bison -dv --debug parser.y --report=lookahead -o parser.cpp 
+	bison -dv --debug parser.y --report=lookahead -o parser.cpp
 
 lex.yy.c : lexer.l
 	flex  lexer.l
