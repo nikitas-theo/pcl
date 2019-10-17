@@ -1,0 +1,4 @@
+program nikitas ; begin
+	(i < x)^ := x
+
+end.

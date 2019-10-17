@@ -116,7 +116,7 @@ W [ \t\r\n]
 
 
 
-{W} 		{ /* do nothing */ }
+{W} 		{  /* do nothing */ }
 <*>.    { yyerror("lexical error"); }
 
 %%

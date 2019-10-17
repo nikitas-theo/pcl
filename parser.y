@@ -1,6 +1,7 @@
 %{
 #include "header.hpp"
 #include <iostream>
+
 %}
 
 %union {
@@ -10,7 +11,8 @@
 	char* op; /* to handle T_decl and other 2 chars operators */
 }
 %locations
-
+%define parse.lac full
+%define parse.error verbose
 /*  syntax: %token <type> token_name  "string"
 	"string" and token_name can be used interchangably
 
@@ -144,11 +146,9 @@ stmt :
 	| "dispose" l-value | "dispose" '[' ']' l-value
 	;
 
-
 expr :
 	  l-value
 	| r-value
-	| expr '^'
 	;
 
 
@@ -159,17 +159,19 @@ expr_list:
 
 l-value:
 	  "id" | "result" | "string-literal" | l-value '[' expr ']'
-	 | '(' l-value ')'
+	 | '(' l-value ')' | expr '^'
 	;
 
 
 r-value:
 	  "integer-const" | "true" | "false" | "real-const" | "char-const"
-	| '(' r-value ')' | "nil" | call | '@' l-value
+	| '(' r-value ')' | "nil" | call | '@' ll-value
 	| T_not expr |  sign expr %prec USIGN |  expr binop_1 expr %prec '='| expr binop_2 expr %prec '+'| expr binop_3 expr %prec '*';
 	;
 
-
+	ll-value:
+		  "id" | "result" | "string-literal" | ll-value '[' expr ']'
+		 | '(' l-value ')'
 
 call :
 	  "id" '(' ')'
@@ -191,9 +193,10 @@ binop_3 : 	  '*' | '/' | T_div | T_mod | T_and ;
 
 
 int main() {
-	#ifdef YYDEBUG
-  	yydebug = 1;
+	#if YYDEBUG
+		yydebug = 1;
 	#endif
+
 	if(!yyparse())
 	printf("Parse successful.\n");
 }
