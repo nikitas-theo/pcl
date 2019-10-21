@@ -2,13 +2,17 @@
 #include "header.hpp"
 #include <iostream>
 
+
 %}
 
 %union {
+	Expr* expr;
 	char* str;
 	double real;
 	int num;
-	char* op; /* to handle T_decl and other 2 chars operators */
+	char c; 
+	char* op;
+
 }
 %locations
 %define parse.lac full
