@@ -75,107 +75,119 @@
 %token END 0 "end of file" /* nice error messages */
 
 
+
+
 %%
 
-program :
+program:
 	  "program" "id" ';' body '.'
 	;
 
-body :
+body:
 	  local body
 	| block
 	;
 
-local :
+local:
 	  "var" var_def
 	| "label" id_list ';'
 	| header ';' body ';'
 	| "forward" header ';'
 	;
 
-var_def :
+var_def:
 	  id_list ':' type ';' var_def
 	| id_list ':' type ';'
 	;
 
-id_list :
+id_list:
 	  "id" ',' id_list
 	| "id"
 	;
 
-header :
+header:
 	  "procedure" "id" '(' parameter_list ')'
 	| "function" "id" '(' parameter_list ')' ':' type
 	;
 
-parameter_list :
+parameter_list:
 	  %empty
 	| formal formal_list
 	;
 
-formal_list :
+formal_list:
 	  %empty
 	| ';' formal
 	;
 
-formal :
+formal:
 	  id_list ':' type
 	| "var" id_list ':' type
 	;
 
-type :
+type:
 	  "integer" | "real" | "boolean" | "char"
 	| "array" "of" type
 	| "array" '[' "integer-const" ']' "of" type
 	| '^' type
 	;
 
-block :
+block:
 	  "begin" stmt_list "end"
 	;
-stmt_list :
+stmt_list:
 	  stmt
 	| stmt ';' stmt_list
 	;
 
-stmt :
+stmt:
 	  %empty
-	| l-value T_decl expr  | block | call
+	| l_value T_decl expr  | block | call
 	| "if" expr T_then stmt
 	| "if" expr T_then stmt T_else stmt
 
 	| "while" expr "do" stmt
 	| "id" ':' stmt | "goto" "id" | "return"
-	| "new" l-value | "new" '[' expr ']' l-value
-	| "dispose" l-value | "dispose" '[' ']' l-value
+	| "new" l_value | "new" '[' expr ']' l_value
+	| "dispose" l_value | "dispose" '[' ']' l_value
 	;
 
-expr :
-	  l-value
-	| r-value
+expr:
+	  l_value 
+	| r_value
 	;
-
 
 expr_list:
 	  expr
 	| expr ',' expr
 	;
 
-l-value:
-	  "id" | "result" | "string-literal" | l-value '[' expr ']'
-	 | '(' l-value ')' | expr '^'
+l_value:
+	  "id" | "result" | "string-literal" | l_value '[' expr ']'
+	 | '(' l_value ')' | expr '^'
 	;
 
 
-r-value:
-	  "integer-const" | "true" | "false" | "real-const" | "char-const"
-	| '(' r-value ')' | "nil" | call | '@' ll-value
-	| T_not expr |  sign expr %prec USIGN |  expr binop_1 expr %prec '='| expr binop_2 expr %prec '+'| expr binop_3 expr %prec '*';
+r_value:
+	  "integer-const" 
+	| "true" 
+	| "false" 
+	| "real-const" 
+	| "char-const"
+	| '(' r_value ')' 
+	| "nil" 
+	| call 
+	| '@' ll_value
+	| T_not expr 
+	|  sign expr %prec USIGN   
+	| expr binop_1 expr %prec '=' 
+	| expr binop_2 expr %prec '+'
+	| expr binop_3 expr %prec '*';
 	;
 
-	ll-value:
-		  "id" | "result" | "string-literal" | ll-value '[' expr ']'
-		 | '(' l-value ')'
+	ll_value:
+		  "id" | "result" | "string-literal" | ll_value '[' expr ']'
+		 | '(' l_value ')'
 
 call :
 	  "id" '(' ')'

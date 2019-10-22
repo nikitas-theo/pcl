@@ -1,8 +1,9 @@
 %{
 /* C-code here goes verbatin to lex.yy.c */
 
+#include "header.hpp" // define yylex(),yyerror(), includes ast.hpp for types 
 #include "parser.hpp" // get token types from Bison
-#include "header.hpp" // define yylex(),yyerror()
+
 #include <string.h>
 
 static void update_loc(YYLTYPE loc, char *txt){

@@ -5,6 +5,7 @@
 
 enum Type { TYPE_int, TYPE_bool };
 
+/* A symbol entry has type and offset */   
 struct SymbolEntry {
   Type type;
   int offset;
@@ -16,12 +17,15 @@ class Scope {
 public:
   Scope() : locals(), offset(-1), size(0) {}
   Scope(int ofs) : locals(), offset(ofs), size(0) {}
+
   int getOffset() const { return offset; }
   int getSize() const { return size; }
+
   SymbolEntry *lookup(char c) {
     if (locals.find(c) == locals.end()) return nullptr;
     return &(locals[c]);
   }
+  // Το c ειναι κάποιο αναγνωριστικό μεταβλητής ?
   void insert(char c, Type t) {
     if (locals.find(c) != locals.end()) {
       std::cerr << "Duplicate variable " << c << std::endl;
@@ -32,6 +36,7 @@ public:
   }
 private:
   std::map<char, SymbolEntry> locals;
+  // Γιατι χρειάζομαι τα offset, size ?
   int offset;
   int size;
 };
@@ -55,6 +60,7 @@ public:
   void insert(char c, Type t) { scopes.back().insert(c, t); }
 private:
   std::vector<Scope> scopes;
+  // Would need to update with hash table (?)
 };
 
 extern SymbolTable st;
