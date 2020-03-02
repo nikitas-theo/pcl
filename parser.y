@@ -1,6 +1,7 @@
 %{
 #include "header.hpp"
 #include <iostream>
+#include "ast.hpp"
 
 
 %}
@@ -10,14 +11,13 @@
 	char* str;
 	double real;
 	int num;
-	char c; 
 	char* op;
 
 }
 %locations
 %define parse.lac full
 %define parse.error verbose
-/*  syntax: %token <type> token_name  "string"
+/*  syntax: %token <type> token_name code "string"
 	"string" and token_name can be used interchangably
 
 	%left, %right, %precedence, or %nonassoc : to specify precedence
@@ -74,9 +74,9 @@
 
 %token END 0 "end of file" /* nice error messages */
 
-
-
-
+%type <expr> r_value
+%type <expr> expr
+%type <str> binop_1
 %%
 
 program:
@@ -179,8 +179,8 @@ r_value:
 	| call 
 	| '@' ll_value
 	| T_not expr 
-	|  sign expr %prec USIGN   
-	| expr binop_1 expr %prec '=' 
+	| sign expr %prec USIGN
+	| expr binop_1 expr %prec '='  { $$ = new Op($1,$2,$3);}
 	| expr binop_2 expr %prec '+'
 	| expr binop_3 expr %prec '*';
 	;

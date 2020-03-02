@@ -1,4 +1,3 @@
-#include "ast.hpp"
 void yyerror(char const* msg );
 extern "C" int yylex();
 /* 
