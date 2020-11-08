@@ -1,28 +1,24 @@
 %{
 
 #include "header.hpp"
-#include <iostream>
+#include "ast.hpp"
+
 
 %}
 
 %union {
+	Expr* expr;
 	char* str;
 	double real;
 	int num;
-	char* op; /* to handle T_decl and other 2 chars operators */
+	char* op;
+
 }
 
 %locations
 
 %define parse.lac full
 %define parse.error verbose
-
-/*  syntax: %token <type> token_name  "string"
-	"string" and token_name can be used interchangably
-
-	%left, %right, %precedence, or %nonassoc : to specify precedence
-*/
-
 
 %token T_and		"and"
 %token T_array		"array"
@@ -79,6 +75,9 @@
 
 %token END 0 "end of file" /* nice error messages */
 
+%type <expr> r_value
+%type <expr> expr
+%type <str> binop_1
 
 %%
 
@@ -86,19 +85,19 @@ program :
 	  "program" T_id ';' body '.'
 	;
 
-body :
+body:
 	  local body
 	| block
 	;
 
-local :
+local:
 	  "var" var_def
 	| "label" id_list ';'
 	| header ';' body ';'
 	| "forward" header ';'
 	;
 
-var_def :
+var_def:
 	  id_list ':' type ';' var_def
 	| id_list ':' type ';'
 	;
@@ -113,17 +112,17 @@ header :
 	| "function" T_id '(' parameter_list ')' ':' type
 	;
 
-parameter_list :
+parameter_list:
 	  %empty
 	| formal formal_list
 	;
 
-formal_list :
+formal_list:
 	  %empty
 	| ';' formal
 	;
 
-formal :
+formal:
 	  id_list ':' type
 	| "var" id_list ':' type
 	;
@@ -138,7 +137,7 @@ type :
 	| '^' type
 	;
 
-block :
+block:
 	  "begin" stmt_list "end"
 	;
 
@@ -147,7 +146,7 @@ stmt_list :
 	| stmt ';' stmt_list
 	;
 
-stmt :
+stmt:
 	  %empty
 	| l-value T_decl expr  
 	| block 
@@ -164,11 +163,10 @@ stmt :
 	| "dispose" '[' ']' l-value
 	;
 
-expr :
-	  l-value
-	| r-value
+expr:
+	  l_value 
+	| r_value
 	;
-
 
 expr_list:
 	  expr
@@ -199,7 +197,7 @@ r-value:
 	| sign expr %prec U_SIGN 
 	| expr binop_high expr %prec '*'
 	| expr binop_med expr %prec '+'
-	| expr binop_low expr %prec '='
+	| expr binop_low expr %prec '=' { $$ = new Op($1, $2, $3); }
 	;
 
 ll-value:
@@ -208,6 +206,7 @@ ll-value:
 	| "string-literal" 
 	| ll-value '[' expr ']'
 	| '(' l-value ')'
+	;
 
 call :
 	  T_id '(' ')'
@@ -235,10 +234,12 @@ binop_high:
 
 
 int main() {
+
+	
 	#if YYDEBUG
 		yydebug = 1;
 	#endif
-
+    initSymbolTable(257);
 	if(!yyparse())
-	printf("Parse successful.\n");
+	std::cout << "Parse successful.\n";
 }

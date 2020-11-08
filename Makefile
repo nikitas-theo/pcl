@@ -1,7 +1,7 @@
-.PHONY: clean distclean default
+.PHONY: clean distclean default=
 
 CXX=g++
-CXXFLAGS=-Wall -std=c++11
+CXXFLAGS=-Wall -std=c++11 -pedantic -g
 LDFLAGS=
 
 ifdef db

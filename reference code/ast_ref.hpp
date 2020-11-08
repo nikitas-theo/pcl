@@ -1,5 +1,9 @@
 #pragma once
-
+/* 
+  Pragma once prevents code from being included twice. ast.hpp must be included in both parser.y and lexer.l 
+  because they both need the defined class types (Expr,Stmt,...). The files are compiled together to form the
+  resulting executable, so without pragma once there would be double declaration and g++ would be angry.  
+*/
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -7,6 +11,7 @@
 
 #include "symbol.hpp"
 
+// overload operator
 inline std::ostream& operator<<(std::ostream &out, Type t) {
   switch (t) {
   case TYPE_int: out << "int"; break;
@@ -19,17 +24,26 @@ class AST {
 public:
   virtual ~AST() {}
   virtual void printOn(std::ostream &out) const = 0;
+  // Cannot change the value of this object. Can be called by const objects.
   virtual void sem() {}
 };
-
+// this needs to be after AST
 inline std::ostream& operator<<(std::ostream &out, const AST &t) {
   t.printOn(out);
   return out;
 }
 
+/* 
+   virtual keyword ensures runtime polymorphishm:
+   if a base class function is virtual, then when i call Base->fun()
+   and base points to a derived class Der, then Der.fun() will be called. 
+*/
+
+// Expr can be l-val or r-val, we implement only Id 
 class Expr: public AST {
 public:
   virtual int eval() const = 0;
+  // eval() is to be implemented by child classes
   void type_check(Type t) {
     sem();
     if (type != t) {
@@ -40,14 +54,16 @@ public:
 protected:
   Type type;
 };
-
+// Stmt is while(), if(), ... 
 class Stmt: public AST {
 public:
   virtual void run() const = 0;
 };
 
+// run time stack!
 extern std::vector<int> rt_stack;
 
+// Τα βάζει και στο symbol table και στο rt_stack? 
 class Id: public Expr {
 public:
   Id(char v): var(v), offset(-1) {}
@@ -56,6 +72,7 @@ public:
   }
   virtual int eval() const override {
     return rt_stack[offset];
+    // Γιατι δεν αποθηκεύω την τιμή στο symbol table? Επειδη ειναι run-time πράγμα? 
   }
   virtual void sem() override {
     SymbolEntry *e = st.lookup(var);
@@ -63,13 +80,16 @@ public:
     offset = e->offset;
   }
 private:
-  char var;
+  char var; // Το όνομα που για απλότητα έχει θεωρηθεί char
   int offset;
 };
+
 
 class Const: public Expr {
 public:
   Const(int n): num(n) {}
+  // const was explained above, virtual for const classes (?) like int-const, char-const etc.
+  // override is to explicitely specify that a virtual method is being implemented. 
   virtual void printOn(std::ostream &out) const override {
     out << "Const(" << num << ")";
   }
@@ -77,6 +97,7 @@ public:
   virtual void sem() override { type = TYPE_int; }
 private:
   int num;
+  
 };
 
 class BinOp: public Expr {
@@ -163,11 +184,13 @@ public:
     if (stmt2 != nullptr) out << ", " << *stmt2;
     out << ")";
   }
+  // sem is for type checking
   virtual void sem() override {
     cond->type_check(TYPE_bool);
     stmt1->sem();
     if (stmt2 != nullptr) stmt2->sem();
   }
+  // run is for the interpeter
   virtual void run() const override {
     if (cond->eval())
       stmt1->run();
