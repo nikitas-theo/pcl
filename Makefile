@@ -1,7 +1,8 @@
-CC=g++
-FLAGS=Wall
+.PHONY: clean distclean default
 
-default: pcl
+CXX=g++
+CXXFLAGS=-Wall -std=c++11
+LDFLAGS=
 
 ifdef db
 DEBUG_B=--debug
@@ -10,12 +11,26 @@ ifdef df
 DEBUG_F=--debug
 endif
 
-parser.cpp parser.hpp : parser.y
-	bison -dv $(DEBUG_B) parser.y --report=lookahead -o parser.cpp
+default: pcl
 
-lex.yy.c : lexer.l
-	flex $(DEBUG_F)  lexer.l
-pcl: lex.yy.c parser.cpp | parser.hpp
-	$(CC)  lex.yy.c parser.cpp  -o pcl -lfl -$(FLAGS)
-clean:
-	rm lex.yy.c parser.cpp parser.hpp parser.output pcl
+lexer.cpp: lexer.l
+	flex -s -o lexer.cpp lexer.l
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+lexer.o: lexer.cpp header.hpp parser.hpp #ast.cpp ast.hpp
+
+parser.cpp parser.hpp : parser.y
+	bison -dv $(DEBUG_B) --report=lookahead -o parser.cpp parser.y
+
+parser.o: parser.cpp header.hpp #ast.hpp
+
+pcl: lexer.o parser.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+clean: 
+	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
+
+distclean: clean
+	$(RM) pcl
