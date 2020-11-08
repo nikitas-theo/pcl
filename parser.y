@@ -234,7 +234,6 @@ binop_high:
 
 int main() {
 
-	initSymbolTable(127);
 	#if YYDEBUG
 		yydebug = 1;
 	#endif

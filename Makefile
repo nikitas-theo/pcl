@@ -32,8 +32,8 @@ parser.cpp parser.hpp : parser.y
 
 parser.o: parser.cpp header.hpp #ast.hpp
 
-pcl: lexer.o parser.o
-	$(CXX) $(OBJ_SYM) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+pcl: lexer.o parser.o $(OBJ_SYM)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: 
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o && ${MAKE} -C $(SYM_DIR) clean
