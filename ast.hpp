@@ -1,10 +1,9 @@
 #pragma once
-
+#include <stdlib.h> 
 #include <string>
 #include <iostream>
-//#include "symbol.hpp"
+#include "symbol/symbol.h"
 
-enum Type{integer, real, boolean, pointer};
 
 class AST {
 public:
@@ -25,6 +24,7 @@ class Expr: public AST {
         if (type != t) {
             std::cerr << "Type mismatch" << std::endl;
             exit(1);
+        
         }
     }
     private:

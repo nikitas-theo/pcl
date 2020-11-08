@@ -1,5 +1,7 @@
 CC=g++
-FLAGS=Wall
+FLAGS=-Wall -pedantic -g
+
+.PHONY: clean
 
 default: pcl
 
@@ -16,6 +18,6 @@ parser.cpp parser.hpp : parser.y
 lex.yy.c : lexer.l
 	flex $(DEBUG_F)  lexer.l
 pcl: lex.yy.c parser.cpp | parser.hpp
-	$(CC)  lex.yy.c parser.cpp  -o pcl -lfl -$(FLAGS)
+	$(CC)  lex.yy.c parser.cpp   -o pcl -lfl $(FLAGS)
 clean:
 	rm lex.yy.c parser.cpp parser.hpp parser.output pcl

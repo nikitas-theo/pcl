@@ -1,6 +1,5 @@
 %{
 #include "header.hpp"
-#include <iostream>
 #include "ast.hpp"
 
 
@@ -209,10 +208,12 @@ binop_3 : 	  '*' | '/' | T_div | T_mod | T_and ;
 
 
 int main() {
+
+	
 	#if YYDEBUG
 		yydebug = 1;
 	#endif
-
+    initSymbolTable(257);
 	if(!yyparse())
-	printf("Parse successful.\n");
+	std::cout << "Parse successful.\n";
 }
