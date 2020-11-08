@@ -1,8 +1,6 @@
 %{
 #include "header.hpp"
 #include "ast.hpp"
-
-
 %}
 
 %union {
@@ -209,11 +207,10 @@ binop_3 : 	  '*' | '/' | T_div | T_mod | T_and ;
 
 int main() {
 
-	
+	initSymbolTable(127);
 	#if YYDEBUG
 		yydebug = 1;
 	#endif
-    initSymbolTable(257);
 	if(!yyparse())
 	std::cout << "Parse successful.\n";
 }

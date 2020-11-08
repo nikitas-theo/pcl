@@ -4,10 +4,11 @@
 #include <iostream>
 #include "symbol/symbol.h"
 
+void xx(int x);
 
 class AST {
 public:
-    virtual ~AST() {}
+    virtual ~AST() { }
     virtual void printOn(std::ostream &out) const = 0;
     // Cannot change the value of this object. Can be called by const objects.
     virtual void sem() {}
@@ -17,14 +18,13 @@ inline std::ostream& operator<<(std::ostream &out, const AST &t) {
     t.printOn(out);
     return out;
 }
-
 class Expr: public AST {
     void type_check(std::string t) {
         sem(); // Get type (and maybe some other things)
         if (type != t) {
             std::cerr << "Type mismatch" << std::endl;
+
             exit(1);
-        
         }
     }
     private:

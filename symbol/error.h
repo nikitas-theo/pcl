@@ -19,6 +19,10 @@
  */
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef __ERROR_H__
 #define __ERROR_H__
 
@@ -34,3 +38,10 @@ void warning  (const char * fmt, ...);
 
 
 #endif
+
+
+#ifdef __cplusplus
+}
+#endif
+
+/* #endif of the include guard here */
