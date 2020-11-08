@@ -3,7 +3,6 @@
 #include "header.hpp"
 #include "ast.hpp"
 
-
 %}
 
 %union {
@@ -77,7 +76,7 @@
 
 %type <expr> r_value
 %type <expr> expr
-%type <str> binop_1
+%type <str> binop_low
 
 %%
 
@@ -148,7 +147,7 @@ stmt_list :
 
 stmt:
 	  %empty
-	| l-value T_decl expr  
+	| l_value T_decl expr  
 	| block 
 	| call
 	| "if" expr "then" stmt
@@ -157,10 +156,10 @@ stmt:
 	| T_id ':' stmt 
 	| "goto" T_id 
 	| "return"
-	| "new" l-value 
-	| "new" '[' expr ']' l-value
-	| "dispose" l-value 
-	| "dispose" '[' ']' l-value
+	| "new" l_value 
+	| "new" '[' expr ']' l_value
+	| "dispose" l_value 
+	| "dispose" '[' ']' l_value
 	;
 
 expr:
@@ -173,26 +172,26 @@ expr_list:
 	| expr ',' expr_list
 	;
 
-l-value:
+l_value:
 	  T_id 
 	| "result" 
 	| "string-literal" 
-	| l-value '[' expr ']'
+	| l_value '[' expr ']'
 	| expr '^'
-	| '(' l-value ')'
+	| '(' l_value ')'
 	;
 
 
-r-value:
+r_value:
 	  "integer-const" 
 	| "real-const" 
 	| "char-const"
 	| "true" 
 	| "false" 
-	| '(' r-value ')' 
+	| '(' r_value ')' 
 	| "nil" 
 	| call 
-	| '@' ll-value
+	| '@' ll_value
 	| "not" expr 
 	| sign expr %prec U_SIGN 
 	| expr binop_high expr %prec '*'
@@ -200,12 +199,12 @@ r-value:
 	| expr binop_low expr %prec '=' { $$ = new Op($1, $2, $3); }
 	;
 
-ll-value:
+ll_value:
 	  T_id 
 	| "result" 
 	| "string-literal" 
-	| ll-value '[' expr ']'
-	| '(' l-value ')'
+	| ll_value '[' expr ']'
+	| '(' l_value ')'
 	;
 
 call :
@@ -235,11 +234,10 @@ binop_high:
 
 int main() {
 
-	
+	initSymbolTable(127);
 	#if YYDEBUG
 		yydebug = 1;
 	#endif
-    initSymbolTable(257);
 	if(!yyparse())
 	std::cout << "Parse successful.\n";
 }

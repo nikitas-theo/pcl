@@ -18,6 +18,13 @@
  *  Εργαστήριο Τεχνολογίας Λογισμικού
  */
 
+/* Include guard goes here */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 
 #ifndef __SYMBOL_H__
 #define __SYMBOL_H__
@@ -229,3 +236,10 @@ void          printMode          (PassMode mode);
 
 
 #endif
+
+
+#ifdef __cplusplus
+}
+#endif
+
+/* #endif of the include guard here */

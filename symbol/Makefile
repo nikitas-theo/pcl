@@ -18,46 +18,29 @@
 #  ÿÿÿÿÿÿÿÿÿÿ ÿÿÿÿÿÿÿÿÿÿÿ ÿÿÿÿÿÿÿÿÿÿ
 
 
-.PHONY: clean distclean count
+.PHONY: clean distclean count objfiles
 
-# OS type: Linux/Win DJGPP
-ifdef OS
-   EXE=.exe
-else
-   EXE=
-endif
+default : objfiles
 
-CFILES   = symbol.c error.c general.c symbtest.c
+CFILES   = symbol.c error.c general.c 
 HFILES   = symbol.h error.h general.h
 OBJFILES = $(patsubst %.c,%.o,$(CFILES))
-EXEFILES = symbtest$(EXE)
 SRCFILES = $(HFILES) $(CFILES)
 
 CC=gcc
 CFLAGS=-Wall -pedantic -g
 
-%.o : %.c
+%.o : %.c %.c
 	$(CC) $(CFLAGS) -c $<
-
-symbtest$(EXE): symbtest.o symbol.o error.o general.o
-	$(CC) $(CFLAGS) -o $@ $^
 
 general.o  : general.c general.h error.h
 error.o    : error.c general.h error.h
 symbol.o   : symbol.c symbol.h general.h error.h
-symbtest.o : symbtest.c symbol.h error.h
+
+objfiles : general.o error.o symbol.o 
 
 clean:
 	$(RM) $(OBJFILES) *~
 
 distclean: clean
 	$(RM) $(EXEFILES)
-
-count:
-	wc -l -c Makefile $(SRCFILES)
-
-bonus.zip: distclean
-	zip bonus.zip Makefile $(SRCFILES)
-
-bonus.tgz:
-	tar cvfzh bonus.tgz Makefile $(SRCFILES)
