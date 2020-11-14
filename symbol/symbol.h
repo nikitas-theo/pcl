@@ -25,7 +25,6 @@ extern "C" {
 #endif
 
 
-
 #ifndef __SYMBOL_H__
 #define __SYMBOL_H__
 
@@ -70,18 +69,19 @@ typedef const char *  RepString;          /* Συμβολοσειρές             */
 /* Τύποι δεδομένων και αποτελέσματος συναρτήσεων */
 
 typedef struct Type_tag * Type;
+typedef enum {                       /***** Το είδος του τύπου ****/
+   TYPE_VOID,                        /* Κενός τύπος αποτελέσματος */
+   TYPE_INTEGER,                     /* Ακέραιοι                  */
+   TYPE_BOOLEAN,                     /* Λογικές τιμές             */
+   TYPE_CHAR,                        /* Χαρακτήρες                */
+   TYPE_REAL,                        /* Πραγματικοί               */
+   TYPE_ARRAY,                       /* Πίνακες γνωστού μεγέθους  */
+   TYPE_IARRAY,                      /* Πίνακες άγνωστου μεγέθους (Incomplete) */
+   TYPE_POINTER                      /* Δείκτες                   */
+} oftype;
 
 struct Type_tag {
-    enum {                               /***** Το είδος του τύπου ****/
-       TYPE_VOID,                        /* Κενός τύπος αποτελέσματος */
-       TYPE_INTEGER,                     /* Ακέραιοι                  */
-       TYPE_BOOLEAN,                     /* Λογικές τιμές             */
-       TYPE_CHAR,                        /* Χαρακτήρες                */
-       TYPE_REAL,                        /* Πραγματικοί               */
-       TYPE_ARRAY,                       /* Πίνακες γνωστού μεγέθους  */
-       TYPE_IARRAY,                      /* Πίνακες άγνωστου μεγέθους (Incomplete) */
-       TYPE_POINTER                      /* Δείκτες                   */
-    } kind;
+    oftype kind;
     Type           refType;              /* Τύπος αναφοράς (για array, pointer)           */
     RepInteger     size;                 /* Μέγεθος, αν είναι πίνακας */
     unsigned int   refCount;             /* Μετρητής αναφορών         */

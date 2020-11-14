@@ -10,19 +10,19 @@
 
 static void update_global_location()
 {
-	yylloc.first_line = yylloc.last_line;
-	yylloc.first_column = yylloc.last_column;
-	for(int i = 0; yytext[i] != '\0'; i++) 
-	{
-		if(yytext[i] == '\n')
-		{
-			yylloc.last_line++;
-			yylloc.last_column = 0;
-		}
-		else {
-			yylloc.last_column++;
-		}
-	}
+    yylloc.first_line = yylloc.last_line;
+    yylloc.first_column = yylloc.last_column;
+    for(int i = 0; yytext[i] != '\0'; i++) 
+    {
+        if(yytext[i] == '\n')
+        {
+            yylloc.last_line++;
+            yylloc.last_column = 0;
+        }
+        else {
+            yylloc.last_column++;
+        }
+    }
 }
 
 #define YY_USER_ACTION  update_global_location();
@@ -82,35 +82,35 @@ W [ \t\r\n]
 "var"       { return T_var; }
 "while"     { return T_while; }
 
-{L}([[:alnum:]]|_)*     	{ yylval.str = strdup(yytext); return T_id;		/* Identifiers */ }
-{D}+                		{ yylval.num = atoi(yytext); return T_const_int;	/* Integers */ }
-{D}+\.{D}+([eE][+-]?{D}+)?  	{ yylval.real = atof(yytext); return T_const_real;	/* Reals */ }
-\'({C}|{E})\'           	{ yylval.op = strdup(yytext); return T_const_char;	/* Chars */ }
+{L}([[:alnum:]]|_)*         { yylval.str = strdup(yytext); return T_id;		/* Identifiers */ }
+{D}+                        { yylval.num = atoi(yytext); return T_const_int;	/* Integers */ }
+{D}+\.{D}+([eE][+-]?{D}+)?  { yylval.real = atof(yytext); return T_const_real;	/* Reals */ }
+\'({C}|{E})\'               { yylval.str = strdup(yytext); return T_const_char;	/* Chars */ }
 
 
-[+\-*//^@><=]		|   /* same as the action of next rule */
-[;.(),\[\]:=] 		{ yylval.op = strdup(yytext); return yytext[0]; }
-":="			{ yylval.op = strdup(yytext); return T_decl; }
-"<>"			{ yylval.op = strdup(yytext); return T_neq; }
-">="			{ yylval.op = strdup(yytext); return T_geq; }
-"<="			{ yylval.op = strdup(yytext); return T_neq; }
+[+\-*//^@><=]   |   /* same as the action of next rule */
+[;.(),\[\]:=]   { yylval.op = strdup(yytext); return yytext[0]; }
+":="            { yylval.op = strdup(yytext); return T_decl; }
+"<>"            { yylval.op = strdup(yytext); return T_neq; }
+">="            { yylval.op = strdup(yytext); return T_geq; }
+"<="            { yylval.op = strdup(yytext); return T_neq; }
 
 \"                      { BEGIN(STRING); }
-<STRING>({C}|{E})+ 	{ yylval.str = strdup(yytext); }
+<STRING>({C}|{E})+      { yylval.str = strdup(yytext); }
 <STRING>\"              { BEGIN(INITIAL); return T_string; }
 <STRING>\n              { yyerror("Unfinished string literal"); }
-<STRING><<EOF>>		{ yyerror("Unfinished string literal"); yyterminate(); }
+<STRING><<EOF>>         { yyerror("Unfinished string literal"); yyterminate(); }
 
 
-"(*"			{ BEGIN(COMMENT); }
-<COMMENT>[^*]*		{ /* eat up anything that is not a '*' */ }
-<COMMENT>"*)"		{ BEGIN(INITIAL); }
-<COMMENT>"*"		{ /* eat up *'s not followed by ')' */ }
-<COMMENT><<EOF>>	{ yyerror("Unfinished comment - expected *)"); yyterminate(); }
+"(*"                { BEGIN(COMMENT); }
+<COMMENT>[^*]*      { /* eat up anything that is not a '*' */ }
+<COMMENT>"*)"       { BEGIN(INITIAL); }
+<COMMENT>"*"        { /* eat up *'s not followed by ')' */ }
+<COMMENT><<EOF>>    { yyerror("Unfinished comment - expected *)"); yyterminate(); }
 
 
-{W}+		{  /* do nothing */ }
-<*>.    	{ yyerror("lexical error"); }
+{W}+        {  /* do nothing */ }
+<*>.        { yyerror("lexical error"); }
 
 %%
 

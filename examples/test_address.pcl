@@ -1,5 +1,0 @@
-program test_address ;
-
-begin
-  i := i <= x^
-end.

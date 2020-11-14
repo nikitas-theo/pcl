@@ -25,14 +25,13 @@ lexer.cpp: lexer.l
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-lexer.o: lexer.cpp header.hpp parser.hpp #ast.cpp ast.hpp
-
+lexer.o: lexer.cpp header.hpp parser.hpp 
 parser.cpp parser.hpp : parser.y
 	bison -dv $(DEBUG_B) --report=lookahead -o parser.cpp parser.y
 
-parser.o: parser.cpp header.hpp #ast.hpp
+parser.o: parser.cpp header.hpp
 
-pcl: lexer.o parser.o $(OBJ_SYM)
+pcl: lexer.o parser.o $(OBJ_SYM)  ast.hpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: 

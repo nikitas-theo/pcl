@@ -1,8 +1,9 @@
 #ifndef __HEADER_HPP__
 #define __HEADER_HPP__
-
+#include <stdio.h>
 void yyerror(char const* msg );
 extern "C" int yylex();
+extern  FILE *yyin;
 
 /*   
      The above command is used to notify g++ to expect a C-like function as yylex().

@@ -571,19 +571,19 @@ char *yytext;
 
 static void update_global_location()
 {
-	yylloc.first_line = yylloc.last_line;
-	yylloc.first_column = yylloc.last_column;
-	for(int i = 0; yytext[i] != '\0'; i++) 
-	{
-		if(yytext[i] == '\n')
-		{
-			yylloc.last_line++;
-			yylloc.last_column = 0;
-		}
-		else {
-			yylloc.last_column++;
-		}
-	}
+    yylloc.first_line = yylloc.last_line;
+    yylloc.first_column = yylloc.last_column;
+    for(int i = 0; yytext[i] != '\0'; i++) 
+    {
+        if(yytext[i] == '\n')
+        {
+            yylloc.last_line++;
+            yylloc.last_column = 0;
+        }
+        else {
+            yylloc.last_column++;
+        }
+    }
 }
 
 #define YY_USER_ACTION  update_global_location();
@@ -1056,7 +1056,7 @@ YY_RULE_SETUP
 case 36:
 YY_RULE_SETUP
 #line 89 "lexer.l"
-{ yylval.op = strdup(yytext); return T_const_char;	/* Chars */ }
+{ yylval.str = strdup(yytext); return T_const_char;	/* Chars */ }
 	YY_BREAK
 case 37:
 #line 93 "lexer.l"
