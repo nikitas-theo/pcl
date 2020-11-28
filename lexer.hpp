@@ -1,5 +1,5 @@
-#ifndef __HEADER_HPP__
-#define __HEADER_HPP__
+#ifndef __LEXER_HPP__
+#define __LEXER_HPP__
 #include <stdio.h>
 void yyerror(char const* msg );
 extern "C" int yylex();

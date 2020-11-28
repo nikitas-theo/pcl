@@ -1,7 +1,22 @@
+# pcl executable
 pcl
+
+# parser auto generated files
 parser.cpp
 parser.hpp
 parser.output
-lex.yy.c
+
+# lexer auto generated files
+lexer.cpp
+
+# all object files
+*.o
+
+# ignore test files
+*_test.*
+
+# just some pdfs with info
 reading_mat/*
+
+# vscode folder
 .vscode/

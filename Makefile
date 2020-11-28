@@ -25,17 +25,19 @@ lexer.cpp: lexer.l
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $<
 
-lexer.o: lexer.cpp header.hpp parser.hpp 
+lexer.o: lexer.cpp lexer.hpp parser.hpp
+
 parser.cpp parser.hpp : parser.y
 	bison -dv $(DEBUG_B) --report=lookahead -o parser.cpp parser.y
 
-parser.o: parser.cpp header.hpp
+parser.o: parser.cpp lexer.hpp
 
 pcl: lexer.o parser.o $(OBJ_SYM)  ast.hpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: 
-	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o && ${MAKE} -C $(SYM_DIR) clean
+	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
 
 distclean: clean
+	${MAKE} -C $(SYM_DIR) clean
 	$(RM) pcl
