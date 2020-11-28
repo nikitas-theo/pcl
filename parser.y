@@ -1,6 +1,6 @@
 %{
 
-#include "header.hpp"
+#include "lexer.hpp"
 #include "ast.hpp"
 #include "symbol/symbol.h"
 %}
@@ -17,7 +17,7 @@
     int num;
     char* op;
     Type type;
-
+    IdStack* id;
 }
 
 %locations
@@ -58,12 +58,12 @@
 %token T_var        "var"
 %token T_while      "while"
 
-%token<str> T_id         "id"
+%token<str> T_id    "id"
 
-%token<num> T_const_int      "integer-const"
-%token<real> T_const_real     "real-const"
-%token<str> T_const_char     "char-const"
-%token<str> T_string         "string-literal"
+%token<num> T_const_int     "integer-const"
+%token<real> T_const_real   "real-const"
+%token<str> T_const_char    "char-const"
+%token<str> T_string        "string-literal"
 
 %precedence T_then
 %precedence T_else
@@ -100,136 +100,135 @@ program :
     ;
 
 body:
-      local body {$2->append($1) ; $$ = $2;}
-    | block {$$ = new Body($1);}
+      local body            { $2->push_local($1) ; $$ = $2; }
+    | block                 { $$ = new Program($1); }
     ;
 
 local:
-      "var" var_def {$$ = new Local(var_def,$2);}
-    | "label" id_list ';' {$$ = new Local(label_def,$2);}
-    | header ';' body ';'{$$ = new Local(func_def,$$);}
-    | "forward" header ';' {$$ = new Local(forward_def,$2);}
+      "var" var_def         { $$ = $1; }
+    | "label" id_list ';'   { $$ = new Label($2); }
+    | header ';' body ';'   { $$ = $1; $1->add_body($3); }
+    | "forward" header ';'  { $$ = $2; $2->set_forward(); }
     ;
 
 var_def:
-      id_list[id] ':' type[t] ';' var_def[defs] {$defs->append($id,$t) ; $$ = $defs;}
-    | id_list ':' type ';' {$$ = new VarDef($1,$3);}
+      id_list ':' type ';' var_def  { $5->push($1, $3) ; $$ = $5; }
+    | id_list ':' type ';'          { $$ = new VariableGroupStack(); $$->push($1, $3); }
     ;
 
 id_list :
-      T_id ',' id_list {$3->append( new Id($1)) ; $$ = $3;}
-    | T_id {$$ = new StmtList( new Id($1)); }
+      T_id ',' id_list              { $3->push($1) ; $$ = $3; }
+    | T_id                          { $$ = new IdStack(); $$->push($1); }
     ;
 
 header :
-      "procedure" T_id[name] '(' parameter_list[params] ')' {$$ = new Header(procedure, $name, $params);}
-    | "function" T_id[name] '(' parameter_list[params] ')' ':' type[t] {$$ = new Header(function, $name, $params,$t);}
-    ;
+	  "procedure" T_id '(' parameter_list ')'           { $$ = new Routine($2, $4, typeVoid); }
+	| "function" T_id '(' parameter_list ')' ':' type   { $$ = new Routine($2, $4, $7); }
+	;
 
 parameter_list: 
-      %empty  {$$ = new StmtList();}
-    | formal formal_list {$2->append($1); $$ = $2;}
+      %empty                        { $$ = new FormalsGroupStack(); } //If we have no params then we need an empty stack
+    | formal formal_list            { $2->push($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
     ;
 
 formal_list: 
-      %empty {$$ = new StmtList();}
-    | ';' formal formal_list {$3->append($2) ; $$ = $3;} 
+      %empty                        { $$ = new FormalsGroupStack(); }
+    | ';' formal formal_list        { $3->push($2) ; $$ = $3; } 
     ;
 
 formal:
-      id_list ':' type {$$ = new Formal(byvalue, $1,$3);}
-    | "var" id_list ':' type  {$$ = new Formal(byreference,$2,$4 );}
+      id_list ':' type              { $$ = new FormalsGroup($1, $3, PASS_BY_VALUE); }
+    | "var" id_list ':' type        { $$ = new FormalsGroup($2, $4, PASS_BY_REFERENCE); }
     ;
 
 type :
-      "integer" {$$ = new Type_tag({TYPE_INTEGER}); }
-    | "real" {$$ = new Type_tag({TYPE_REAL}); }
-    | "boolean" {$$ = new Type_tag({TYPE_BOOLEAN}); }
-    | "char" {$$ = new Type_tag({TYPE_CHAR});}
-    | "array" "of" type {$$ = new Type_tag({TYPE_IARRAY,$3}); }
-    | "array" '[' "integer-const"[size] ']' "of" type[refType] {$$ = new Type_tag({TYPE_ARRAY,$refType,$size}); }
-    | '^' type {$$ =  new Type_tag({TYPE_POINTER,$2}) ; }
+      "integer"         { $$ = typeInteger; }
+    | "real"            { $$ = typeReal; }
+    | "boolean"         { $$ = typeBoolean; }
+    | "char"            { $$ = typeChar; }
+    | "array" "of" type     { $$ = typeIArray($3); }
+    | "array" '[' "integer-const"[size] ']' "of" type[refType] 	{ $$ = typeArray($size, $refType); }
+    | '^' type          { $$ =  typePointer($2) ; }
     ;
 
 block:
-      "begin" stmt_list "end"  {$$ = $2;}
+      "begin" stmt_list "end"       { $$ = $2; }
     ;
 
 stmt_list :
-      stmt {$$ = new StmtList($1); }
-    | stmt ';' stmt_list {$3->append($1) ; $$ = $3;}
+    %empty                          { $$ = new StatementStack(); }
+    | stmt ';' stmt_list            { $3->push($1) ; $$ = $3; }
     ;
 
 stmt:
-      %empty {$$  = new Empty();}
-    | l_value T_decl expr { $$ = new Decl($1,$3);} 
-    | block 
-    | proc_call 
-    | "if" expr[cond] "then" stmt[then] {$$ = new IfThenElse($cond,$then); }
-    | "if" expr[cond] "then" stmt[then] "else" stmt[else] {$$ = new IfThenElse($cond,$then,$else);} 
-    | "while" expr "do" stmt { $$ = new While($2,$4);}
-    | T_id ':' stmt  {$$ = new Label($1,$3);}
-    | "goto" T_id {$$ = new GoTo($2);}
-    | "return" {$$ = new ReturnStmt();}
-    | "new" l_value {$$ = new Init($2);} 
-    | "new" '[' expr[size] ']' l_value[lval] {$$ = new Init($lval,$size);}
-    | "dispose" l_value {$$ = new Dispose($2);} 
-    | "dispose" '[' ']' l_value {$$ = new Dispose($4);}
+      l_value T_decl expr           { $$ = new Declaration($1, $3); } 
+    | block                         { $$ = $1; }
+    | proc_call                     { $$ = $1; }
+    | "if" expr "then" stmt                 { $$ = new IfThenElse($2, $4); }
+    | "if" expr "then" stmt "else" stmt     { $$ = new IfThenElse($2, $4, $6); } 
+    | "while" expr "do" stmt        { $$ = new While($2, $4); }
+    | T_id ':' stmt                 { $$ = new LabelBind($1, $3); }
+    | "goto" T_id                   { $$ = new GoTo($2); }
+    | "return"                      { $$ = new ReturnStmt(); }
+    | "new" l_value                 { $$ = new Init($2); } 
+    | "new" '[' expr ']' l_value    { $$ = new InitArray($5, $3); }
+    | "dispose" l_value             { $$ = new Dispose($2); } 
+    | "dispose" '[' ']' l_value     { $$ = new DisposeArray($4); }
     ;
 
 expr:
-      l_value 
-    | r_value 
+      l_value           { $$ = $1; }
+    | r_value           { $$ = $1; }
     ;
 
 expr_list:
-      expr {$$ = new ExprList($1);}
-    | expr ',' expr_list  {$3->append($1) ; $$ = $3;}
+      expr                      { $$ = new ExpressionStack(); $$->push($1); }
+    | expr ',' expr_list        { $3->push($1); $$ = $3; }
     ;
 
 
 r_value:
-      "integer-const" {$$ = new Const<int>($1);} 
-    | "real-const" {$$ = new Const<double>($1);}
-    | "char-const" {$$ = new Const<char*>($1);} 
-    | "true"  {$$ = new Const<bool>(true);}
-    | "false" {$$ = new Const<bool>(false);}
-    | '(' r_value ')' {$$ = $2;}
-    | "nil" {$$ = new Const<NIL>(0);}
-    | func_call {$$ = $1;}
-    | '@' ll_value	{$$ = new UniOp($1,$2);}
-    | "not" expr {$$ = new UniOp($1,$2);}
-    | sign expr %prec U_SIGN {$$ = new UniOp($1,$2);}
-    | expr binop_high expr %prec '*' {$$ = new BinOp($1,$2,$3);}
-    | expr binop_med expr %prec '+' {$$ = new BinOp($1,$2,$3);}
-    | expr binop_low expr %prec '=' {$$ = new BinOp($1,$2,$3);}
+      "integer-const"               { $$ = new Const($1, typeInteger, $1); } 
+    | "real-const"                  { $$ = new Const($1, typeReal, $1); }
+    | "char-const"                  { $$ = new CConst($1, typeChar, $1); } 
+    | "true"                        { $$ = new Const("true", typeBoolean, 1); }
+    | "false"                       { $$ = new Const("false", typeBoolean, 0); }
+    | '(' r_value ')'               { $$ = $2; }
+    | "nil"                         { $$ = new Const("nil", typeVoid, NULL); } //???????
+    | func_call                     { $$ = $1; }
+    | '@' ll_value                  { $$ = new UnOp($1, $2); }
+    | "not" expr                    { $$ = new UnOp($1, $2); }
+    | sign expr %prec U_SIGN        { $$ = new UnOp($1, $2); }
+    | expr binop_high expr %prec '*'    { $$ = new BinOp($1, $2, $3); }
+    | expr binop_med expr %prec '+'     { $$ = new BinOp($1, $2, $3); }
+    | expr binop_low expr %prec '='     { $$ = new BinOp($1, $2, $3); }
 
 
 l_value:
-      T_id  {$$ = new Id($1);}
-    | "result" {$$ = new Id("result");} // put in the same class
-    | "string-literal" {$$ = new String($1);} 
-    | l_value '[' expr ']' {$$ = new Access($1,$3);}
-    | expr '^' {$$ = new Dereference($1);}
-    | '(' l_value ')' {$$ = $2;}
+      T_id                      { $$ = new Id($1); }
+    | "result"                  { $$ = new Id("result"); } // put in the same class
+    | "string-literal"          { $$ = new String($1); }
+    | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3); }
+    | expr '^'                  { $$ = new Dereference($1); }
+    | '(' l_value ')'           { $$ = $2; }
     ;
 
 ll_value:
-      T_id {$$ = new Id($1);}
-    | "result" {$$ = new Id("result");}
-    | "string-literal" {$$ = new String($1);} 
-    | ll_value '[' expr ']' {$$ = new Access($1,$3);} 
-    | '(' l_value ')' {$$ = $2;}
+      T_id                      { $$ = new Id($1); }
+    | "result"                  { $$ = new Id("result"); }
+    | "string-literal"          { $$ = new String($1); }
+    | ll_value '[' expr ']'     { $$ = new ArrayAccess($1, $3); } 
+    | '(' l_value ')'           { $$ = $2; }
     ;
 
 func_call :
-      T_id '(' ')' {$$ = new Call($1);}
-    | T_id '(' expr_list ')' {$$ = new Call($1,$3);}
+      T_id '(' ')'              { $$ = new FuncCall($1); }
+    | T_id '(' expr_list ')'    { $$ = new FuncCall($1, $3); }
     ;
 
 proc_call :
-      T_id '(' ')' {$$ =  new Call($1);}
-    | T_id '(' expr_list ')' {$$ =  new Call($1,$3);}
+      T_id '(' ')'              {$$ =  new ProcCall($1);}
+    | T_id '(' expr_list ')'    {$$ =  new ProcCall($1, $3);}
     ;
 
 

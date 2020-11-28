@@ -3,7 +3,7 @@
 %{
 /* C-code here goes verbatin to lex.yy.c */
 #include "ast.hpp"  // includes ast.hpp for types 
-#include "header.hpp" // define yylex(),yyerror(),
+#include "lexer.hpp" // define yylex(),yyerror(),
 #include "parser.hpp" // get token types from Bison
 
 #include <string.h>

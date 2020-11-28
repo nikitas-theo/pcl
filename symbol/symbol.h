@@ -70,14 +70,14 @@ typedef const char *  RepString;          /* Συμβολοσειρές             */
 
 typedef struct Type_tag * Type;
 typedef enum {                       /***** Το είδος του τύπου ****/
-   TYPE_VOID,                        /* Κενός τύπος αποτελέσματος */
-   TYPE_INTEGER,                     /* Ακέραιοι                  */
-   TYPE_BOOLEAN,                     /* Λογικές τιμές             */
-   TYPE_CHAR,                        /* Χαρακτήρες                */
-   TYPE_REAL,                        /* Πραγματικοί               */
-   TYPE_ARRAY,                       /* Πίνακες γνωστού μεγέθους  */
-   TYPE_IARRAY,                      /* Πίνακες άγνωστου μεγέθους (Incomplete) */
-   TYPE_POINTER                      /* Δείκτες                   */
+   TYPE_VOID    = 0b00000001,        /* Κενός τύπος αποτελέσματος */
+   TYPE_INTEGER = 0b00000010,        /* Ακέραιοι                  */
+   TYPE_BOOLEAN = 0b00000100,        /* Λογικές τιμές             */
+   TYPE_CHAR    = 0b00001000,        /* Χαρακτήρες                */
+   TYPE_REAL    = 0b00010000,        /* Πραγματικοί               */
+   TYPE_ARRAY   = 0b00100000,        /* Πίνακες γνωστού μεγέθους  */
+   TYPE_IARRAY  = 0b01000000,        /* Πίνακες άγνωστου μεγέθους (Incomplete) */
+   TYPE_POINTER = 0b10000000         /* Δείκτες                   */
 } oftype;
 
 struct Type_tag {
