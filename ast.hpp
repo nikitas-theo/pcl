@@ -3,17 +3,15 @@
 
 #include <stdlib.h> 
 #include <string>
-#include <stack>
+#include <deque>
 #include <iostream>
-#include <vector>
 #include "symbol/symbol.h"
+#include "symbol/error.h"
+#include "symbol_compatible.hpp"
 
 using namespace std;
 
-typedef stack<string> IdStack;
-typedef stack<FormalsGroup*> FormalsGroupStack;
-typedef stack<Stmt*> StatementStack;
-typedef stack<Expr*> ExpressionStack;
+typedef deque<string> IdStack;
 
 class AST {
     public:
@@ -21,15 +19,8 @@ class AST {
         virtual void semantic() {}
         virtual void compile() {}
         
-        virtual void printOn(ostream &out) const = 0;
+        //virtual void printOn(ostream &out) const = 0;
 };
-
-inline std::operator<< (std::ostream &out, const AST &node)
-{
-    node.printOn(out);
-    return out;
-}
-
 class Expr : public AST {
     protected:
         Type mytype;
@@ -37,22 +28,12 @@ class Expr : public AST {
     public:
         bool type_check(Type t)
         {
-            if (!(mytype->kind && t->kind))
-                return false;
-            switch (mytype->kind) {
-                case TYPE_ARRAY:
-                    if (mytype->size != t->size)
-                        return false;
-                case TYPE_IARRAY:
-                case TYPE_POINTER:
-                    return type_check(mytype->refType, t->refType);
-            }
-            return true
+            return equalType(mytype, t);
         }
 
         bool type_check_strict(Type t)
         {
-            if (this.type_check(t))
+            if (this->type_check(t))
                 return true;
             error("AAAAAAAAAAAAAAAAAAAAAA");
             return false;
@@ -71,6 +52,12 @@ class Expr : public AST {
 
 class Stmt : public AST {
 };
+
+class StatementStack : public deque<Stmt*>, public Stmt {
+};
+
+//typedef deque<Stmt*> StatementStack;
+typedef deque<Expr*> ExpressionStack;
 
 /* Expressions */
 
@@ -96,35 +83,38 @@ class BinOp : public Expr{
             left->semantic();
             right->semantic();
             
-            switch(op) {
+            switch(op[0]) {
                 case '+': case '-': case '*':
                     is_arithmetic(left->get_type());
                     is_arithmetic(right->get_type());
                     if (left->type_check(typeReal) || right->type_check(typeReal))
                         this->set_type(typeReal);
                     else
-                        this->set_stype(typeInteger);
+                        this->set_type(typeInteger);
                     break;
                 case '/':
                     is_arithmetic(left->get_type());
                     is_arithmetic(right->get_type());
                     this->set_type(typeReal);
                     break;
-                case "div": case "mod":
+                //case "div": case "mod":
+                case 'd': case 'm':
                     left->type_check_strict(typeInteger);
                     right->type_check_strict(typeInteger);
                     this->set_type(typeInteger);
                     break;
-                case "and": case "or":
+                //case "and": case "or":
+                case 'a': case 'o':
                     left->type_check_strict(typeBoolean);
                     right->type_check_strict(typeBoolean);
                     this->set_type(typeBoolean);
                     break;
-                case '=': case "<>":
+                //case '=': case "<>":
+                case '=':
                     //?????
                     this->set_type(typeBoolean);
                     break;
-                case '>': case '<': case "<=": case ">=":
+                case '>': case '<': //case "<=": case ">=":
                     is_arithmetic(left->get_type());
                     is_arithmetic(right->get_type());
                     this->set_type(typeBoolean);
@@ -139,18 +129,19 @@ class UnOp : public Expr {
         string op;
         
     public:
-        UnOp(string _o, Expr _e) : op(_o), e(_e) {}
+        UnOp(string _o, Expr* _e) : op(_o), e(_e) {}
         ~UnOp() { delete e; }
         
-        void semantic override
+        void semantic() override
         {
             e->semantic();
             
-            switch(op) {
+            switch(op[0]) {
                 case '@':
                     //???
                     break;
-                case "not":
+                //case "not":
+                case 'n':
                     if (e->type_check(typeBoolean)) this->set_type(typeBoolean);
                     else //error!
                     break;
@@ -162,60 +153,78 @@ class UnOp : public Expr {
         }
 };
 
+class Id : public Expr {
+    private:
+    public:
+        Id(string n) {}
+};
+
 class Const : public Expr {
     private:
-        string name;
-        Type ctype;
-        object value;
     
     public:
-        Const(string nm, Type t, object val) : name(nm), ctype(t), value(val) {}
+        Const() {}
         
         void semantic() override
         {
-            newConstant(name, ctype, value);
+            
         }
 };
 
 class FuncCall : public Expr {
+    private:
+        string fname;
+        ExpressionStack* parameters;
+        
+    public:
+        FuncCall(string name, ExpressionStack* params=nullptr) : fname(name), parameters(params) {}
 };
 
 class String : public Expr {
+    private:
+    public:
+        String(string s) {}
 };
 
 class ArrayAccess : public Expr {
+    private:
+    public:
+        ArrayAccess(Expr* lval, Expr* pos) {}
 };
 
 class Dereference : public Expr {
+    private:
+    public:
+        Dereference(Expr* e) {}
 };
 
 /* Statements */
 
 class Program : public Stmt {
     private:
-        stack<Stmt*> *locals;
-        stack<Stmt*> body;
+        StatementStack *locals;
+        StatementStack *body;
     
     public:
-        Program(stack<Stmt> theBody) : body(theBody)
+        Program(StatementStack* theBody) : body(theBody)
         {
-            locals = new stack<Stmt*>;
+            locals = new StatementStack();
         }
         ~Program() { delete locals; }
 
         void semantic() override
         {
-            for (Stmt *l in locals) {
+            for (Stmt *l : *locals) {
                 l->semantic();
             }
-            for (Stmt *s in body) {
+            for (Stmt *s : *body) {
                 s->semantic();
             }
         }
 
         void push_local(Stmt *l)
         {
-            locals->push(l);
+            locals->push_front(l);
         }
 };
 
@@ -235,39 +244,40 @@ class Variable : public Stmt {
 
 class VariableGroupStack : public Stmt {
     private:
-        stack<Variable*> *vars;
+        deque<Variable*> *vars;
     
     public:
         VariableGroupStack()
         {
-            vars = new stack<Variable*>;
+            vars = new deque<Variable*>;
         }
         ~VariableGroupStack() { delete vars; }
 
         void semantic() override
         {
-            for (Variable *v in vars) {
+            for (Variable *v : *vars) {
                 v->semantic();
             }
         }
 
         void push(IdStack* var_ids, Type t)
         {
-            for (string s in var_ids) {
-                vars->push(new Variable(s, t));
+            for (string s : *var_ids) {
+                vars->push_front(new Variable(s, t));
             }
         }
 };
 
 class Label : public Stmt {
     private:
-        string lblname;
+        IdStack *lblnames;
     public:
-        Label(string name) : lblname(name) {}
+        Label(IdStack* names) : lblnames(names) {}
 
         void semantic() override
         {
-            newConstant(name, typeVoid);
+            for (string lbl : *lblnames)
+                newConstant(lbl, typeVoid);
         }
 };
 
@@ -281,27 +291,29 @@ class FormalsGroup : public Stmt {
     public:
         FormalsGroup(IdStack* f, Type t, PassMode pm) : formals(f), type(t), pass_by(pm) {}
 
-        void set_function_entry(SymbolEntry *f) : function_entry(f) {}
+        void set_function_entry(SymbolEntry *f) { function_entry = f; }
 
         void semantic() override
         {
-            for (string f in formals) {
+            for (string f : *formals) {
                 newParameter(f, type, pass_by, function_entry);
             }
         }
     
 };
 
+typedef deque<FormalsGroup*> FormalsGroupStack;
+
 class Routine : public Stmt {
     private:
         string name;
         Type type;
-        FormalsGroupStack parameters;
-        StatementStack body;
+        FormalsGroupStack* parameters;
+        Program* body;
         bool isForward;
         
     public:
-        Routine(string n, stack<Stmt*> params, Type t) : name(n), parameters(params), type(t) { isForward = false;}
+        Routine(string n, FormalsGroupStack* params, Type t) : name(n), parameters(params), type(t) { isForward = false;}
         ~Routine() {}
         
         void semantic() override
@@ -313,7 +325,7 @@ class Routine : public Stmt {
             
             openScope();
             
-            for (FormalsGroup* fg in parameters) {
+            for (FormalsGroup* fg : *parameters) {
                 fg->set_function_entry(p);
                 fg->semantic();
             }
@@ -321,9 +333,7 @@ class Routine : public Stmt {
             endFunctionHeader(p, typeVoid);
 
             if (!isForward) {
-                for (Stmt* s in body) {
-                    s->semantic();
-                }
+                body->semantic();
             }
             
             closeScope();
@@ -331,7 +341,12 @@ class Routine : public Stmt {
 
         void set_forward()
         {
-            this.isForward = true;
+            this->isForward = true;
+        }
+        
+        void add_body(Program* theBody)
+        {
+            this->body = theBody;
         }
 };
 
@@ -341,7 +356,7 @@ class ProcCall : public Stmt {
         ExpressionStack *parameters;
     
     public:
-        ProcCall(string pn) : panme(pn) { parameters = nullptr; }
+        ProcCall(string pn) : pname(pn) { parameters = nullptr; }
         ProcCall(string pn, ExpressionStack* params) : pname(pn), parameters(params) {}
 
         void semantic() override
@@ -355,6 +370,9 @@ class ProcCall : public Stmt {
 };
 
 class Declaration : public Stmt {
+    private:
+    public:
+        Declaration(Expr* lval, Expr* val) {}
 };
 
 class IfThenElse : public Stmt {
@@ -366,7 +384,7 @@ class IfThenElse : public Stmt {
         IfThenElse(Expr* c, Stmt* t, Stmt* e=nullptr) : cond(c), st_then(t), st_else(e) {};
         ~IfThenElse() { delete cond; delete st_then; delete st_else; }
         
-        void semantic override
+        void semantic() override
         {
             cond->semantic();
             cond->type_check(typeBoolean); //error handling??
@@ -405,7 +423,7 @@ class LabelBind : public Stmt {
         
         void semantic() override
         {
-            lookupEntry(name, LOOKUP_ALL_SCOPES, true);
+            lookupEntry(lbl, LOOKUP_ALL_SCOPES, true);
         }
 };
 
@@ -428,10 +446,15 @@ class ReturnStmt : public Stmt {
 class Init : public Stmt {
     private:
         string vname;
+    public:
+        Init(Expr* lval) {}
     
 };
 
 class InitArray : public Stmt {
+    private:
+    public:
+        InitArray(Expr* lval, Expr* sz) {}
 };
 
 class Dispose : public Stmt {
@@ -440,15 +463,19 @@ class Dispose : public Stmt {
     
     public:
         Dispose(string n) : name(n) {}
+        Dispose(Expr *lval) {} //????????????/
 
         void semantic() override
         {
-            SymbolEntry *l = lookupEntry(name, LOOKUP_ALL_SCOPES, true;)
-            l->eVariable.type == typeIArray;
+            SymbolEntry *l = lookupEntry(name, LOOKUP_ALL_SCOPES, true);
+            l->u.eVariable.type->kind == TYPE_IARRAY;
         }
 };
 
 class DisposeArray : public Stmt {
+    private:
+    public:
+        DisposeArray(Expr* lval) {} //???????????
 };
 
 #endif

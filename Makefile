@@ -1,7 +1,7 @@
 .PHONY: clean distclean default
 
 CXX=g++
-CXXFLAGS=-Wall -std=c++11 -pedantic -g
+CXXFLAGS=-Wall -std=c++14 -pedantic -g
 LDFLAGS=
 
 SYM_DIR= symbol
@@ -32,7 +32,9 @@ parser.cpp parser.hpp : parser.y
 
 parser.o: parser.cpp lexer.hpp
 
-pcl: lexer.o parser.o $(OBJ_SYM)  ast.hpp
+symbol_compatible.o: symbol_compatible.cpp symbol_compatible.hpp
+
+pcl: lexer.o parser.o symbol_compatible.o $(OBJ_SYM)  ast.hpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: 

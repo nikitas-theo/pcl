@@ -81,7 +81,7 @@ typedef enum {                       /***** Το είδος του τύπου ****/
 } oftype;
 
 struct Type_tag {
-    oftype kind;
+    oftype         kind;
     Type           refType;              /* Τύπος αναφοράς (για array, pointer)           */
     RepInteger     size;                 /* Μέγεθος, αν είναι πίνακας */
     unsigned int   refCount;             /* Μετρητής αναφορών         */

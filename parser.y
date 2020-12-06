@@ -6,18 +6,21 @@
 %}
 
 %union {
+    int num;
+    double real;
+    char* str;
+    char *op;
+    Type type;
     Expr* expr;
     Stmt* stmt;
-    Body* body;
-    VarDef* vardef;
-    ExprList* expr_list;
-    StmtList* stmt_list; 
-    char* str;
-    double real;
-    int num;
-    char* op;
-    Type type;
-    IdStack* id;
+    Program* prog;
+    VariableGroupStack* vgs;
+    IdStack* ids;
+    Routine* rtn;
+    FormalsGroup* flg;
+    FormalsGroupStack* fgs;
+    StatementStack* sts;
+    ExpressionStack* exs;
 }
 
 %locations
@@ -80,23 +83,24 @@
 
 %token END 0 "end of file" /* nice error messages */
 
-%type<expr>  l_value ll_value r_value  expr 
-%type<expr_list> expr_list
+%type<op> binop_high binop_med binop_low sign
+%type<type> type
 
-%type<expr> func_call
-%type<stmt> proc_call
-%type<body> body
-%type<vardef> var_def
-%type<stmt> stmt  header block formal 
-%type<stmt> program  local   
-%type<stmt_list> stmt_list formal_list parameter_list id_list 
-%type<type> type 
-%type<op> binop_high binop_med binop_low sign 
+%type<expr> expr r_value l_value ll_value func_call
+%type<stmt> local stmt proc_call
+%type<prog> body
+%type<vgs> var_def
+%type<ids> id_list
+%type<rtn> header
+%type<flg> formal
+%type<fgs> parameter_list formal_list
+%type<sts> block stmt_list
+%type<exs> expr_list
 
 %%
 
 program :
-      "program" T_id ';' body '.' {cout << "AST: " << *$4 << endl;}
+      "program" T_id ';' body '.' {/*cout << "AST: " << *$4 << endl;*/}
     ;
 
 body:
@@ -105,7 +109,7 @@ body:
     ;
 
 local:
-      "var" var_def         { $$ = $1; }
+      "var" var_def         { $$ = $2; }
     | "label" id_list ';'   { $$ = new Label($2); }
     | header ';' body ';'   { $$ = $1; $1->add_body($3); }
     | "forward" header ';'  { $$ = $2; $2->set_forward(); }
@@ -117,8 +121,8 @@ var_def:
     ;
 
 id_list :
-      T_id ',' id_list              { $3->push($1) ; $$ = $3; }
-    | T_id                          { $$ = new IdStack(); $$->push($1); }
+      T_id ',' id_list              { $3->push_front($1) ; $$ = $3; }
+    | T_id                          { $$ = new IdStack(); $$->push_front($1); }
     ;
 
 header :
@@ -128,12 +132,12 @@ header :
 
 parameter_list: 
       %empty                        { $$ = new FormalsGroupStack(); } //If we have no params then we need an empty stack
-    | formal formal_list            { $2->push($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
+    | formal formal_list            { $2->push_front($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
     ;
 
 formal_list: 
       %empty                        { $$ = new FormalsGroupStack(); }
-    | ';' formal formal_list        { $3->push($2) ; $$ = $3; } 
+    | ';' formal formal_list        { $3->push_front($2) ; $$ = $3; } 
     ;
 
 formal:
@@ -157,7 +161,7 @@ block:
 
 stmt_list :
     %empty                          { $$ = new StatementStack(); }
-    | stmt ';' stmt_list            { $3->push($1) ; $$ = $3; }
+    | stmt ';' stmt_list            { $3->push_front($1) ; $$ = $3; }
     ;
 
 stmt:
@@ -182,19 +186,19 @@ expr:
     ;
 
 expr_list:
-      expr                      { $$ = new ExpressionStack(); $$->push($1); }
-    | expr ',' expr_list        { $3->push($1); $$ = $3; }
+      expr                      { $$ = new ExpressionStack(); $$->push_front($1); }
+    | expr ',' expr_list        { $3->push_front($1); $$ = $3; }
     ;
 
 
 r_value:
-      "integer-const"               { $$ = new Const($1, typeInteger, $1); } 
-    | "real-const"                  { $$ = new Const($1, typeReal, $1); }
-    | "char-const"                  { $$ = new CConst($1, typeChar, $1); } 
-    | "true"                        { $$ = new Const("true", typeBoolean, 1); }
-    | "false"                       { $$ = new Const("false", typeBoolean, 0); }
+      "integer-const"               { $$ = new Const(); } 
+    | "real-const"                  { $$ = new Const(); }
+    | "char-const"                  { $$ = new Const(); } 
+    | "true"                        { $$ = new Const(); }
+    | "false"                       { $$ = new Const(); }
     | '(' r_value ')'               { $$ = $2; }
-    | "nil"                         { $$ = new Const("nil", typeVoid, NULL); } //???????
+    | "nil"                         { $$ = new Const(); } //???????
     | func_call                     { $$ = $1; }
     | '@' ll_value                  { $$ = new UnOp($1, $2); }
     | "not" expr                    { $$ = new UnOp($1, $2); }
