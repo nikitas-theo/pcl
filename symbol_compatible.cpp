@@ -1,6 +1,10 @@
 #include <stdarg.h>
 #include "symbol/symbol.h"
 #include "symbol_compatible.hpp"
+#include <iostream>
+
+
+
 
 SymbolEntry * newVariable        (std::string name, Type type)
 {

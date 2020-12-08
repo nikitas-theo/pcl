@@ -85,7 +85,7 @@ W [ \t\r\n]
 {L}([[:alnum:]]|_)*         { yylval.str = strdup(yytext); return T_id;		/* Identifiers */ }
 {D}+                        { yylval.num = atoi(yytext); return T_const_int;	/* Integers */ }
 {D}+\.{D}+([eE][+-]?{D}+)?  { yylval.real = atof(yytext); return T_const_real;	/* Reals */ }
-\'({C}|{E})\'               { yylval.str = strdup(yytext); return T_const_char;	/* Chars */ }
+\'({C}|{E})\'               { yylval.ch = yytext[0]; return T_const_char;	/* Chars */ }
 
 
 [+\-*//^@><=]   |   /* same as the action of next rule */

@@ -1,125 +1,85 @@
-#ifndef __AST_HPP__
-#define __AST_HPP__
-
+#pragma once 
 #include <stdlib.h> 
 #include <string>
-#include <deque>
+#include <vector>
 #include <iostream>
+#include <variant> 
 #include "symbol/symbol.h"
 #include "symbol/error.h"
 #include "symbol_compatible.hpp"
 
+
 using namespace std;
 
-typedef deque<string> IdStack;
+
 
 class AST {
     public:
         virtual ~AST() {}
         virtual void semantic() {}
         virtual void compile() {}
-        
-        //virtual void printOn(ostream &out) const = 0;
+        virtual void printOn(ostream &out) const = 0;
 };
+
+// Operator << on AST
+inline std::ostream& operator<<(std::ostream &out, const AST &t) {
+  t.printOn(out);
+  return out;
+}
+
+
 class Expr : public AST {
     protected:
         Type mytype;
-    
     public:
-        bool type_check(Type t)
-        {
-            return equalType(mytype, t);
-        }
-
-        bool type_check_strict(Type t)
-        {
-            if (this->type_check(t))
-                return true;
-            error("AAAAAAAAAAAAAAAAAAAAAA");
-            return false;
-        }
-        
-        void set_type(Type t)
-        {
-            mytype = t;
-        }
-        
-        Type get_type()
-        {
-            return mytype;
-        }
+        virtual void printOn(std::ostream &out) const = 0;
 };
-
 class Stmt : public AST {
+    public : 
+        virtual void printOn(std::ostream &out) const = 0;
 };
 
-class StatementStack : public deque<Stmt*>, public Stmt {
+class StatementStack : public Stmt {
+    public : 
+    vector<Stmt*> list ; 
+    void printOn(std::ostream &out) const {
+        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
+        if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
+    StatementStack(Stmt* s){list.push_back(s);}
+    StatementStack() {}
+    void push(Stmt* x) {list.push_back(x);}
+
 };
+class ExpressionStack : public Expr {
+    public : 
+    vector<Expr*> list ; 
+    void printOn(std::ostream &out) const {
+        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
+        if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
+    ExpressionStack(Expr* s){list.push_back(s);}
+    ExpressionStack() {}
+    void push(Expr* x) {list.push_back(x);}
 
-//typedef deque<Stmt*> StatementStack;
-typedef deque<Expr*> ExpressionStack;
-
+};
 /* Expressions */
+constexpr unsigned int hashf(const char *s, int off = 0) {                        
+    return !s[off] ? 5381 : (hashf(s, off+1)*33) ^ s[off];                           
+}    
+constexpr inline unsigned int operator "" _(char const * p, size_t) { return hashf(p); }
 
 class BinOp : public Expr{
     private:
         Expr *left, *right;
         string op;
-
-        bool is_arithmetic(Type t)
-        {
-            if (t->kind && (TYPE_INTEGER || TYPE_REAL))
-                return true;
-            error("AAAAAAAAAAAAAAAAAAAAA");
-            return false;
-        }
         
     public:
         BinOp(Expr* l, string o, Expr* r) : left(l), right(r), op(o) {}
         ~BinOp() { delete left; delete right; }
-        
-        void semantic() override
-        {
-            left->semantic();
-            right->semantic();
-            
-            switch(op[0]) {
-                case '+': case '-': case '*':
-                    is_arithmetic(left->get_type());
-                    is_arithmetic(right->get_type());
-                    if (left->type_check(typeReal) || right->type_check(typeReal))
-                        this->set_type(typeReal);
-                    else
-                        this->set_type(typeInteger);
-                    break;
-                case '/':
-                    is_arithmetic(left->get_type());
-                    is_arithmetic(right->get_type());
-                    this->set_type(typeReal);
-                    break;
-                //case "div": case "mod":
-                case 'd': case 'm':
-                    left->type_check_strict(typeInteger);
-                    right->type_check_strict(typeInteger);
-                    this->set_type(typeInteger);
-                    break;
-                //case "and": case "or":
-                case 'a': case 'o':
-                    left->type_check_strict(typeBoolean);
-                    right->type_check_strict(typeBoolean);
-                    this->set_type(typeBoolean);
-                    break;
-                //case '=': case "<>":
-                case '=':
-                    //?????
-                    this->set_type(typeBoolean);
-                    break;
-                case '>': case '<': //case "<=": case ">=":
-                    is_arithmetic(left->get_type());
-                    is_arithmetic(right->get_type());
-                    this->set_type(typeBoolean);
-                    break;
-            }
+        void semantic() override{}
+        void printOn(std::ostream &out) const {
+            left->printOn(out);
+            out << " " << op <<" ";
+            right->printOn(out); 
         }
 };
 
@@ -132,44 +92,58 @@ class UnOp : public Expr {
         UnOp(string _o, Expr* _e) : op(_o), e(_e) {}
         ~UnOp() { delete e; }
         
-        void semantic() override
-        {
-            e->semantic();
-            
-            switch(op[0]) {
-                case '@':
-                    //???
-                    break;
-                //case "not":
-                case 'n':
-                    if (e->type_check(typeBoolean)) this->set_type(typeBoolean);
-                    else //error!
-                    break;
-                case '+': case '-':
-                    if (e->type_check(typeInteger)) this->set_type(typeInteger);
-                    else //error!
-                    break;
-            }
-        }
+        void semantic() override{}
+        void printOn(std::ostream &out) const {out << "(" << op ;
+        e->printOn(out); 
+        out << ")";}
 };
 
 class Id : public Expr {
     private:
+        string name ;
     public:
-        Id(string n) {}
+        Id(string n) : name(n) {}
+        void printOn(std::ostream &out) const {out << "Id(" << name <<  ")";}
+
 };
 
+class IdStack : public Expr {
+    public : 
+    vector<string> list ; 
+    void printOn(std::ostream &out) const {
+        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it){ out << *it ; 
+        if (it + 1 != list.rend()) out << ", "; }out << "]"; } 
+    IdStack(string s){list.push_back(s);}
+    IdStack() {}
+    void push(string x) {list.push_back(x);}
+
+};
+
+typedef variant<int,double,char,bool> data_const ;
+// https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
+// https://en.cppreference.com/w/cpp/utility/variant     
+
 class Const : public Expr {
+
     private:
-    
+        Type type;
+        data_const val;     
     public:
-        Const() {}
-        
-        void semantic() override
-        {
-            
+        Const(data_const val, Type t) : val(val) , type(t) {}      
+        void printOn(std::ostream &out) const {
+            switch(type->kind) {
+                case TYPE_INTEGER : out << get<int>(val) ; break;
+                case TYPE_BOOLEAN : out << get<bool>(val) ; break;
+                case TYPE_CHAR : out << get<char>(val) ; break;
+                case TYPE_REAL : out << get<double>(val) ; break;
+                case TYPE_VOID : out << "Nil" ; break; 
+
+            } 
         }
 };
+
+
+
 
 class FuncCall : public Expr {
     private:
@@ -178,94 +152,97 @@ class FuncCall : public Expr {
         
     public:
         FuncCall(string name, ExpressionStack* params=nullptr) : fname(name), parameters(params) {}
+        void printOn(std::ostream &out) const {
+            out << "FuncCall(" << fname; 
+            if (parameters != nullptr) parameters->printOn(out) ; out << ")";}
 };
 
 class String : public Expr {
     private:
+        string s; 
     public:
-        String(string s) {}
+        String(string s) : s(s){}
+        void printOn(std::ostream &out) const {out << '\"' << s << '\"';}
 };
 
 class ArrayAccess : public Expr {
     private:
+        Expr* lval; 
+        Expr* pos; 
     public:
-        ArrayAccess(Expr* lval, Expr* pos) {}
+        ArrayAccess(Expr* lval, Expr* pos) : lval(lval) , pos(pos){}
+        void printOn(std::ostream &out) const { lval->printOn(out); out << "[";  pos->printOn(out); out << "]";}
 };
 
 class Dereference : public Expr {
     private:
+        Expr* e;
     public:
-        Dereference(Expr* e) {}
+        Dereference(Expr* e) : e(e) {}
+        void printOn(std::ostream &out) const { e->printOn(out) ; cout << "^";}
 };
 
 /* Statements */
 
-class Program : public Stmt {
+class Block : public Stmt {
     private:
         StatementStack *locals;
         StatementStack *body;
     
     public:
-        Program(StatementStack* theBody) : body(theBody)
+        Block(StatementStack* theBody) : body(theBody)
         {
             locals = new StatementStack();
         }
-        ~Program() { delete locals; }
+        ~Block() { delete locals; }
 
-        void semantic() override
-        {
-            for (Stmt *l : *locals) {
-                l->semantic();
-            }
-            for (Stmt *s : *body) {
-                s->semantic();
-            }
-        }
+        void semantic() override {}
 
         void push_local(Stmt *l)
         {
-            locals->push_front(l);
+            locals->push(l);
+        }
+        void printOn(std::ostream &out) const {
+            out << "Block of: "  << endl; 
+            out << "\t\tlocals: " ; locals->printOn(out); out << endl; 
+            out << "\t\tbody: " ;body->printOn(out); out << endl; 
         }
 };
+
+
 
 class Variable : public Stmt {
     private:
         string name;
-        Type type;
+        Type  type;
     
     public:
         Variable(string n, Type t) : name(n), type(t) {}
 
-        void semantic() override
-        {
-            newVariable(name, type);
+        void printOn(std::ostream &out) const {
+            out << "var " << name << " :" << type ;  
         }
 };
 
 class VariableGroupStack : public Stmt {
     private:
-        deque<Variable*> *vars;
+        vector<Variable*> *vars;
     
     public:
         VariableGroupStack()
         {
-            vars = new deque<Variable*>;
+            vars = new vector<Variable*>;
         }
         ~VariableGroupStack() { delete vars; }
 
-        void semantic() override
-        {
-            for (Variable *v : *vars) {
-                v->semantic();
-            }
-        }
 
         void push(IdStack* var_ids, Type t)
         {
-            for (string s : *var_ids) {
-                vars->push_front(new Variable(s, t));
+            for (string s : var_ids->list ) {
+                vars->push_back(new Variable(s, t));
             }
         }
+        void printOn(std::ostream &out) const {}
 };
 
 class Label : public Stmt {
@@ -273,12 +250,7 @@ class Label : public Stmt {
         IdStack *lblnames;
     public:
         Label(IdStack* names) : lblnames(names) {}
-
-        void semantic() override
-        {
-            for (string lbl : *lblnames)
-                newConstant(lbl, typeVoid);
-        }
+        void printOn(std::ostream &out) const {}
 };
 
 class FormalsGroup : public Stmt {
@@ -292,59 +264,50 @@ class FormalsGroup : public Stmt {
         FormalsGroup(IdStack* f, Type t, PassMode pm) : formals(f), type(t), pass_by(pm) {}
 
         void set_function_entry(SymbolEntry *f) { function_entry = f; }
-
-        void semantic() override
-        {
-            for (string f : *formals) {
-                newParameter(f, type, pass_by, function_entry);
-            }
+        void printOn(std::ostream &out) const { 
+            if (pass_by == PASS_BY_REFERENCE) out << "var: ";
+            // find a way to handle type printing , operator overloading doesnt want work 
+            formals->printOn(out) ; out <<  " : " ; out << type; 
         }
     
 };
+class FormalsGroupStack : public Stmt {
+    public : 
+    vector<FormalsGroup*> list ; 
+    void printOn(std::ostream &out) const {
+        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
+        if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
+    FormalsGroupStack(FormalsGroup* s){list.push_back(s);}
+    FormalsGroupStack() {}
+    void push(FormalsGroup* x) {list.push_back(x);}
 
-typedef deque<FormalsGroup*> FormalsGroupStack;
+};
+
 
 class Routine : public Stmt {
     private:
         string name;
         Type type;
         FormalsGroupStack* parameters;
-        Program* body;
+        Block* body;
         bool isForward;
         
     public:
         Routine(string n, FormalsGroupStack* params, Type t) : name(n), parameters(params), type(t) { isForward = false;}
         ~Routine() {}
         
-        void semantic() override
-        {
-            SymbolEntry *p;
-            
-            p = newFunction(name);
-            if (isForward) forwardFunction(p);
-            
-            openScope();
-            
-            for (FormalsGroup* fg : *parameters) {
-                fg->set_function_entry(p);
-                fg->semantic();
-            }
-            
-            endFunctionHeader(p, typeVoid);
-
-            if (!isForward) {
-                body->semantic();
-            }
-            
-            closeScope();
+        void printOn(std::ostream &out) const { 
+            out << "["<< name << "]("; 
+            parameters->printOn(out);
+            out << ")" << " : " << type <<endl ;
+            body->printOn(out);
         }
-
         void set_forward()
         {
             this->isForward = true;
         }
         
-        void add_body(Program* theBody)
+        void add_body(Block* theBody)
         {
             this->body = theBody;
         }
@@ -356,23 +319,21 @@ class ProcCall : public Stmt {
         ExpressionStack *parameters;
     
     public:
-        ProcCall(string pn) : pname(pn) { parameters = nullptr; }
+        ProcCall(string pn) : pname(pn) { parameters = new ExpressionStack(); }
         ProcCall(string pn, ExpressionStack* params) : pname(pn), parameters(params) {}
-
-        void semantic() override
-        {
-            SymbolEntry *p = lookupEntry(pname, LOOKUP_ALL_SCOPES, true);
-
-            if (p->entryType != ENTRY_FUNCTION) ;//error
-
-            //?????
-        }
+        void printOn(std::ostream &out) const {out << "ProcCall[" << pname << "] ( "; parameters->printOn(out); out << " )" ;}
 };
 
 class Declaration : public Stmt {
     private:
+        Expr *lval,*val ;
     public:
-        Declaration(Expr* lval, Expr* val) {}
+        Declaration(Expr* lval, Expr* val) : lval(lval) , val(val) {}
+        void printOn(std::ostream &out) const {
+            lval->printOn(out);
+            out << " := " ; 
+            val->printOn(out);
+        }
 };
 
 class IfThenElse : public Stmt {
@@ -383,15 +344,12 @@ class IfThenElse : public Stmt {
     public:
         IfThenElse(Expr* c, Stmt* t, Stmt* e=nullptr) : cond(c), st_then(t), st_else(e) {};
         ~IfThenElse() { delete cond; delete st_then; delete st_else; }
-        
-        void semantic() override
-        {
-            cond->semantic();
-            cond->type_check(typeBoolean); //error handling??
-            
-            st_then->semantic();
-            if (st_else != nullptr) st_else->semantic();
-        }
+        void printOn(std::ostream &out) const { 
+            out << "If("; cond->printOn(out); out << "then" << endl;
+            st_then->printOn(out); out << endl ;
+            if (st_else != nullptr) { out  << "else : " << endl;  st_else->printOn(out); }
+
+        }         
             
 };
 
@@ -403,14 +361,10 @@ class While : public Stmt {
     public:
         While(Expr* c, Stmt *b) : cond(c), body(b) {}
         ~While() { delete cond; delete body; }
-        
-        void semantic() override
-        {
-            cond->semantic();
-            cond->type_check(typeBoolean); //error handling??
-            
-            body->semantic();
-        }
+        void printOn(std::ostream &out) const {
+            out << "While("; cond->printOn(out); out << ") do" << endl;
+            body->printOn(out);
+        }        
 };
 
 class LabelBind : public Stmt {
@@ -420,11 +374,7 @@ class LabelBind : public Stmt {
     public:
         LabelBind(string name, Stmt* st) : lbl(name), target(st) {}
         ~LabelBind() {}
-        
-        void semantic() override
-        {
-            lookupEntry(lbl, LOOKUP_ALL_SCOPES, true);
-        }
+        void printOn(std::ostream &out) const { out <<  lbl << " : "; target->printOn(out);  }
 };
 
 class GoTo : public Stmt {
@@ -433,49 +383,46 @@ class GoTo : public Stmt {
     
     public:
         GoTo(string lbl) : label(lbl) {}
+        void printOn(std::ostream &out) const {out << "LABEL : " << label;}
 
-        void semantic() override
-        {
-            lookupEntry(label, LOOKUP_ALL_SCOPES, true);
-        }
 };
 
 class ReturnStmt : public Stmt {
+    public: 
+        ReturnStmt(){};
+        void printOn(std::ostream &out) const {out << "RET" ; }
 };
 
 class Init : public Stmt {
     private:
-        string vname;
+        Expr *lval;
     public:
         Init(Expr* lval) {}
-    
+        void printOn(std::ostream &out) const {out << "Init"; lval->printOn(out); }
 };
 
 class InitArray : public Stmt {
     private:
+        Expr *lval;
     public:
         InitArray(Expr* lval, Expr* sz) {}
+        void printOn(std::ostream &out) const {out << "InitArr"; lval->printOn(out); }
 };
 
 class Dispose : public Stmt {
     private:
-        string name;
-    
+        Expr *lval;
+            
     public:
-        Dispose(string n) : name(n) {}
-        Dispose(Expr *lval) {} //????????????/
-
-        void semantic() override
-        {
-            SymbolEntry *l = lookupEntry(name, LOOKUP_ALL_SCOPES, true);
-            l->u.eVariable.type->kind == TYPE_IARRAY;
-        }
+        Dispose(Expr *lval) : lval(lval) {} 
+        void printOn(std::ostream &out) const {out << "Destroy"; lval->printOn(out); }
+        
 };
 
 class DisposeArray : public Stmt {
     private:
+        Expr* lval ;
     public:
-        DisposeArray(Expr* lval) {} //???????????
+        DisposeArray(Expr* lval) {} 
+        void printOn(std::ostream &out) const {out << "DestroyArr " ; lval->printOn(out) ;}
 };
-
-#endif

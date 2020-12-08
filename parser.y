@@ -1,5 +1,4 @@
 %{
-
 #include "lexer.hpp"
 #include "ast.hpp"
 #include "symbol/symbol.h"
@@ -10,10 +9,11 @@
     double real;
     char* str;
     char *op;
+    char ch;
     Type type;
     Expr* expr;
     Stmt* stmt;
-    Program* prog;
+    Block* prog;
     VariableGroupStack* vgs;
     IdStack* ids;
     Routine* rtn;
@@ -65,7 +65,7 @@
 
 %token<num> T_const_int     "integer-const"
 %token<real> T_const_real   "real-const"
-%token<str> T_const_char    "char-const"
+%token<ch> T_const_char    "char-const"
 %token<str> T_string        "string-literal"
 
 %precedence T_then
@@ -100,12 +100,12 @@
 %%
 
 program :
-      "program" T_id ';' body '.' {/*cout << "AST: " << *$4 << endl;*/}
+      "program" T_id ';' body '.' {cout << "AST: " << *$4 << endl;}
     ;
 
 body:
       local body            { $2->push_local($1) ; $$ = $2; }
-    | block                 { $$ = new Program($1); }
+    | block                 { $$ = new Block($1); }
     ;
 
 local:
@@ -121,8 +121,8 @@ var_def:
     ;
 
 id_list :
-      T_id ',' id_list              { $3->push_front($1) ; $$ = $3; }
-    | T_id                          { $$ = new IdStack(); $$->push_front($1); }
+      T_id ',' id_list              { $3->push($1) ; $$ = $3; }
+    | T_id                          { $$ = new IdStack(); $$->push($1); }
     ;
 
 header :
@@ -132,12 +132,12 @@ header :
 
 parameter_list: 
       %empty                        { $$ = new FormalsGroupStack(); } //If we have no params then we need an empty stack
-    | formal formal_list            { $2->push_front($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
+    | formal formal_list            { $2->push($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
     ;
 
 formal_list: 
       %empty                        { $$ = new FormalsGroupStack(); }
-    | ';' formal formal_list        { $3->push_front($2) ; $$ = $3; } 
+    | ';' formal formal_list        { $3->push($2) ; $$ = $3; } 
     ;
 
 formal:
@@ -146,11 +146,11 @@ formal:
     ;
 
 type :
-      "integer"         { $$ = typeInteger; }
-    | "real"            { $$ = typeReal; }
-    | "boolean"         { $$ = typeBoolean; }
-    | "char"            { $$ = typeChar; }
-    | "array" "of" type     { $$ = typeIArray($3); }
+      "integer"         { $$ = typeInteger;}
+    | "real"            { $$ = typeReal;}
+    | "boolean"         { $$ = typeBoolean;}
+    | "char"            { $$ = typeChar;}
+    | "array" "of" type[refType]     { $$ = typeIArray($refType); }
     | "array" '[' "integer-const"[size] ']' "of" type[refType] 	{ $$ = typeArray($size, $refType); }
     | '^' type          { $$ =  typePointer($2) ; }
     ;
@@ -160,8 +160,8 @@ block:
     ;
 
 stmt_list :
-    %empty                          { $$ = new StatementStack(); }
-    | stmt ';' stmt_list            { $3->push_front($1) ; $$ = $3; }
+      stmt                          { $$ = new StatementStack($1); }
+    | stmt ';' stmt_list            { $3->push($1) ; $$ = $3; }
     ;
 
 stmt:
@@ -186,19 +186,19 @@ expr:
     ;
 
 expr_list:
-      expr                      { $$ = new ExpressionStack(); $$->push_front($1); }
-    | expr ',' expr_list        { $3->push_front($1); $$ = $3; }
+      expr                      { $$ = new ExpressionStack(); $$->push($1); }
+    | expr ',' expr_list        { $3->push($1); $$ = $3; }
     ;
 
 
 r_value:
-      "integer-const"               { $$ = new Const(); } 
-    | "real-const"                  { $$ = new Const(); }
-    | "char-const"                  { $$ = new Const(); } 
-    | "true"                        { $$ = new Const(); }
-    | "false"                       { $$ = new Const(); }
+      "integer-const"               { $$ = new Const($1,typeInteger); } 
+    | "real-const"                  { $$ = new Const($1,typeReal); }
+    | "char-const"                  { $$ = new Const($1,typeChar); } 
+    | "true"                        { $$ = new Const(true,typeBoolean); }
+    | "false"                       { $$ = new Const(false,typeBoolean); }
     | '(' r_value ')'               { $$ = $2; }
-    | "nil"                         { $$ = new Const(); } //???????
+    | "nil"                         { $$ = new Const(0,typeVoid); } 
     | func_call                     { $$ = $1; }
     | '@' ll_value                  { $$ = new UnOp($1, $2); }
     | "not" expr                    { $$ = new UnOp($1, $2); }
@@ -260,9 +260,9 @@ int main(int argc, char *argv[]) {
   #if YYDEBUG
       yydebug = 1;
   #endif
-  if (argc == 2) {
-    yyin = fopen(argv[1], "r");
-  }
+  //if (argc == 2) {
+  //  yyin = fopen(argv[1], "r");
+  //}
   int ret = yyparse();
   if (!ret) { cout << "Parse successful.\n";}
 

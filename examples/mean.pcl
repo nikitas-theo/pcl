@@ -23,6 +23,6 @@ program mean;
         begin 
             writeString("Mean: "); 
             writeReal(sum / k); 
-            writeString("\n");
+            writeString("\n")
         end 
     end. 

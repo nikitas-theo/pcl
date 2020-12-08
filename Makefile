@@ -1,18 +1,15 @@
 .PHONY: clean distclean default
 
 CXX=g++
-CXXFLAGS=-Wall -std=c++14 -pedantic -g
+CXXFLAGS=-Wall -std=c++17 -$GDB
 LDFLAGS=
 
 SYM_DIR= symbol
 OBJ_SYM= $(patsubst %.c,%.o,$(wildcard ${SYM_DIR}/*.c)) 
 
-ifdef db
-DEBUG_B=--debug
-endif
-ifdef df
-DEBUG_F=--debug
-endif
+# add DEBUG_B=--debug
+#     DEBUG_L=--debug
+
 
 default: pcl
 
@@ -34,7 +31,7 @@ parser.o: parser.cpp lexer.hpp
 
 symbol_compatible.o: symbol_compatible.cpp symbol_compatible.hpp
 
-pcl: lexer.o parser.o symbol_compatible.o $(OBJ_SYM)  ast.hpp
+pcl: lexer.o parser.o symbol_compatible.o $(OBJ_SYM) ast.hpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: 
