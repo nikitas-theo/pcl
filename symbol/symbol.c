@@ -51,11 +51,11 @@ static struct Type_tag typeConst [] = {
     { TYPE_REAL,    NULL, 0, 0 }
 };
 
-const Type typeVoid    = &(typeConst[0]);
-const Type typeInteger = &(typeConst[1]);
-const Type typeBoolean = &(typeConst[2]);
-const Type typeChar    = &(typeConst[3]);
-const Type typeReal    = &(typeConst[4]);
+const SymType typeVoid    = &(typeConst[0]);
+const SymType typeInteger = &(typeConst[1]);
+const SymType typeBoolean = &(typeConst[2]);
+const SymType typeChar    = &(typeConst[3]);
+const SymType typeReal    = &(typeConst[4]);
 
 
 /* ---------------------------------------------------------------------
@@ -231,7 +231,7 @@ static SymbolEntry * newEntry (const char * name)
     return e;
 }
 
-SymbolEntry * newVariable (const char * name, Type type)
+SymbolEntry * newVariable (const char * name, SymType type)
 {
     SymbolEntry * e = newEntry(name);
     
@@ -245,7 +245,7 @@ SymbolEntry * newVariable (const char * name, Type type)
     return e;
 }
 
-SymbolEntry * newConstant (const char * name, Type type, ...)
+SymbolEntry * newConstant (const char * name, SymType type, ...)
 {
     SymbolEntry * e;
     va_list ap;
@@ -367,7 +367,7 @@ SymbolEntry * newFunction (const char * name)
     }
 }
 
-SymbolEntry * newParameter (const char * name, Type type,
+SymbolEntry * newParameter (const char * name, SymType type,
                             PassMode mode, SymbolEntry * f)
 {
     SymbolEntry * e;
@@ -441,7 +441,7 @@ void forwardFunction (SymbolEntry * f)
     f->u.eFunction.isForward = true;
 }
 
-void endFunctionHeader (SymbolEntry * f, Type type)
+void endFunctionHeader (SymbolEntry * f, SymType type)
 {
     if (f->entryType != ENTRY_FUNCTION)
         internal("Cannot end parameters in a non-function");
@@ -469,7 +469,7 @@ void endFunctionHeader (SymbolEntry * f, Type type)
     f->u.eFunction.pardef = PARDEF_COMPLETE;
 }
 
-SymbolEntry * newTemporary (Type type)
+SymbolEntry * newTemporary (SymType type)
 {
     char buffer[10];
     SymbolEntry * e;
@@ -551,9 +551,9 @@ SymbolEntry * lookupEntry (const char * name, LookupType type, bool err)
     return NULL;
 }
 
-Type typeArray (RepInteger size, Type refType)
+SymType typeArray (RepInteger size, SymType refType)
 {
-    Type n = (Type) new(sizeof(struct Type_tag));
+    SymType n = (SymType) new(sizeof(struct Type_tag));
 
     n->kind     = TYPE_ARRAY;
     n->refType  = refType;
@@ -565,9 +565,9 @@ Type typeArray (RepInteger size, Type refType)
     return n;
 }
 
-Type typeIArray (Type refType)
+SymType typeIArray (SymType refType)
 {
-    Type n = (Type) new(sizeof(struct Type_tag));
+    SymType n = (SymType) new(sizeof(struct Type_tag));
 
     n->kind     = TYPE_IARRAY;
     n->refType  = refType;
@@ -578,9 +578,9 @@ Type typeIArray (Type refType)
     return n;
 }
 
-Type typePointer (Type refType)
+SymType typePointer (SymType refType)
 {
-    Type n = (Type) new(sizeof(struct Type_tag));
+    SymType n = (SymType) new(sizeof(struct Type_tag));
 
     n->kind     = TYPE_POINTER;
     n->refType  = refType;
@@ -591,7 +591,7 @@ Type typePointer (Type refType)
     return n;
 }
 
-void destroyType (Type type)
+void destroyType (SymType type)
 {
     switch (type->kind) {
         case TYPE_ARRAY:
@@ -604,11 +604,11 @@ void destroyType (Type type)
     }
 }
 
-unsigned int sizeOfType (Type type)
+unsigned int sizeOfType (SymType type)
 {
     switch (type->kind) {
         case TYPE_VOID:
-            internal("Type void has no size");
+            internal("SymType void has no size");
             break;
         case TYPE_INTEGER:
         case TYPE_IARRAY:
@@ -625,7 +625,7 @@ unsigned int sizeOfType (Type type)
     return 0;
 }
 
-bool equalType (Type type1, Type type2)
+bool equalType (SymType type1, SymType type2)
 {
     if (type1->kind != type2->kind)
         return false;
@@ -640,7 +640,7 @@ bool equalType (Type type1, Type type2)
     return true;        
 }
 
-void printType (Type type)
+void printType (SymType type)
 {
     if (type == NULL) {
         printf("<undefined>");

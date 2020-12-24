@@ -4,7 +4,7 @@
 #include <stdlib.h> 
 #include <string>
 #include <iostream>
-inline std::ostream& operator<<(std::ostream& os, const Type& t){
+inline std::ostream& operator<<(std::ostream& os, const SymType& t){
     switch(t->kind) {
         case TYPE_VOID :  os << "void"; break;
         case TYPE_INTEGER : os << "int"; break;
@@ -19,10 +19,10 @@ inline std::ostream& operator<<(std::ostream& os, const Type& t){
 }
 
 
-SymbolEntry * newVariable        (std::string name, Type type);
-SymbolEntry * newConstant        (std::string name, Type type, ...);
+SymbolEntry * newVariable        (std::string name, SymType type);
+SymbolEntry * newConstant        (std::string name, SymType type, ...);
 SymbolEntry * newFunction        (std::string name);
-SymbolEntry * newParameter       (std::string name, Type type,
+SymbolEntry * newParameter       (std::string name, SymType type,
                                   PassMode mode, SymbolEntry * f);
 SymbolEntry * lookupEntry        (std::string name, LookupType type,
                                   bool err);

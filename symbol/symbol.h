@@ -12,10 +12,10 @@
  *
  *  Comments: (in Greek iso-8859-7)
  *  ---------
- *  Εθνικό Μετσόβιο Πολυτεχνείο.
- *  Σχολή Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών.
- *  Τομέας Τεχνολογίας Πληροφορικής και Υπολογιστών.
- *  Εργαστήριο Τεχνολογίας Λογισμικού
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½.
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½.
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½.
+ *  οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½
  */
 
 /* Include guard goes here */
@@ -30,14 +30,14 @@ extern "C" {
 
 
 /* ---------------------------------------------------------------------
-   -------------------------- Τύπος bool -------------------------------
+   -------------------------- οΏ½οΏ½οΏ½οΏ½οΏ½ bool -------------------------------
    --------------------------------------------------------------------- */
 
 #include <stdbool.h>
 
 /*
- *  Αν το παραπάνω include δεν υποστηρίζεται από την υλοποίηση
- *  της C που χρησιμοποιείτε, αντικαταστήστε το με το ακόλουθο:
+ *  οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ include οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½
+ *  οΏ½οΏ½οΏ½ C οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½, οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½:
  */
 
 #if 0
@@ -46,140 +46,140 @@ typedef enum { false=0, true=1 } bool;
 
 
 /* ---------------------------------------------------------------------
-   ------------ Ορισμός σταθερών του πίνακα συμβόλων -------------------
+   ------------ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ -------------------
    --------------------------------------------------------------------- */
 
-#define START_POSITIVE_OFFSET 8     /* Αρχικό θετικό offset στο Ε.Δ.   */
-#define START_NEGATIVE_OFFSET 0     /* Αρχικό αρνητικό offset στο Ε.Δ. */
+#define START_POSITIVE_OFFSET 8     /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ offset οΏ½οΏ½οΏ½ οΏ½.οΏ½.   */
+#define START_NEGATIVE_OFFSET 0     /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ offset οΏ½οΏ½οΏ½ οΏ½.οΏ½. */
 
 
 /* ---------------------------------------------------------------------
-   --------------- Ορισμός τύπων του πίνακα συμβόλων -------------------
+   --------------- οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ -------------------
    --------------------------------------------------------------------- */
 
-/* Τύποι δεδομένων για την υλοποίηση των σταθερών */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
-typedef int           RepInteger;         /* Ακέραιες                  */
-typedef unsigned char RepBoolean;         /* Λογικές τιμές             */
-typedef char          RepChar;            /* Χαρακτήρες                */
-typedef long double   RepReal;            /* Πραγματικές               */
-typedef const char *  RepString;          /* Συμβολοσειρές             */
+typedef int           RepInteger;         /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                  */
+typedef unsigned char RepBoolean;         /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½             */
+typedef char          RepChar;            /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                */
+typedef long double   RepReal;            /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½               */
+typedef const char *  RepString;          /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½             */
 
 
-/* Τύποι δεδομένων και αποτελέσματος συναρτήσεων */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
-typedef struct Type_tag * Type;
-typedef enum {                       /***** Το είδος του τύπου ****/
-   TYPE_VOID    = 0b00000001,        /* Κενός τύπος αποτελέσματος */
-   TYPE_INTEGER = 0b00000010,        /* Ακέραιοι                  */
-   TYPE_BOOLEAN = 0b00000100,        /* Λογικές τιμές             */
-   TYPE_CHAR    = 0b00001000,        /* Χαρακτήρες                */
-   TYPE_REAL    = 0b00010000,        /* Πραγματικοί               */
-   TYPE_ARRAY   = 0b00100000,        /* Πίνακες γνωστού μεγέθους  */
-   TYPE_IARRAY  = 0b01000000,        /* Πίνακες άγνωστου μεγέθους (Incomplete) */
-   TYPE_POINTER = 0b10000000         /* Δείκτες                   */
+typedef struct Type_tag * SymType;
+typedef enum {                       /***** οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½ ****/
+   TYPE_VOID    = 0b00000001,        /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
+   TYPE_INTEGER = 0b00000010,        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                  */
+   TYPE_BOOLEAN = 0b00000100,        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½             */
+   TYPE_CHAR    = 0b00001000,        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                */
+   TYPE_REAL    = 0b00010000,        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½               */
+   TYPE_ARRAY   = 0b00100000,        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½  */
+   TYPE_IARRAY  = 0b01000000,        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ (Incomplete) */
+   TYPE_POINTER = 0b10000000         /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                   */
 } oftype;
 
 struct Type_tag {
     oftype         kind;
-    Type           refType;              /* Τύπος αναφοράς (για array, pointer)           */
-    RepInteger     size;                 /* Μέγεθος, αν είναι πίνακας */
-    unsigned int   refCount;             /* Μετρητής αναφορών         */
+    SymType           refType;              /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ (οΏ½οΏ½οΏ½ array, pointer)           */
+    RepInteger     size;                 /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½, οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
+    unsigned int   refCount;             /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½         */
 };
 
 
-/* Τύποι εγγραφών του πίνακα συμβόλων */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
 typedef enum {            
-   ENTRY_VARIABLE,                       /* Μεταβλητές                 */
-   ENTRY_CONSTANT,                       /* Σταθερές                   */
-   ENTRY_FUNCTION,                       /* Συναρτήσεις                */
-   ENTRY_PARAMETER,                      /* Παράμετροι συναρτήσεων     */
-   ENTRY_TEMPORARY                       /* Προσωρινές μεταβλητές      */
+   ENTRY_VARIABLE,                       /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                 */
+   ENTRY_CONSTANT,                       /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                   */
+   ENTRY_FUNCTION,                       /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½                */
+   ENTRY_PARAMETER,                      /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½     */
+   ENTRY_TEMPORARY                       /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½      */
 } EntryType;
 
 
-/* Τύποι περάσματος παραμετρων */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
 typedef enum {            
-   PASS_BY_VALUE,                        /* Κατ' αξία                  */
-   PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
+   PASS_BY_VALUE,                        /* οΏ½οΏ½οΏ½' οΏ½οΏ½οΏ½οΏ½                  */
+   PASS_BY_REFERENCE                     /* οΏ½οΏ½οΏ½' οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½               */
 } PassMode;
 
 
-/* Τύπος εγγραφής στον πίνακα συμβόλων */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
 typedef struct SymbolEntry_tag SymbolEntry;
 
 struct SymbolEntry_tag {
-   const char   * id;                 /* Ονομα αναγνωριστικού          */
-   EntryType      entryType;          /* Τύπος της εγγραφής            */
-   unsigned int   nestingLevel;       /* Βάθος φωλιάσματος             */
-   unsigned int   hashValue;          /* Τιμή κατακερματισμού          */
-   SymbolEntry  * nextHash;           /* Επόμενη εγγραφή στον Π.Κ.     */
-   SymbolEntry  * nextInScope;        /* Επόμενη εγγραφή στην εμβέλεια */
+   const char   * id;                 /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½          */
+   EntryType      entryType;          /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½            */
+   unsigned int   nestingLevel;       /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½             */
+   unsigned int   hashValue;          /* οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½          */
+   SymbolEntry  * nextHash;           /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½.οΏ½.     */
+   SymbolEntry  * nextInScope;        /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
-   union {                            /* Ανάλογα με τον τύπο εγγραφής: */
+   union {                            /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½: */
 
-      struct {                                /******* Μεταβλητή *******/
-         Type          type;                  /* Τύπος                 */
-         int           offset;                /* Offset στο Ε.Δ.       */
+      struct {                                /******* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ *******/
+         SymType          type;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½                 */
+         int           offset;                /* Offset οΏ½οΏ½οΏ½ οΏ½.οΏ½.       */
       } eVariable;
 
-      struct {                                /******** Σταθερά ********/
-         Type          type;                  /* Τύπος                 */
-         union {                              /* Τιμή                  */
-            RepInteger vInteger;              /*    ακέραια            */
-            RepBoolean vBoolean;              /*    λογική             */
-            RepChar    vChar;                 /*    χαρακτήρας         */
-            RepReal    vReal;                 /*    πραγματική         */
-            RepString  vString;               /*    συμβολοσειρά       */
+      struct {                                /******** οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ ********/
+         SymType          type;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½                 */
+         union {                              /* οΏ½οΏ½οΏ½οΏ½                  */
+            RepInteger vInteger;              /*    οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½            */
+            RepBoolean vBoolean;              /*    οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½             */
+            RepChar    vChar;                 /*    οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½         */
+            RepReal    vReal;                 /*    οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½         */
+            RepString  vString;               /*    οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½       */
          } value;
       } eConstant;
 
-      struct {                                /******* Συνάρτηση *******/
-         bool          isForward;             /* Δήλωση forward        */
-         SymbolEntry * firstArgument;         /* Λίστα παραμέτρων      */
-         SymbolEntry * lastArgument;          /* Τελευταία παράμετρος  */
-         Type          resultType;            /* Τύπος αποτελέσματος   */
-         enum {                               /* Κατάσταση παραμέτρων  */
-             PARDEF_COMPLETE,                    /* Πλήρης ορισμός     */
-             PARDEF_DEFINE,                      /* Εν μέσω ορισμού    */
-             PARDEF_CHECK                        /* Εν μέσω ελέγχου    */
+      struct {                                /******* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ *******/
+         bool          isForward;             /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ forward        */
+         SymbolEntry * firstArgument;         /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½      */
+         SymbolEntry * lastArgument;          /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½  */
+         SymType          resultType;            /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½   */
+         enum {                               /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½  */
+             PARDEF_COMPLETE,                    /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½     */
+             PARDEF_DEFINE,                      /* οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½    */
+             PARDEF_CHECK                        /* οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½    */
          } pardef;
-         int           firstQuad;             /* Αρχική τετράδα        */
+         int           firstQuad;             /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½        */
       } eFunction;
 
-      struct {                                /****** Παράμετρος *******/
-         Type          type;                  /* Τύπος                 */
-         int           offset;                /* Offset στο Ε.Δ.       */
-         PassMode      mode;                  /* Τρόπος περάσματος     */
-         SymbolEntry * next;                  /* Επόμενη παράμετρος    */
+      struct {                                /****** οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ *******/
+         SymType          type;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½                 */
+         int           offset;                /* Offset οΏ½οΏ½οΏ½ οΏ½.οΏ½.       */
+         PassMode      mode;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½     */
+         SymbolEntry * next;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½    */
       } eParameter;
 
-      struct {                                /** Προσωρινή μεταβλητή **/
-         Type          type;                  /* Τύπος                 */
-         int           offset;                /* Offset στο Ε.Δ.       */
+      struct {                                /** οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ **/
+         SymType          type;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½                 */
+         int           offset;                /* Offset οΏ½οΏ½οΏ½ οΏ½.οΏ½.       */
          int           number;
       } eTemporary;
 
-   } u;                               /* Τέλος του union               */
+   } u;                               /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ union               */
 };
 
 
-/* Τύπος συνόλου εγγραφών που βρίσκονται στην ίδια εμβέλεια */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
 typedef struct Scope_tag Scope;
 
 struct Scope_tag {
-    unsigned int   nestingLevel;             /* Βάθος φωλιάσματος      */
-    unsigned int   negOffset;                /* Τρέχον αρνητικό offset */
-    Scope        * parent;                   /* Περιβάλλουσα εμβέλεια  */
-    SymbolEntry  * entries;                  /* Σύμβολα της εμβέλειας  */
+    unsigned int   nestingLevel;             /* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½      */
+    unsigned int   negOffset;                /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ offset */
+    Scope        * parent;                   /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½  */
+    SymbolEntry  * entries;                  /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½  */
 };
 
 
-/* Τύπος αναζήτησης στον πίνακα συμβόλων */
+/* οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
 
 typedef enum {
     LOOKUP_CURRENT_SCOPE,
@@ -188,22 +188,22 @@ typedef enum {
 
 
 /* ---------------------------------------------------------------------
-   ------------- Καθολικές μεταβλητές του πίνακα συμβόλων --------------
+   ------------- οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ --------------
    --------------------------------------------------------------------- */
 
-extern Scope        * currentScope;       /* Τρέχουσα εμβέλεια         */
-extern unsigned int   quadNext;           /* Αριθμός επόμενης τετράδας */
-extern unsigned int   tempNumber;         /* Αρίθμηση των temporaries  */
+extern Scope        * currentScope;       /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½         */
+extern unsigned int   quadNext;           /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ */
+extern unsigned int   tempNumber;         /* οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ temporaries  */
 
-extern const Type typeVoid;
-extern const Type typeInteger;
-extern const Type typeBoolean;
-extern const Type typeChar;
-extern const Type typeReal;
+extern const SymType typeVoid;
+extern const SymType typeInteger;
+extern const SymType typeBoolean;
+extern const SymType typeChar;
+extern const SymType typeReal;
 
 
 /* ---------------------------------------------------------------------
-   ------ Πρωτότυπα των συναρτήσεων χειρισμού του πίνακα συμβολών ------
+   ------ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½οΏ½ ------
    --------------------------------------------------------------------- */
 
 void          initSymbolTable    (unsigned int size);
@@ -212,26 +212,26 @@ void          destroySymbolTable (void);
 void          openScope          (void);
 void          closeScope         (void);
 
-SymbolEntry * newVariable        (const char * name, Type type);
-SymbolEntry * newConstant        (const char * name, Type type, ...);
+SymbolEntry * newVariable        (const char * name, SymType type);
+SymbolEntry * newConstant        (const char * name, SymType type, ...);
 SymbolEntry * newFunction        (const char * name);
-SymbolEntry * newParameter       (const char * name, Type type,
+SymbolEntry * newParameter       (const char * name, SymType type,
                                   PassMode mode, SymbolEntry * f);
-SymbolEntry * newTemporary       (Type type);
+SymbolEntry * newTemporary       (SymType type);
 
 void          forwardFunction    (SymbolEntry * f);
-void          endFunctionHeader  (SymbolEntry * f, Type type);
+void          endFunctionHeader  (SymbolEntry * f, SymType type);
 void          destroyEntry       (SymbolEntry * e);
 SymbolEntry * lookupEntry        (const char * name, LookupType type,
                                   bool err);
 
-Type          typeArray          (RepInteger size, Type refType);
-Type          typeIArray         (Type refType);
-Type          typePointer        (Type refType);
-void          destroyType        (Type type);
-unsigned int  sizeOfType         (Type type);
-bool          equalType          (Type type1, Type type2);
-void          printType          (Type type);
+SymType          typeArray          (RepInteger size, SymType refType);
+SymType          typeIArray         (SymType refType);
+SymType          typePointer        (SymType refType);
+void          destroyType        (SymType type);
+unsigned int  sizeOfType         (SymType type);
+bool          equalType          (SymType type1, SymType type2);
+void          printType          (SymType type);
 void          printMode          (PassMode mode);
 
 

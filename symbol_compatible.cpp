@@ -6,12 +6,12 @@
 
 
 
-SymbolEntry * newVariable        (std::string name, Type type)
+SymbolEntry * newVariable        (std::string name, SymType type)
 {
     return newVariable(name.c_str(), type);
 }
 
-SymbolEntry * newConstant        (std::string name, Type type, ...)
+SymbolEntry * newConstant        (std::string name, SymType type, ...)
 {
     va_list args;
     va_start(args, type);
@@ -23,7 +23,7 @@ SymbolEntry * newFunction        (std::string name)
     return newFunction(name.c_str());
 }
 
-SymbolEntry * newParameter       (std::string name, Type type, PassMode mode, SymbolEntry * f)
+SymbolEntry * newParameter       (std::string name, SymType type, PassMode mode, SymbolEntry * f)
 {
     return newParameter(name.c_str(), type, mode, f);
 }

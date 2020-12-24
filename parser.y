@@ -10,7 +10,7 @@
     char* str;
     char *op;
     char ch;
-    Type type;
+    SymType type;
     Expr* expr;
     Stmt* stmt;
     Block* prog;
@@ -100,7 +100,9 @@
 %%
 
 program :
-      "program" T_id ';' body '.' {cout << "AST: " << *$4 << endl;}
+      "program" T_id ';' body '.' {
+        std::cout << "AST: " << *$4 << std::endl;}
+        
     ;
 
 body:
@@ -260,11 +262,11 @@ int main(int argc, char *argv[]) {
   #if YYDEBUG
       yydebug = 1;
   #endif
-  //if (argc == 2) {
-  //  yyin = fopen(argv[1], "r");
-  //}
+  if (argc == 2) {
+    yyin = fopen(argv[1], "r");
+  }
   int ret = yyparse();
-  if (!ret) { cout << "Parse successful.\n";}
+  if (!ret) { std::cout << "Parse successful.\n";}
 
   fclose(yyin);
 
