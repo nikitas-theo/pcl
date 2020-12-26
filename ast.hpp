@@ -8,11 +8,15 @@
 #include "symbol/error.h"
 #include "symbol_compatible.hpp"
 
+
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 
+// for garbage collection of malloc arrays 
+// add -lgc to lib flags 
 
 using namespace llvm;
 /*
@@ -23,57 +27,15 @@ using namespace llvm;
     *   Do I need to define a global variable for each \t, ... etc? 
         like pap did for \n == NL ? 
         need to check writeString library by Achileas
-
-
 */
 
 
-class AST {
-    public:
-        virtual ~AST() {}
-        virtual void semantic() {}
-        virtual void printOn(std::ostream &out) const = 0;
-        void compile_llvm(){
-            // Initialize 
-            TheModule = std::make_unique<Module>("add program name here?",TheContext);
-            i8 = IntegerType::get(TheContext,8);
-            i64 = IntegerType::get(TheContext,8);
-
-            FunctionType *WriteInteger_type = FunctionType::get(Type::getVoidTy(TheContext), {i64}, false );
-            WriteInteger = Function::Create(WriteInteger_type, Function::ExternalLinkage, "writeInteger", TheModule.get());
-        }
-    protected:
-
-        static LLVMContext TheContext; 
-        static IRBuilder<>  Builder; 
-        static std::unique_ptr<Module> TheModule;
-        
-        static ConstantInt* c32(int n){ return ConstantInt::get(TheContext,APInt(32,n,true)); }
-        static ConstantInt* c8(char c){ return ConstantInt::get(TheContext,APInt(8,c,false)); }
-        static ConstantInt* c1(int n){ return ConstantInt::get(TheContext,APInt(1,n,false)); }
-        // should this be float , not sure
-        static ConstantFP* c_real(double d) {return ConstantFP::get(TheContext,APFloat(d));}
-
-        static Type *i8; 
-        static Type *i64; 
-
-        // need to do this for all pre-defined libraries ? 
-        static Function *WriteInteger;
-
-}   
-;
-
-// Operator << on AST
-inline std::ostream& operator<<(std::ostream &out, const AST &t) {
-  t.printOn(out);
-  return out;
-}
+#include "astRoot.hpp"
 
 
 class Expr : public AST {
-    protected:
-        SymType mytype;
     public:
+        SymType type;
         virtual void printOn(std::ostream &out) const = 0;
         virtual Value* compile() const = 0;
 };
@@ -136,22 +98,104 @@ class BinOp : public Expr{
         }
         Value* compile() const {
             Value *l = left->compile();
-            Value *r = right->compile();
+            Value *r = nullptr; 
+            // need to implement short-circuit
+            if (op != "and" && op != "or") r = right->compile();
+            bool real_ops = false; 
+            // sign exted to real if necessary
+            if (left->type->kind == TYPE_REAL || right->type->kind == TYPE_REAL) {
+                // can also use Value type here for cmp 
+                if (left->type->kind != TYPE_REAL) Builder.CreateSExt(l,r64);
+                if (right->type->kind != TYPE_REAL) Builder.CreateSExt(r,r64);
+                real_ops = true ;
+            }
             switch(hashf(op.c_str())){
-                case "+"_ : return Builder.CreateAdd(l,r,"addtmp");
-                case "-"_ : return Builder.CreateSub(l,r,"subtmp");
-                case "*"_ : return Builder.CreateMul(l,r,"multmp");
-                case "div"_ : return Builder.CreateSDiv(l,r,"multmp");
-                case "mod"_ : return Builder.CreateSRem(l,r,"multmp");
-                // fix these from llvm doc 
-                case "/"_ : return Builder.CreateMul(l,r,"multmp");
-                case "and"_ : return Builder.CreateMul(l,r,"multmp");
-                case "="_ : return Builder.CreateMul(l,r,"multmp");
-                case "<>"_ : return Builder.CreateMul(l,r,"multmp");
-                case ">"_ : return Builder.CreateMul(l,r,"multmp");
-                case "<"_ : return Builder.CreateMul(l,r,"multmp");
-                case "<="_ : return Builder.CreateMul(l,r,"multmp");
-                case ">="_ : return Builder.CreateMul(l,r,"multmp");
+                case "+"_ :
+                    if (real_ops)   return Builder.CreateFAdd(l,r,"addtmp");
+                    else            return Builder.CreateAdd(l,r,"addtmp");
+                case "-"_ : 
+                    if (real_ops)   return Builder.CreateFSub(l,r,"addtmp");
+                    else            return Builder.CreateSub(l,r,"addtmp");
+                return Builder.CreateSub(l,r,"subtmp");
+                case "*"_ : 
+                    if (real_ops)   return Builder.CreateFMul(l,r,"addtmp");
+                    else            return Builder.CreateMul(l,r,"addtmp");
+                case "/"_ : 
+                    if (left->type->kind == TYPE_INTEGER && right->type->kind == TYPE_INTEGER) {
+                        Builder.CreateSExt(l,r64);
+                        Builder.CreateSExt(r,r64);
+                    }
+                    return Builder.CreateFDiv(l,r,"addtmp");
+    
+                // we use signed modulo ops of integer operants
+                case "div"_ : return Builder.CreateSDiv(l,r,"divtmp");
+                case "mod"_ : return Builder.CreateSRem(l,r,"modtmp"); 
+
+                // we implement short circuit with a branch 
+                case "and"_  : case "or"_ : 
+                {
+                    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+                    BasicBlock *shortBB = BasicBlock::Create(TheContext,"short_and", TheFunction);
+                    BasicBlock *fullBB = BasicBlock::Create(TheContext,"full_and", TheFunction);
+                    BasicBlock *endBB = BasicBlock::Create(TheContext,"end_and", TheFunction);
+
+                    Value* cond = Builder.CreateICmpEQ(l,c_i1(1)); 
+                    Builder.CreateCondBr(cond, shortBB,fullBB);
+                    
+                    // just jump 
+                    Builder.SetInsertPoint(shortBB);
+                    Builder.CreateBr(endBB);
+
+                    // need to evaluate second operant                    
+                    Builder.SetInsertPoint(fullBB);
+                    r = right->compile();
+
+                    // get current block because compile can be arbitrary
+                    BasicBlock *CurrBB = Builder.GetInsertBlock();
+                    Value * OP; 
+
+                    if (hashf(op.c_str()) == "and"_)
+                        OP =  Builder.CreateAnd(l,r,"andtmp");
+                    else 
+                        OP = Builder.CreateOr(l,r,"ortmp");
+                    Builder.CreateBr(endBB);
+
+                    Builder.SetInsertPoint(endBB);
+                    // combine the 2 branches 
+                    PHINode *phi_iter = Builder.CreatePHI(i32, 2, "iter");
+                    phi_iter->addIncoming(c_i1(1),shortBB);
+                    phi_iter->addIncoming(OP,CurrBB);
+
+                    return phi_iter;
+                    }
+
+                case "="_ : 
+                    if (real_ops)   return Builder.CreateFCmpOEQ(l,r,"eqtmp");
+                    else            return Builder.CreateICmpEQ(l,r,"eqtmp");
+                case "<>"_ : 
+                    if (real_ops)   return Builder.CreateFCmpONE(l,r,"neqtmp");
+                    else            return Builder.CreateICmpNE(l,r,"neqtmp");
+                /* "=,<>" :  results are boolean, 
+                    * if operants are both arithmetic then we compare values, 
+                      we have taken care of type casting
+                    * if they are of any other type we simply compare, 
+                      type checking takes care of type matching
+                */
+
+                case ">"_ :                     
+                    if (real_ops)   return Builder.CreateFCmpOGT(l,r);
+                    else            return Builder.CreateICmpSGT(l,r);
+                case "<"_ :
+                    if (real_ops)   return Builder.CreateFCmpOLT(l,r);
+                    else            return Builder.CreateICmpSLT(l,r);
+                case "<="_ : 
+                    if (real_ops)   return Builder.CreateFCmpOLE(l,r);
+                    else            return Builder.CreateICmpSLE(l,r);
+                case ">="_ : 
+                    if (real_ops)   return Builder.CreateFCmpOGT(l,r);
+                    else            return Builder.CreateICmpSGT(l,r);
+                // results must be arithmetic, some typecasting req.
+
 
             }
             return nullptr; 
@@ -169,10 +213,22 @@ class UnOp : public Expr {
         
         void semantic() override{}
         void printOn(std::ostream &out) const {out << "(" << op ;
-
         e->printOn(out); 
         out << ")";}
-        Value* compile() const {return nullptr;}
+        Value* compile() const {
+            Value* val = e->compile();
+            switch(hashf(op.c_str())){
+                case "+"_ : return val;
+                case "-"_ : return Builder.CreateNeg(val,"negtmp");
+                case "not"_ : return Builder.CreateNot(val,"nottmp");
+                case "@"_ : 
+                    // does not seem straightforward
+                    std::cerr << "NOT_IMPLEMENTED";
+                    return nullptr; 
+            }
+            return nullptr; 
+
+        }
 };
 
 class Id : public Expr {
@@ -221,10 +277,10 @@ class Const : public Expr {
         }
         Value* compile() const{
             switch(type->kind) {
-            case TYPE_INTEGER : return c32(std::get<int>(val));
-            case TYPE_BOOLEAN : return c1(std::get<bool>(val));
-            case TYPE_CHAR : return c8(std::get<char>(val));
-            case TYPE_REAL : return c_real(std::get<double>(val));;
+            case TYPE_INTEGER : return c_i32(std::get<int>(val));
+            case TYPE_BOOLEAN : return c_i1(std::get<bool>(val));
+            case TYPE_CHAR : return c_i8(std::get<char>(val));
+            case TYPE_REAL : return c_r64(std::get<double>(val));;
             case TYPE_VOID : return nullptr;  
 
             }
@@ -349,13 +405,17 @@ class VariableGroupStack : public Stmt {
 
 };
 
+
+
 class Label : public Stmt {
     private:
         IdStack *lblnames;
     public:
         Label(IdStack* names) : lblnames(names) {}
         void printOn(std::ostream &out) const {}
-        Value* compile() const {return nullptr;}
+        Value* compile() const {
+            return nullptr; 
+        }
 
 };
 
@@ -432,7 +492,9 @@ class ProcCall : public Stmt {
         ProcCall(std::string pn) : pname(pn) { parameters = new ExpressionStack(); }
         ProcCall(std::string pn, ExpressionStack* params) : pname(pn), parameters(params) {}
         void printOn(std::ostream &out) const {out << "ProcCall[" << pname << "] ( "; parameters->printOn(out); out << " )" ;}
-        Value* compile() const {return nullptr;}
+        Value* compile() const {
+            
+            return nullptr;}
 
 };
 
@@ -468,7 +530,7 @@ class IfThenElse : public Stmt {
         }         
         Value *compile() const{
             Value *v = cond->compile();
-            Value *cond = Builder.CreateICmpNE(v,c32(0), "if_cond");
+            Value *cond = Builder.CreateICmpNE(v,c_i32(0), "if_cond");
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
             BasicBlock *ThenBB = BasicBlock::Create(TheContext,"then", TheFunction);
             BasicBlock *AfterBB = BasicBlock::Create(TheContext,"endif", TheFunction);
@@ -498,11 +560,11 @@ class While : public Stmt {
             body->printOn(out);
         }        
         Value *compile() const{
-            // std::get current block 
+            // get current block 
             BasicBlock *PrevBB = Builder.GetInsertBlock();
             Function *TheFunction = PrevBB->getParent();
             BasicBlock *LoopBB = BasicBlock::Create(TheContext,"loop", TheFunction);
-            BasicBlock *AfterBB = BasicBlock::Create(TheContext,"std::endloop", TheFunction);
+            BasicBlock *AfterBB = BasicBlock::Create(TheContext,"endloop", TheFunction);
             BasicBlock *BodyBB = BasicBlock::Create(TheContext,"body", TheFunction);
             // jump to loop block 
             Builder.CreateBr(LoopBB);
@@ -529,18 +591,29 @@ class LabelBind : public Stmt {
         LabelBind(std::string name, Stmt* st) : lbl(name), target(st) {}
         ~LabelBind() {}
         void printOn(std::ostream &out) const { out <<  lbl << " : "; target->printOn(out);  }
-        Value* compile() const {return nullptr;}
+        Value* compile() const {
+            Function *TheFunction = Builder.GetInsertBlock()->getParent();
+            BasicBlock * LabelBB  = BasicBlock::Create(TheContext,lbl, TheFunction);
+            Builder.SetInsertPoint(LabelBB);
+            // insert into symbol table the label 
+            target->compile();
+            return nullptr; 
+        
+        }
 
 };
 
 class GoTo : public Stmt {
     private:
         std::string label;
-    
     public:
         GoTo(std::string lbl) : label(lbl) {}
         void printOn(std::ostream &out) const {out << "LABEL : " << label;}
-        Value* compile() const {return nullptr;}
+        Value* compile() const {
+            // search into symbol table for label 
+            //Builder.CreateBr();
+            return nullptr; 
+        }
 
 };
 
@@ -568,7 +641,13 @@ class InitArray : public Stmt {
     public:
         InitArray(Expr* lval, Expr* sz) {}
         void printOn(std::ostream &out) const {out << "InitArr"; lval->printOn(out); }
-        Value* compile() const {return nullptr;}
+        Value* compile() const {
+            
+            //Value *p = Builder.CreateCall(TheMalloc, {c64(16), "newtmp"}); 
+            // need to define some array ptr here 
+            //Value *x = Builder.CreateBitCast(p,ArrayPtr,"nodetmp");
+            return nullptr; 
+        }
 
 };
 

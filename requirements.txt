@@ -1,0 +1,5 @@
+c++ std==17
+bison
+lexer
+llvm-10 
+libgc-dev
