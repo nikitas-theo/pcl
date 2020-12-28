@@ -19,30 +19,18 @@
 // add -lgc to lib flags 
 
 using namespace llvm;
-/*
-    *   How to handle variables ? 
-        locals are moleded by alloca, this seems ot be adequate, 
-        see llvm tutorial pdf  
-    
-    *   Do I need to define a global variable for each \t, ... etc? 
-        like pap did for \n == NL ? 
-        need to check writeString library by Achileas
-*/
-
-
 #include "astRoot.hpp"
-
 
 class Expr : public AST {
     public:
         SymType type;
         virtual void printOn(std::ostream &out) const = 0;
-        virtual Value* compile() const = 0;
+        virtual Value* compile()  = 0;
 };
 class Stmt : public AST {
     public : 
         virtual void printOn(std::ostream &out) const = 0;
-        virtual Value* compile() const = 0;
+        virtual Value* compile()  = 0;
 };
 
 class StatementStack : public Stmt {
@@ -55,8 +43,13 @@ class StatementStack : public Stmt {
     StatementStack() {}
     void push(Stmt* x) {list.push_back(x);}
     
-    Value* compile() const
-    {   // do I need to reverse compile here ? 
+    Value* compile() 
+    {   /*
+            FIXME do I need to reverse compile here ? 
+            Seems like our parse reads lists in reverse, this can be a problem obviously: 
+            y = 3; x = y + 3;
+            x = y + 3; y = 3; // error 
+        */
         for (auto it = list.rbegin(); it != list.rend(); ++it) (*it)->compile();
         return nullptr ;
     }
@@ -64,15 +57,18 @@ class StatementStack : public Stmt {
 class ExpressionStack : public Expr {
     public : 
     std::vector<Expr*> list ; 
+    std::vector<Value*> values ; 
     void printOn(std::ostream &out) const {
         out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
         if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
     ExpressionStack(Expr* s){list.push_back(s);}
     ExpressionStack() {}
     void push(Expr* x) {list.push_back(x);}
-    Value* compile() const{
-        // do I just compile here and return nullptr since this is an Expr. stack ? 
-        for (auto it = list.rbegin(); it != list.rend(); ++it) (*it)->compile();
+    Value* compile() {
+        // we push back to a values container and then return nullptr
+        for (auto it = list.rbegin(); it != list.rend(); ++it){ 
+            values.push_back(   (*it)->compile() );
+        }
         return nullptr; 
     }
 };
@@ -85,18 +81,16 @@ constexpr inline unsigned int operator "" _(char const * p, size_t) { return has
 class BinOp : public Expr{
     private:
         Expr *left, *right;
-        std::string op;
-        
+        std::string op;        
     public:
         BinOp(Expr* l, std::string o, Expr* r) : left(l), right(r), op(o) {}
-        ~BinOp() { delete left; delete right; }
         void semantic() override{}
         void printOn(std::ostream &out) const {
             left->printOn(out);
             out << " " << op <<" ";
             right->printOn(out); 
         }
-        Value* compile() const {
+        Value* compile()  {
             Value *l = left->compile();
             Value *r = nullptr; 
             // need to implement short-circuit
@@ -109,7 +103,7 @@ class BinOp : public Expr{
                 if (right->type->kind != TYPE_REAL) Builder.CreateSExt(r,r64);
                 real_ops = true ;
             }
-            switch(hashf(op.c_str())){
+            switch( hashf(op.c_str()) ){
                 case "+"_ :
                     if (real_ops)   return Builder.CreateFAdd(l,r,"addtmp");
                     else            return Builder.CreateAdd(l,r,"addtmp");
@@ -132,12 +126,43 @@ class BinOp : public Expr{
                 case "mod"_ : return Builder.CreateSRem(l,r,"modtmp"); 
 
                 // we implement short circuit with a branch 
-                case "and"_  : case "or"_ : 
+                case "and"_  :
                 {
                     Function *TheFunction = Builder.GetInsertBlock()->getParent();
                     BasicBlock *shortBB = BasicBlock::Create(TheContext,"short_and", TheFunction);
                     BasicBlock *fullBB = BasicBlock::Create(TheContext,"full_and", TheFunction);
                     BasicBlock *endBB = BasicBlock::Create(TheContext,"end_and", TheFunction);
+
+                    Value* cond = Builder.CreateICmpEQ(l,c_i1(0)); 
+                    Builder.CreateCondBr(cond, shortBB,fullBB);
+                    
+                    // just jump 
+                    Builder.SetInsertPoint(shortBB);
+                    Builder.CreateBr(endBB);
+
+                    // need to evaluate second operant                    
+                    Builder.SetInsertPoint(fullBB);
+                    r = right->compile();
+
+                    // get current block because compile can be arbitrary
+                    BasicBlock *CurrBB = Builder.GetInsertBlock();
+                    Value *OP =  Builder.CreateAnd(l,r,"andtmp");
+                    Builder.CreateBr(endBB);
+
+                    Builder.SetInsertPoint(endBB);
+                    // combine the 2 branches 
+                    PHINode *phi = Builder.CreatePHI(i32, 2, "phi_and");
+                    phi->addIncoming(c_i1(0),shortBB);
+                    phi->addIncoming(OP,CurrBB);
+
+                    return phi;
+                    }
+                case "or"_ : 
+                {
+                    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+                    BasicBlock *shortBB = BasicBlock::Create(TheContext,"short_or", TheFunction);
+                    BasicBlock *fullBB = BasicBlock::Create(TheContext,"full_or", TheFunction);
+                    BasicBlock *endBB = BasicBlock::Create(TheContext,"end_or", TheFunction);
 
                     Value* cond = Builder.CreateICmpEQ(l,c_i1(1)); 
                     Builder.CreateCondBr(cond, shortBB,fullBB);
@@ -152,23 +177,17 @@ class BinOp : public Expr{
 
                     // get current block because compile can be arbitrary
                     BasicBlock *CurrBB = Builder.GetInsertBlock();
-                    Value * OP; 
-
-                    if (hashf(op.c_str()) == "and"_)
-                        OP =  Builder.CreateAnd(l,r,"andtmp");
-                    else 
-                        OP = Builder.CreateOr(l,r,"ortmp");
+                    Value *OP =  Builder.CreateAnd(l,r,"ortmp");
                     Builder.CreateBr(endBB);
 
                     Builder.SetInsertPoint(endBB);
                     // combine the 2 branches 
-                    PHINode *phi_iter = Builder.CreatePHI(i32, 2, "iter");
-                    phi_iter->addIncoming(c_i1(1),shortBB);
-                    phi_iter->addIncoming(OP,CurrBB);
+                    PHINode *phi = Builder.CreatePHI(i32, 2, "phi_or");
+                    phi->addIncoming(c_i1(1),shortBB);
+                    phi->addIncoming(OP,CurrBB);
 
-                    return phi_iter;
+                    return phi;
                     }
-
                 case "="_ : 
                     if (real_ops)   return Builder.CreateFCmpOEQ(l,r,"eqtmp");
                     else            return Builder.CreateICmpEQ(l,r,"eqtmp");
@@ -181,7 +200,6 @@ class BinOp : public Expr{
                     * if they are of any other type we simply compare, 
                       type checking takes care of type matching
                 */
-
                 case ">"_ :                     
                     if (real_ops)   return Builder.CreateFCmpOGT(l,r);
                     else            return Builder.CreateICmpSGT(l,r);
@@ -194,9 +212,7 @@ class BinOp : public Expr{
                 case ">="_ : 
                     if (real_ops)   return Builder.CreateFCmpOGT(l,r);
                     else            return Builder.CreateICmpSGT(l,r);
-                // results must be arithmetic, some typecasting req.
-
-
+                // results must be arithmetic, some typecasting req
             }
             return nullptr; 
         }
@@ -209,20 +225,25 @@ class UnOp : public Expr {
         
     public:
         UnOp(std::string _o, Expr* _e) : op(_o), e(_e) {}
-        ~UnOp() { delete e; }
         
         void semantic() override{}
         void printOn(std::ostream &out) const {out << "(" << op ;
         e->printOn(out); 
         out << ")";}
-        Value* compile() const {
+        Value* compile()  {
             Value* val = e->compile();
-            switch(hashf(op.c_str())){
+            switch( hashf(op.c_str()) ){
                 case "+"_ : return val;
                 case "-"_ : return Builder.CreateNeg(val,"negtmp");
                 case "not"_ : return Builder.CreateNot(val,"nottmp");
                 case "@"_ : 
+                    // TODO 
                     // does not seem straightforward
+                    /*  generally we have 2 types of variable,
+                        those created with alloca, 
+                        and heap arrays, 
+                        need to see  
+                    */
                     std::cerr << "NOT_IMPLEMENTED";
                     return nullptr; 
             }
@@ -237,10 +258,16 @@ class Id : public Expr {
     public:
         Id(std::string n) : name(n) {}
         void printOn(std::ostream &out) const {out << "Id(" << name <<  ")";}
-        Value* compile() const {return nullptr; }
+        Value* compile() {
+            // TODO 
+            /*
+                Search for name in symbol table, 
+                return associated Value
+            */
+            return nullptr; }
 
 };
-
+// should be removed completely, this is 
 class IdStack : public Expr {
     public : 
     std::vector<std::string> list ; 
@@ -249,7 +276,14 @@ class IdStack : public Expr {
         if (it + 1 != list.rend()) out << ", "; }out << "]"; } 
     IdStack(std::string s){list.push_back(s);}
     IdStack() {}
-    Value* compile() const {return nullptr; }
+    Value* compile()  {
+        /* 
+            id-list is generally used in many places, 
+            generally we need to get the names to do something else,
+            e.g. create some alloca for parameters,
+            probably compile should not be called
+        */
+        return nullptr; }
     void push(std::string x) {list.push_back(x);}
 
 };
@@ -260,10 +294,9 @@ typedef std::variant<int,double,char,bool> data_const ;
 
 class Const : public Expr {
 
-    private:
-        SymType type;
-        data_const val;     
     public:
+        data_const val;     
+        SymType type;
         Const(data_const val, SymType t) : val(val) , type(t) {}      
         void printOn(std::ostream &out) const {
             switch(type->kind) {
@@ -275,7 +308,7 @@ class Const : public Expr {
 
             } 
         }
-        Value* compile() const{
+        Value* compile() {
             switch(type->kind) {
             case TYPE_INTEGER : return c_i32(std::get<int>(val));
             case TYPE_BOOLEAN : return c_i1(std::get<bool>(val));
@@ -302,17 +335,32 @@ class FuncCall : public Expr {
             out << "FuncCall(" << fname; 
             if (parameters != nullptr) parameters->printOn(out) ; 
             out << ")";}
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // TODO get function from symbol table 
+            // Function func = nullptr; 
+            // calculate values for arguments
+            // parameters->compile();
+            // Value* ret = Builder.CreateCall(func,parameters->values);
+            //return ret;
+
+            return nullptr; 
+            }
 
 };
 
 class String : public Expr {
     private:
         std::string s; 
+        // should add type array [n] of char
     public:
         String(std::string s) : s(s){}
         void printOn(std::ostream &out) const {out << '\"' << s << '\"';}
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            /* string is just a static array of i8 (char), 
+               created with alloca, this could be also be unified with the array class
+               TODO 
+            */ 
+            return nullptr;}
 
 };
 
@@ -323,7 +371,12 @@ class ArrayAccess : public Expr {
     public:
         ArrayAccess(Expr* lval, Expr* pos) : lval(lval) , pos(pos){}
         void printOn(std::ostream &out) const { lval->printOn(out); out << "[";  pos->printOn(out); out << "]";}
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            /*
+                TODO 
+                probably need a GEP instruction
+            */
+            return nullptr;}
 
 };
 
@@ -333,13 +386,30 @@ class Dereference : public Expr {
     public:
         Dereference(Expr* e) : e(e) {}
         void printOn(std::ostream &out) const { e->printOn(out) ; out << "^";}
-        Value* compile() const {return nullptr; }
+        Value* compile()  {
+            // TODO 
+            // do the right GEP instruction for the Pointer
+            return nullptr; 
+        }
 
 };
 
 /* Statements */
 
 class Block : public Stmt {
+    /*
+        This class implements the body of each structure
+
+        local :
+            variable definitions : VariableGroupStack( [variables]) , variable = {type,id}
+            label definitions : Label( [id] ) 
+            a function definition : Routine() , routine is a 
+            a "forward" function definition : Routine() with forward=True, body = undefined; 
+                - a Routine is a structure and has its own Block() 
+            ;
+        body : one composite statement (or a list of statements)
+
+    */
     private:
         StatementStack *locals;
         StatementStack *body;
@@ -349,7 +419,6 @@ class Block : public Stmt {
         {
             locals = new StatementStack();
         }
-        ~Block() { delete locals; }
 
         void semantic() override {}
 
@@ -362,7 +431,13 @@ class Block : public Stmt {
             out << "\t\tlocals: " ; locals->printOn(out); out << std::endl; 
             out << "\t\tbody: " ;body->printOn(out); out << std::endl; 
         }
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // we compile each locals, calling the right method w.r.t. its initial class
+            // one of Label(),Routine(),etc. 
+            locals->compile();
+            body->compile();
+            return nullptr;
+        }
 
 };
 
@@ -375,7 +450,10 @@ class Variable : public Stmt {
     
     public:
         Variable(std::string n, SymType t) : name(n), type(t) {}
-        Value* compile() const {return nullptr; }
+        Value* compile()  {
+            // TODO 
+            // create alloca 
+            return nullptr; }
         void printOn(std::ostream &out) const {
             out << "var " << name << " :" << type ;  
         }
@@ -384,71 +462,90 @@ class Variable : public Stmt {
 
 class VariableGroupStack : public Stmt {
     private:
-        std::vector<Variable*> *vars;
+        std::vector<Variable*> vars;
     
     public:
-        VariableGroupStack()
-        {
-            vars = new std::vector<Variable*>;
-        }
-        ~VariableGroupStack() { delete vars; }
 
-
-        void push(IdStack* var_ids, SymType t)
-        {
+        void push(IdStack* var_ids, SymType t){
             for (std::string s : var_ids->list ) {
-                vars->push_back(new Variable(s, t));
+                vars.push_back(new Variable(s, t));
             }
         }
         void printOn(std::ostream &out) const {}
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // call each variable to create an alloca 
+            for (auto v : vars){
+                v->compile();
+            }
+            return nullptr;}
 
 };
 
 
-
+// labels are just names, 
+// any real difference between variables and label definitions ? 
 class Label : public Stmt {
     private:
         IdStack *lblnames;
     public:
         Label(IdStack* names) : lblnames(names) {}
         void printOn(std::ostream &out) const {}
-        Value* compile() const {
+        Value* compile()  {
+            // TODO 
+            /*
+                labels are essentially created as new BasicBlocks
+                here we just declare labels , add them to symbol table 
+            */
             return nullptr; 
         }
 
 };
-
+// There seems to be some overlap in classes
+// this looks like the variable, and variableGroupStack classes
 class FormalsGroup : public Stmt {
-    private:
+    public:
         IdStack *formals;
         SymType type;
         PassMode pass_by;
-        SymbolEntry *function_entry;
+
     
-    public:
         FormalsGroup(IdStack* f, SymType t, PassMode pm) : formals(f), type(t), pass_by(pm) {}
 
-        void set_function_entry(SymbolEntry *f) { function_entry = f; }
         void printOn(std::ostream &out) const { 
             if (pass_by == PASS_BY_REFERENCE) out << "var: ";
-            // find a way to handle type printing , operator overloading doesnt want work 
             formals->printOn(out) ; out <<  " : " ; out << type; 
         }
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            /*  TODO 
+                alloca for parameter variables, add to symbol table
+                how to signify pass_by value or by reference? 
+                use byref(<ty>), byval(<ty>) in llvm language specification ? 
+            */           
+            return nullptr; 
+        }
 
 };
+// all Stack classes could be compiled to a single class
+// of ASTNodeStack with a std::vector<AST*> list; 
+// seems all functionallity is the same for most cases
 class FormalsGroupStack : public Stmt {
+    /*  A list of function parameters
+    */
     public : 
     std::vector<FormalsGroup*> list ; 
+
     void printOn(std::ostream &out) const {
         out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
         if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
     FormalsGroupStack(FormalsGroup* s){list.push_back(s);}
     FormalsGroupStack() {}
+    
     void push(FormalsGroup* x) {list.push_back(x);}
-    Value* compile() const {return nullptr;}
-
+    Value* compile()  {
+        // just compile each comp. of list
+        for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->compile();}
+        return nullptr; 
+    }
 };
 
 
@@ -462,7 +559,6 @@ class Routine : public Stmt {
         
     public:
         Routine(std::string n, FormalsGroupStack* params, SymType t) : name(n), parameters(params), type(t) { isForward = false;}
-        ~Routine() {}
         
         void printOn(std::ostream &out) const { 
             out << "["<< name << "]("; 
@@ -470,19 +566,33 @@ class Routine : public Stmt {
             out << ")" << " : " << type <<std::endl ;
             body->printOn(out);
         }
-        void set_forward()
-        {
-            this->isForward = true;
+        void set_forward(){this->isForward = true;}
+        void add_body(Block* theBody){this->body = theBody;}
+
+        Value* compile()  {
+
+            std::vector<Type*> param_types; 
+            for (auto param : parameters->list){
+                // for some reason passing it as is, results in const error 
+                param_types.push_back(TypeConvert(param->type)) ;
+            }
+            // TODO : see how to handle by val and by reference params   
+            FunctionType* Ftype =  FunctionType::get(TypeConvert(  type ),param_types,false);
+            Function *routine = Function::Create(Ftype,
+            Function::ExternalLinkage,name,TheModule.get() 
+            );
+            BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
+            Builder.SetInsertPoint(BB);
+            if (!isForward) body->compile();
+            // TODO : symbol.insert(Function); 
+            return nullptr; 
         }
-        
-        void add_body(Block* theBody)
-        {
-            this->body = theBody;
-        }
-        Value* compile() const {return nullptr;}
 
 };
-
+/*
+    This is essentially the same as FuncCall, 
+    but with no return argument, can be merged 
+*/
 class ProcCall : public Stmt {
     private:
         std::string pname;
@@ -492,7 +602,7 @@ class ProcCall : public Stmt {
         ProcCall(std::string pn) : pname(pn) { parameters = new ExpressionStack(); }
         ProcCall(std::string pn, ExpressionStack* params) : pname(pn), parameters(params) {}
         void printOn(std::ostream &out) const {out << "ProcCall[" << pname << "] ( "; parameters->printOn(out); out << " )" ;}
-        Value* compile() const {
+        Value* compile()  {
             
             return nullptr;}
 
@@ -508,7 +618,12 @@ class Declaration : public Stmt {
             out << " := " ; 
             val->printOn(out);
         }
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // TODO 
+            /*  store command, check language specification, 
+                and how to assign with heap structures
+            */ 
+            return nullptr;}
 
 };
 
@@ -521,14 +636,13 @@ class IfThenElse : public Stmt {
     public:
         IfThenElse(Expr* c, Stmt* t) : cond(c), st_then(t) , hasElse(false) {};
         IfThenElse(Expr* c, Stmt* t, Stmt* e) : cond(c), st_then(t), st_else(e) , hasElse(true) {};
-        ~IfThenElse() { delete cond; delete st_then; delete st_else; }
         void printOn(std::ostream &out) const { 
             out << "If("; cond->printOn(out); out << "then" << std::endl;
             st_then->printOn(out); out << std::endl ;
             if (hasElse) { out  << "else : " << std::endl;  st_else->printOn(out); }
 
         }         
-        Value *compile() const{
+        Value *compile() {
             Value *v = cond->compile();
             Value *cond = Builder.CreateICmpNE(v,c_i32(0), "if_cond");
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -554,12 +668,11 @@ class While : public Stmt {
         
     public:
         While(Expr* c, Stmt *b) : cond(c), body(b) {}
-        ~While() { delete cond; delete body; }
         void printOn(std::ostream &out) const {
             out << "While("; cond->printOn(out); out << ") do" << std::endl;
             body->printOn(out);
         }        
-        Value *compile() const{
+        Value *compile() {
             // get current block 
             BasicBlock *PrevBB = Builder.GetInsertBlock();
             Function *TheFunction = PrevBB->getParent();
@@ -589,18 +702,17 @@ class LabelBind : public Stmt {
         Stmt *target;
     public:
         LabelBind(std::string name, Stmt* st) : lbl(name), target(st) {}
-        ~LabelBind() {}
         void printOn(std::ostream &out) const { out <<  lbl << " : "; target->printOn(out);  }
-        Value* compile() const {
+        Value* compile()  {
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
             BasicBlock * LabelBB  = BasicBlock::Create(TheContext,lbl, TheFunction);
             Builder.SetInsertPoint(LabelBB);
-            // insert into symbol table the label 
+            // TODO
+            // update symbol table with the BasicBlock*
+            // label is already added in the Label() class
             target->compile();
             return nullptr; 
-        
         }
-
 };
 
 class GoTo : public Stmt {
@@ -609,7 +721,8 @@ class GoTo : public Stmt {
     public:
         GoTo(std::string lbl) : label(lbl) {}
         void printOn(std::ostream &out) const {out << "LABEL : " << label;}
-        Value* compile() const {
+        Value* compile()  {
+            // TODO :
             // search into symbol table for label 
             //Builder.CreateBr();
             return nullptr; 
@@ -621,7 +734,11 @@ class ReturnStmt : public Stmt {
     public: 
         ReturnStmt(){};
         void printOn(std::ostream &out) const {out << "RET" ; }
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // TODO 
+            // search for result in symboltable 
+            // if result is set return it with CreateRet()
+            return nullptr;}
 
 };
 
@@ -631,7 +748,13 @@ class Init : public Stmt {
     public:
         Init(Expr* lval) {}
         void printOn(std::ostream &out) const {out << "Init"; lval->printOn(out); }
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // TODO
+            /*  Create call to malloc_gc ,
+                for concrete type pointers, e.g. everything except dynamic arrays
+                need to have type of Expr
+            */
+            return nullptr;}
 
 };
 
@@ -641,11 +764,10 @@ class InitArray : public Stmt {
     public:
         InitArray(Expr* lval, Expr* sz) {}
         void printOn(std::ostream &out) const {out << "InitArr"; lval->printOn(out); }
-        Value* compile() const {
-            
-            //Value *p = Builder.CreateCall(TheMalloc, {c64(16), "newtmp"}); 
-            // need to define some array ptr here 
-            //Value *x = Builder.CreateBitCast(p,ArrayPtr,"nodetmp");
+        Value* compile()  {
+            // TODO 
+            /* add a conrete type array [n] of t, to an l-value of ^array of t
+            */
             return nullptr; 
         }
 
@@ -658,7 +780,11 @@ class Dispose : public Stmt {
     public:
         Dispose(Expr *lval) : lval(lval) {} 
         void printOn(std::ostream &out) const {out << "Destroy"; lval->printOn(out); }
-        Value* compile() const {return nullptr;}
+        Value* compile()  {
+            // TODO 
+            /* Dispose should be some function call from gc library 
+            */ 
+            return nullptr;}
 
 };
 
@@ -668,6 +794,8 @@ class DisposeArray : public Stmt {
     public:
         DisposeArray(Expr* lval) {} 
         void printOn(std::ostream &out) const {out << "DestroyArr " ; lval->printOn(out) ;}
-        Value* compile() const {return nullptr;}
-
+        Value* compile()  {
+            // TODO 
+            // same as above but for ^array of t 
+            return nullptr; }
 };

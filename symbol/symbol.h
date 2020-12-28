@@ -82,7 +82,7 @@ typedef enum {                       /***** �� ����� ��� �
 
 struct Type_tag {
     oftype         kind;
-    SymType           refType;              /* ����� �������� (��� array, pointer)           */
+    SymType        refType;              /* ����� �������� (��� array, pointer)           */
     RepInteger     size;                 /* �������, �� ����� ������� */
     unsigned int   refCount;             /* �������� ��������         */
 };

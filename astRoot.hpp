@@ -12,13 +12,12 @@ class AST {
         virtual ~AST() {}
         virtual void semantic() {}
         virtual void printOn(std::ostream &out) const = 0;
-        virtual Value* compile() const = 0 ;
-        
+        virtual Value* compile() = 0 ;
         void compile_llvm(){
             // Initialize Module
             TheModule = std::make_unique<Module>("add program name here?",TheContext);
 
-            // TODO: find how to make optimizations passes in new LLVM versions. 
+            // TODO : find how to make optimizations passes in new LLVM versions. 
 
             // USEFUL TYPES
             i1 = IntegerType::get(TheContext,1);
@@ -69,6 +68,8 @@ class AST {
             // https://stackoverflow.com/questions/65000322/creating-raw-ostream-object-in-llvm
             TheModule->print(outs(),nullptr);
         }
+
+        
     protected:
 
         static LLVMContext TheContext; 
@@ -86,7 +87,12 @@ class AST {
         static Type *i64; 
         static Type *r64; 
         static Type *voidTy;
-        
+
+        /* Should add this to the global symboltable
+           scope, instead of keeping them at the AST node  
+        */
+
+
         static Function *WriteInteger;
         static Function *WriteBoolean;
         static Function *WriteChar;
@@ -112,8 +118,24 @@ class AST {
 
         static Function *TheMalloc;
         static Function *TheInit;
-        void def();
         
+        Type* TypeConvert  (SymType t) {
+            switch(t->kind) {
+                case TYPE_VOID      : return voidTy;
+                case TYPE_INTEGER   : return i32; 
+                case TYPE_BOOLEAN   : return i1; 
+                case TYPE_CHAR      : return i8; 
+                case TYPE_REAL      : return r64;
+                case TYPE_ARRAY : 
+                    return ArrayType::get(TypeConvert(t->refType), t->size);
+                case TYPE_IARRAY :
+                    // seems like for llvm semantics this is the same 
+                    return PointerType::get(TypeConvert(t->refType),0);
+                case TYPE_POINTER : 
+                    return PointerType::get(TypeConvert(t->refType),0);
+            }
+            return voidTy;
+        }
         void define_external(){
             // PREDEFINED LIBRARY FUNCTIONS 
 
