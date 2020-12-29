@@ -4,10 +4,8 @@
 #include <vector>
 #include <iostream>
 #include <variant> 
-#include "symbol/symbol.h"
-#include "symbol/error.h"
-#include "symbol_compatible.hpp"
 
+#include "symbol.hpp"
 
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
@@ -19,11 +17,128 @@
 // add -lgc to lib flags 
 
 using namespace llvm;
-#include "astRoot.hpp"
+
+
+
+
+class AST {
+    public:
+        virtual ~AST() {}
+        virtual void semantic() {}
+        virtual void printOn(std::ostream &out) const = 0;
+        virtual Value* compile() = 0 ;
+        void compile_llvm(){
+            // Initialize Module
+            TheModule = new Module("add program name here?",TheContext);
+
+            // TODO : find how to make optimizations passes in new LLVM versions. 
+
+            // USEFUL TYPES
+            i1 = IntegerType::get(TheContext,1);
+            i8 = IntegerType::get(TheContext,8);
+            i32 = IntegerType::get(TheContext,32);
+            i64 = IntegerType::get(TheContext,64);
+            r64 =  Type::getDoubleTy(TheContext);
+            voidTy = Type::getVoidTy(TheContext);
+
+
+            /*
+                These functions should be in the global namespcae
+                unless shadowed by other variable nabes, so they should be added the symbol table
+            */
+
+            // GARBAGE COLLECTION
+            // optional, let's leave it for now 
+            /*TheMalloc = Function::Create(
+                FunctionType::get( PointerType::get(i8,0), {i64}, false),
+                Function::ExternalLinkage, "GC_malloc",TheModule
+            );
+            
+            TheInit = Function::Create(
+                FunctionType::get(voidTy, {}, false),
+                Function::ExternalLinkage, "GC_init",TheModule
+            );
+            */
+            // MAIN FUNCTION
+            Function *main = Function::Create(
+                FunctionType::get(i32,{}, false), 
+                Function::ExternalLinkage,"main",TheModule
+                );
+            BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
+            Builder.SetInsertPoint(BB);
+            //Builder.CreateCall(TheInit, {});
+
+            compile();
+            Builder.CreateRet(c_i32(0));
+
+            // VERIFICATION
+            bool failed = verifyModule(*TheModule,&errs());
+            if (failed) { 
+                std::cerr << "Problem in the IR" << std::endl; 
+                TheModule->print(errs(), nullptr);
+                std::exit(1);
+            } 
+
+            // PRINT INTERMEDIATE IR 
+            // https://stackoverflow.com/questions/65000322/creating-raw-ostream-object-in-llvm
+            TheModule->print(outs(),nullptr);
+        }
+
+        static LLVMContext TheContext; 
+        static IRBuilder<>  Builder; 
+        static Module* TheModule;
+        static Type* i1; 
+        static Type* i8; 
+        static Type* i32;
+        static Type* i64;
+        static Type* r64;
+        static Type* voidTy;
+        ConstantInt* c_i32(int n){ return ConstantInt::get(TheContext,APInt(32,n,true)); }
+        ConstantInt* c_i8(char c){ return ConstantInt::get(TheContext,APInt(8,c,false)); }
+        ConstantInt* c_i1(int n){ return ConstantInt::get(TheContext,APInt(1,n,false)); }
+        ConstantFP* c_r64(double d) {return ConstantFP::get(TheContext,APFloat(d));}
+        static SymbolTable st; 
+
+
+        Type* TypeConvert  (Stype t) {
+            switch(t->kind) {
+                case TYPE_VOID      : return voidTy;
+                case TYPE_INTEGER   : return i32; 
+                case TYPE_BOOLEAN   : return i1; 
+                case TYPE_CHAR      : return i8; 
+                case TYPE_REAL      : return r64;
+                case TYPE_ARRAY : 
+                    return ArrayType::get(TypeConvert(t->refType), t->size);
+                case TYPE_IARRAY :
+                    // seems like for llvm semantics this is the same 
+                    return PointerType::get(TypeConvert(t->refType),0);
+                case TYPE_POINTER : 
+                    return PointerType::get(TypeConvert(t->refType),0);
+            }
+            return voidTy;
+        }
+
+
+}   
+;
+
+// Operator << on AST
+inline std::ostream& operator<<(std::ostream &out, const AST &t) {
+  t.printOn(out);
+  return out;
+}
+
+inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t) {
+        out << "[";
+        for (std::size_t i = 0; i < t.size(); i++) {
+            out << t[t.size() - 1 - i] << (i == t.size() - 1 ? "" : ",");
+        }
+        return out << "]" ;
+}
 
 class Expr : public AST {
     public:
-        SymType type;
+        Stype type;
         virtual void printOn(std::ostream &out) const = 0;
         virtual Value* compile()  = 0;
 };
@@ -33,45 +148,24 @@ class Stmt : public AST {
         virtual Value* compile()  = 0;
 };
 
-class StatementStack : public Stmt {
+template<class T>
+class ASTvector : public Stmt , public Expr{
     public : 
-    std::vector<Stmt*> list ; 
+    Value* compile() {return nullptr;}
+    std::vector<T> list; 
     void printOn(std::ostream &out) const {
-        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
-        if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
-    StatementStack(Stmt* s){list.push_back(s);}
-    StatementStack() {}
-    void push(Stmt* x) {list.push_back(x);}
-    
-    Value* compile() 
-    {   /*
-            FIXME do I need to reverse compile here ? 
-            Seems like our parse reads lists in reverse, this can be a problem obviously: 
-            y = 3; x = y + 3;
-            x = y + 3; y = 3; // error 
-        */
-        for (auto it = list.rbegin(); it != list.rend(); ++it) (*it)->compile();
-        return nullptr ;
-    }
-};
-class ExpressionStack : public Expr {
-    public : 
-    std::vector<Expr*> list ; 
-    std::vector<Value*> values ; 
-    void printOn(std::ostream &out) const {
-        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
-        if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
-    ExpressionStack(Expr* s){list.push_back(s);}
-    ExpressionStack() {}
-    void push(Expr* x) {list.push_back(x);}
-    Value* compile() {
-        // we push back to a values container and then return nullptr
-        for (auto it = list.rbegin(); it != list.rend(); ++it){ 
-            values.push_back(   (*it)->compile() );
+        out << "[";
+        for (std::size_t i = 0; i < list.size(); i++) {
+            out << *(list[list.size() - 1 - i]) << (i == list.size() - 1 ? "" : ",");
         }
-        return nullptr; 
+        out << "]"; 
     }
+    void push(T t){ list.push_back(t);}
+
 };
+
+
+
 /* Expressions */
 constexpr unsigned int hashf(const char *s, int off = 0) {                        
     return !s[off] ? 5381 : (hashf(s, off+1)*33) ^ s[off];                           
@@ -86,8 +180,9 @@ class BinOp : public Expr{
         BinOp(Expr* l, std::string o, Expr* r) : left(l), right(r), op(o) {}
         void semantic() override{}
         void printOn(std::ostream &out) const {
-            left->printOn(out);
-            out << " " << op <<" ";
+            left->printOn(out); 
+            out << " " << op; 
+            out << " ";
             right->printOn(out); 
         }
         Value* compile()  {
@@ -253,9 +348,10 @@ class UnOp : public Expr {
 };
 
 class Id : public Expr {
-    private:
-        std::string name ;
+    /* Id as an l-value
+    */
     public:
+        std::string name ;
         Id(std::string n) : name(n) {}
         void printOn(std::ostream &out) const {out << "Id(" << name <<  ")";}
         Value* compile() {
@@ -267,26 +363,7 @@ class Id : public Expr {
             return nullptr; }
 
 };
-// should be removed completely, this is 
-class IdStack : public Expr {
-    public : 
-    std::vector<std::string> list ; 
-    void printOn(std::ostream &out) const {
-        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it){ out << *it ; 
-        if (it + 1 != list.rend()) out << ", "; }out << "]"; } 
-    IdStack(std::string s){list.push_back(s);}
-    IdStack() {}
-    Value* compile()  {
-        /* 
-            id-list is generally used in many places, 
-            generally we need to get the names to do something else,
-            e.g. create some alloca for parameters,
-            probably compile should not be called
-        */
-        return nullptr; }
-    void push(std::string x) {list.push_back(x);}
 
-};
 
 typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
@@ -296,10 +373,11 @@ class Const : public Expr {
 
     public:
         data_const val;     
-        SymType type;
-        Const(data_const val, SymType t) : val(val) , type(t) {}      
+        Stype type;
+        Const(data_const val, Stype t) : val(val) , type(t) {}      
         void printOn(std::ostream &out) const {
             switch(type->kind) {
+            
                 case TYPE_INTEGER : out << std::get<int>(val) ; break;
                 case TYPE_BOOLEAN : out << std::get<bool>(val) ; break;
                 case TYPE_CHAR : out << std::get<char>(val) ; break;
@@ -310,6 +388,7 @@ class Const : public Expr {
         }
         Value* compile() {
             switch(type->kind) {
+
             case TYPE_INTEGER : return c_i32(std::get<int>(val));
             case TYPE_BOOLEAN : return c_i1(std::get<bool>(val));
             case TYPE_CHAR : return c_i8(std::get<char>(val));
@@ -323,17 +402,18 @@ class Const : public Expr {
 
 
 
-
-class FuncCall : public Expr {
+// remember to account for both a return argument
+// and no return argument
+class CallFunc : public Expr {
     private:
         std::string fname;
-        ExpressionStack* parameters;
-        
+        ASTvector<Expr*> parameters;
     public:
-        FuncCall(std::string name, ExpressionStack* params=nullptr) : fname(name), parameters(params) {}
+        CallFunc(std::string name, ASTvector<Expr*>* params) : fname(name), parameters(*params) {}
+        CallFunc(std::string name) : fname(name) {}
         void printOn(std::ostream &out) const {
-            out << "FuncCall(" << fname; 
-            if (parameters != nullptr) parameters->printOn(out) ; 
+            out << "Call(" << fname; 
+            if (!parameters.list.empty()) parameters.printOn(out); 
             out << ")";}
         Value* compile()  {
             // TODO get function from symbol table 
@@ -348,6 +428,33 @@ class FuncCall : public Expr {
 
 };
 
+class CallProc : public Stmt {
+    private:
+        std::string fname;
+        ASTvector<Expr*> parameters;
+    public:
+        CallProc(std::string name, ASTvector<Expr*>* params) : fname(name), parameters(*params) {}
+        CallProc(std::string name) : fname(name){}
+        void printOn(std::ostream &out) const {
+            out << "Call(" << fname; 
+            if (!parameters.list.empty()) parameters.printOn(out); 
+            out << ")";}
+        Value* compile()  {
+            // TODO get function from symbol table 
+            // Function func = nullptr; 
+            // calculate values for arguments
+            // parameters->compile();
+            // Value* ret = Builder.CreateCall(func,parameters->values);
+            //return ret;
+
+            return nullptr; 
+            }
+
+};
+
+/*  String should be handled with care,
+    like an array type but you can't assign ? 
+*/ 
 class String : public Expr {
     private:
         std::string s; 
@@ -377,6 +484,7 @@ class ArrayAccess : public Expr {
                 probably need a GEP instruction
             */
             return nullptr;}
+
 
 };
 
@@ -411,85 +519,68 @@ class Block : public Stmt {
 
     */
     private:
-        StatementStack *locals;
-        StatementStack *body;
+        ASTvector<Stmt*> locals;
+        ASTvector<Stmt*> body;
     
     public:
-        Block(StatementStack* theBody) : body(theBody)
-        {
-            locals = new StatementStack();
-        }
-
-        void semantic() override {}
+        Block( ASTvector<Stmt*>* theBody) : body(*theBody){}
 
         void push_local(Stmt *l)
-        {
-            locals->push(l);
-        }
+        {locals.list.push_back(l);}
+
         void printOn(std::ostream &out) const {
             out << "Block of: "  << std::endl; 
-            out << "\t\tlocals: " ; locals->printOn(out); out << std::endl; 
-            out << "\t\tbody: " ;body->printOn(out); out << std::endl; 
+            out << "\t\tlocals: " ; locals.printOn(out); out << std::endl; 
+            out << "\t\tbody: " ; body.printOn(out); out <<  std::endl; 
         }
         Value* compile()  {
-            // we compile each locals, calling the right method w.r.t. its initial class
+            // we compile each locals, calling the right method for its initial class
             // one of Label(),Routine(),etc. 
-            locals->compile();
-            body->compile();
+            for (auto x : locals.list) x->compile();
+            for (auto x : body.list) x->compile();
             return nullptr;
         }
 
 };
 
 
+/* These 2 classes can be merged but we leave it as is for now 
+*/ 
 
 class Variable : public Stmt {
-    private:
-        std::string name;
-        SymType  type;
-    
     public:
-        Variable(std::string n, SymType t) : name(n), type(t) {}
-        Value* compile()  {
-            // TODO 
-            // create alloca 
-            return nullptr; }
-        void printOn(std::ostream &out) const {
-            out << "var " << name << " :" << type ;  
-        }
-
+    Stype t;
+    std::string s; 
+    Variable(std::string s, Stype t) : s(s), t(t){}
+    Value * compile(){return nullptr;}
+    void printOn(std::ostream &out) const { out << s << " : " << t;}
 };
 
-class VariableGroupStack : public Stmt {
+class VarDef : public Stmt {
+    /* Class containing variable definitions
+    */ 
     private:
-        std::vector<Variable*> vars;
-    
+        ASTvector<Stmt*> vars;    
     public:
-
-        void push(IdStack* var_ids, SymType t){
-            for (std::string s : var_ids->list ) {
-                vars.push_back(new Variable(s, t));
+        void push(std::vector<std::string>* var_ids, Stype t){
+            for (std::string s : *var_ids ) {
+                vars.list.push_back(new Variable(s,t));
             }
         }
-        void printOn(std::ostream &out) const {}
+        void printOn(std::ostream &out) const { out << "VarDef :"; vars.printOn(out) ;}
         Value* compile()  {
-            // call each variable to create an alloca 
-            for (auto v : vars){
-                v->compile();
-            }
+            // create an alloca for each variable
+            // add to symbol table  
             return nullptr;}
 
 };
 
-
-// labels are just names, 
-// any real difference between variables and label definitions ? 
-class Label : public Stmt {
+class LabelDef : public Stmt {
     private:
-        IdStack *lblnames;
+        std::vector<std::string> labels;
     public:
-        Label(IdStack* names) : lblnames(names) {}
-        void printOn(std::ostream &out) const {}
+        LabelDef(std::vector<std::string>* names) : labels(*names) {}
+        void printOn(std::ostream &out) const { out << "LabelDef";  out << labels ;}
         Value* compile()  {
             // TODO 
             /*
@@ -500,20 +591,20 @@ class Label : public Stmt {
         }
 
 };
-// There seems to be some overlap in classes
-// this looks like the variable, and variableGroupStack classes
+typedef enum{PASS_BY_REFERENCE,PASS_BY_VALUE} PassMode;
 class FormalsGroup : public Stmt {
     public:
-        IdStack *formals;
-        SymType type;
+        std::vector<std::string> formals;
+        Stype type;
         PassMode pass_by;
 
     
-        FormalsGroup(IdStack* f, SymType t, PassMode pm) : formals(f), type(t), pass_by(pm) {}
+        FormalsGroup(std::vector<std::string>* f, Stype t, PassMode pm) : formals(*f), type(t), pass_by(pm) {}
 
         void printOn(std::ostream &out) const { 
-            if (pass_by == PASS_BY_REFERENCE) out << "var: ";
-            formals->printOn(out) ; out <<  " : " ; out << type; 
+            if (pass_by == PASS_BY_REFERENCE) out << "var: "; 
+            out << formals;
+            out <<  " : " ; out << type; 
         }
         Value* compile()  {
             /*  TODO 
@@ -525,45 +616,22 @@ class FormalsGroup : public Stmt {
         }
 
 };
-// all Stack classes could be compiled to a single class
-// of ASTNodeStack with a std::vector<AST*> list; 
-// seems all functionallity is the same for most cases
-class FormalsGroupStack : public Stmt {
-    /*  A list of function parameters
-    */
-    public : 
-    std::vector<FormalsGroup*> list ; 
-
-    void printOn(std::ostream &out) const {
-        out << "[" ;for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->printOn(out) ; 
-        if (it + 1 != list.rend()) out << ", "; } out << "]"; } 
-    FormalsGroupStack(FormalsGroup* s){list.push_back(s);}
-    FormalsGroupStack() {}
-    
-    void push(FormalsGroup* x) {list.push_back(x);}
-    Value* compile()  {
-        // just compile each comp. of list
-        for (auto it = list.rbegin(); it != list.rend(); ++it) { (*it)->compile();}
-        return nullptr; 
-    }
-};
 
 
-class Routine : public Stmt {
+class FunctionDef : public Stmt {
     private:
         std::string name;
-        SymType type;
-        FormalsGroupStack* parameters;
+        Stype type;
+        ASTvector<FormalsGroup*> parameters;
         Block* body;
         bool isForward;
         
     public:
-        Routine(std::string n, FormalsGroupStack* params, SymType t) : name(n), parameters(params), type(t) { isForward = false;}
+        FunctionDef(std::string n, ASTvector<FormalsGroup*>* params, Stype t) 
+        : name(n), parameters(*params), type(t) { isForward = false;}
         
         void printOn(std::ostream &out) const { 
-            out << "["<< name << "]("; 
-            parameters->printOn(out);
-            out << ")" << " : " << type <<std::endl ;
+            out << name ; parameters.printOn(out); out << " : " << type <<std::endl ;
             body->printOn(out);
         }
         void set_forward(){this->isForward = true;}
@@ -572,14 +640,14 @@ class Routine : public Stmt {
         Value* compile()  {
 
             std::vector<Type*> param_types; 
-            for (auto param : parameters->list){
+            for (auto param : parameters.list){
                 // for some reason passing it as is, results in const error 
                 param_types.push_back(TypeConvert(param->type)) ;
             }
             // TODO : see how to handle by val and by reference params   
-            FunctionType* Ftype =  FunctionType::get(TypeConvert(  type ),param_types,false);
+            FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
             Function *routine = Function::Create(Ftype,
-            Function::ExternalLinkage,name,TheModule.get() 
+            Function::ExternalLinkage,name,TheModule
             );
             BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
             Builder.SetInsertPoint(BB);
@@ -589,25 +657,6 @@ class Routine : public Stmt {
         }
 
 };
-/*
-    This is essentially the same as FuncCall, 
-    but with no return argument, can be merged 
-*/
-class ProcCall : public Stmt {
-    private:
-        std::string pname;
-        ExpressionStack *parameters;
-    
-    public:
-        ProcCall(std::string pn) : pname(pn) { parameters = new ExpressionStack(); }
-        ProcCall(std::string pn, ExpressionStack* params) : pname(pn), parameters(params) {}
-        void printOn(std::ostream &out) const {out << "ProcCall[" << pname << "] ( "; parameters->printOn(out); out << " )" ;}
-        Value* compile()  {
-            
-            return nullptr;}
-
-};
-
 class Declaration : public Stmt {
     private:
         Expr *lval,*val ;
@@ -637,7 +686,7 @@ class IfThenElse : public Stmt {
         IfThenElse(Expr* c, Stmt* t) : cond(c), st_then(t) , hasElse(false) {};
         IfThenElse(Expr* c, Stmt* t, Stmt* e) : cond(c), st_then(t), st_else(e) , hasElse(true) {};
         void printOn(std::ostream &out) const { 
-            out << "If("; cond->printOn(out); out << "then" << std::endl;
+            out << "If("; cond->printOn(out); out << " then " << std::endl;
             st_then->printOn(out); out << std::endl ;
             if (hasElse) { out  << "else : " << std::endl;  st_else->printOn(out); }
 
@@ -696,12 +745,16 @@ class While : public Stmt {
          }
 };
 
-class LabelBind : public Stmt {
+
+class Label : public Stmt {
+/*
+    Implements actual label encounter in code
+*/
     private:
         std::string lbl;
         Stmt *target;
     public:
-        LabelBind(std::string name, Stmt* st) : lbl(name), target(st) {}
+        Label(std::string name, Stmt* st) : lbl(name), target(st) {}
         void printOn(std::ostream &out) const { out <<  lbl << " : "; target->printOn(out);  }
         Value* compile()  {
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -742,6 +795,8 @@ class ReturnStmt : public Stmt {
 
 };
 
+
+// could be merged but we leave it as 2 classes for now.
 class Init : public Stmt {
     private:
         Expr *lval;
@@ -773,6 +828,7 @@ class InitArray : public Stmt {
 
 };
 
+// we merged the DisposeArray class
 class Dispose : public Stmt {
     private:
         Expr *lval;
@@ -788,14 +844,3 @@ class Dispose : public Stmt {
 
 };
 
-class DisposeArray : public Stmt {
-    private:
-        Expr* lval ;
-    public:
-        DisposeArray(Expr* lval) {} 
-        void printOn(std::ostream &out) const {out << "DestroyArr " ; lval->printOn(out) ;}
-        Value* compile()  {
-            // TODO 
-            // same as above but for ^array of t 
-            return nullptr; }
-};

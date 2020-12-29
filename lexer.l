@@ -50,13 +50,17 @@ W [ \t\r\n]
 
 %}
 
-"and"       { return T_and; }
+"and"       { yylval.op = strdup(yytext); return T_and; }
+"div"       { yylval.op = strdup(yytext);  return T_div; }
+"mod"       { yylval.op = strdup(yytext); return T_mod; }
+"not"       { yylval.op = strdup(yytext); return T_not; }
+"or"        { yylval.op = strdup(yytext); return T_or; }
+
 "array"     { return T_array; }
 "begin"     { return T_begin; }
 "boolean"   { return T_boolean; }
 "char"      { return T_char; }
 "dispose"   { return T_dispose; }
-"div"       { return T_div; }
 "do"        { return T_do; }
 "else"      { return T_else; }
 "end"       { return T_end; }
@@ -67,12 +71,9 @@ W [ \t\r\n]
 "if"        { return T_if; }
 "integer"   { return T_integer; }
 "label"     { return T_label; }
-"mod"       { return T_mod; }
 "new"       { return T_new; }
 "nil"       { return T_nil; }
-"not"       { return T_not; }
 "of"        { return T_of; }
-"or"        { return T_or; }
 "procedure" { return T_procedure; }
 "program"   { return T_program; }
 "real"      { return T_real; }

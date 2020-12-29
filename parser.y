@@ -1,7 +1,7 @@
 %{
 #include "lexer.hpp"
 #include "ast.hpp"
-#include "symbol/symbol.h"
+#include "symbol.hpp"
 %}
 
 %union {
@@ -10,17 +10,17 @@
     char* str;
     char *op;
     char ch;
-    SymType type;
+    Stype type;
     Expr* expr;
     Stmt* stmt;
     Block* prog;
-    VariableGroupStack* vgs;
-    IdStack* ids;
-    Routine* rtn;
+    VarDef* vgs;
+    FunctionDef* rtn;
     FormalsGroup* flg;
-    FormalsGroupStack* fgs;
-    StatementStack* sts;
-    ExpressionStack* exs;
+    std::vector<std::string>* ids;
+    ASTvector<FormalsGroup*>* fgs;
+    ASTvector<Stmt*>* sts;
+    ASTvector<Expr*>*  exs;
 }
 
 %locations
@@ -85,7 +85,6 @@
 
 %type<op> binop_high binop_med binop_low sign
 %type<type> type
-
 %type<expr> expr r_value l_value ll_value func_call
 %type<stmt> local stmt proc_call
 %type<prog> body
@@ -112,33 +111,33 @@ body:
 
 local:
       "var" var_def         { $$ = $2; }
-    | "label" id_list ';'   { $$ = new Label($2); }
+    | "label" id_list ';'   { $$ = new LabelDef($2); }
     | header ';' body ';'   { $$ = $1; $1->add_body($3); }
     | "forward" header ';'  { $$ = $2; $2->set_forward(); }
     ;
 
 var_def:
       id_list ':' type ';' var_def  { $5->push($1, $3) ; $$ = $5; }
-    | id_list ':' type ';'          { $$ = new VariableGroupStack(); $$->push($1, $3); }
+    | id_list ':' type ';'          { $$ = new VarDef(); $$->push($1, $3); }
     ;
 
 id_list :
-      T_id ',' id_list              { $3->push($1) ; $$ = $3; }
-    | T_id                          { $$ = new IdStack(); $$->push($1); }
+      T_id ',' id_list              { $3->push_back($1) ; $$ = $3; }
+    | T_id                          { $$ = new std::vector<std::string>(); $$->push_back($1); }
     ;
 
 header :
-	  "procedure" T_id '(' parameter_list ')'           { $$ = new Routine($2, $4, typeVoid); }
-	| "function" T_id '(' parameter_list ')' ':' type   { $$ = new Routine($2, $4, $7); }
+	  "procedure" T_id '(' parameter_list ')'           { $$ = new FunctionDef($2, $4, typeVoid); }
+	| "function" T_id '(' parameter_list ')' ':' type   { $$ = new FunctionDef($2, $4, $7); }
 	;
 
 parameter_list: 
-      %empty                        { $$ = new FormalsGroupStack(); } //If we have no params then we need an empty stack
+      %empty                        { $$ = new ASTvector<FormalsGroup*>(); } //If we have no params then we need an empty stack
     | formal formal_list            { $2->push($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
     ;
 
 formal_list: 
-      %empty                        { $$ = new FormalsGroupStack(); }
+      %empty                        { $$ = new ASTvector<FormalsGroup*>(); }
     | ';' formal formal_list        { $3->push($2) ; $$ = $3; } 
     ;
 
@@ -162,7 +161,7 @@ block:
     ;
 
 stmt_list :
-      stmt                          { $$ = new StatementStack($1); }
+      stmt                          { $$ = new ASTvector<Stmt*>(); $$->push($1); }
     | stmt ';' stmt_list            { $3->push($1) ; $$ = $3; }
     ;
 
@@ -173,13 +172,13 @@ stmt:
     | "if" expr "then" stmt                 { $$ = new IfThenElse($2, $4); }
     | "if" expr "then" stmt "else" stmt     { $$ = new IfThenElse($2, $4, $6); } 
     | "while" expr "do" stmt        { $$ = new While($2, $4); }
-    | T_id ':' stmt                 { $$ = new LabelBind($1, $3); }
+    | T_id ':' stmt                 { $$ = new Label($1, $3); }
     | "goto" T_id                   { $$ = new GoTo($2); }
     | "return"                      { $$ = new ReturnStmt(); }
     | "new" l_value                 { $$ = new Init($2); } 
     | "new" '[' expr ']' l_value    { $$ = new InitArray($5, $3); }
     | "dispose" l_value             { $$ = new Dispose($2); } 
-    | "dispose" '[' ']' l_value     { $$ = new DisposeArray($4); }
+    | "dispose" '[' ']' l_value     { $$ = new Dispose($4); }
     ;
 
 expr:
@@ -188,7 +187,7 @@ expr:
     ;
 
 expr_list:
-      expr                      { $$ = new ExpressionStack(); $$->push($1); }
+      expr                      { $$ = new ASTvector<Expr*>(); $$->push($1); }
     | expr ',' expr_list        { $3->push($1); $$ = $3; }
     ;
 
@@ -212,7 +211,7 @@ r_value:
 
 l_value:
       T_id                      { $$ = new Id($1); }
-    | "result"                  { $$ = new Id("result"); } // put in the same class
+    | "result"                  { $$ = new Id("result"); } 
     | "string-literal"          { $$ = new String($1); }
     | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3); }
     | expr '^'                  { $$ = new Dereference($1); }
@@ -228,13 +227,13 @@ ll_value:
     ;
 
 func_call :
-      T_id '(' ')'              { $$ = new FuncCall($1); }
-    | T_id '(' expr_list ')'    { $$ = new FuncCall($1, $3); }
+      T_id '(' ')'              { $$ = new CallFunc($1); }
+    | T_id '(' expr_list ')'    { $$ = new CallFunc($1, $3); }
     ;
 
 proc_call :
-      T_id '(' ')'              {$$ =  new ProcCall($1);}
-    | T_id '(' expr_list ')'    {$$ =  new ProcCall($1, $3);}
+      T_id '(' ')'              {$$ =  new CallProc($1);}
+    | T_id '(' expr_list ')'    {$$ =  new CallProc($1, $3);}
     ;
 
 
