@@ -47,40 +47,69 @@ inline std::ostream& operator<<(std::ostream& os, const Stype& t){
     return os ;
 }
 
-
+template <class T>
 struct SymbolEntry {
   int offset;
   // for code generation
-  llvm::Value* value; 
+  T* value; 
   SymbolEntry() {}
-  SymbolEntry(llvm::Value* v, int ofs) : value(v), offset(ofs) {}
+  SymbolEntry(T* v, int ofs) : value(v), offset(ofs) {}
 };
 
+template< class T> 
 class Scope {
 public:
   Scope() : locals(), offset(-1), size(0) {}
   Scope(int ofs) : locals(), offset(ofs), size(0) {}
   int getOffset() const { return offset; }
   int getSize() const { return size; }
-  SymbolEntry *lookup(std::string name) {
+  SymbolEntry<T> *lookup(std::string name) {
     if (locals.find(name) == locals.end()) return nullptr;
     return &(locals[name]);
   }
-  int insert(std::string name, llvm::Value* v) {
+  int insert(std::string name, T* v) {
     if (locals.find(name) != locals.end()) {
       return 1;
     }
-    locals[name] = SymbolEntry(v, offset++);
+    locals[name] = SymbolEntry<T>(v, offset++);
     ++size;
     return 0; 
   }
 private:
-  std::map<std::string, SymbolEntry> locals;
+  std::map<std::string, SymbolEntry<T>> locals;
   int offset;
   int size;
 };
 
 class SymbolTable {
+/*
+  Modify this to account for error messages
+  when we insert and a name is already defined in the same scope it should be an eror 
+  when we lookup and it's not there it probably should be error etc. 
+  if it's the same as with CodeGenTable we can merge, no problem. 
+*/
+public:
+  void openScope() {
+    int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
+    scopes.push_back(Scope<TypeClass>(ofs));
+  }
+  void closeScope() { scopes.pop_back(); };
+  SymbolEntry<TypeClass> *lookup(std::string name) {
+    SymbolEntry<TypeClass> *e;
+    for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
+      e = i->lookup(name);
+      if (e != nullptr) return e;
+    }    
+    return e; 
+  }
+  int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
+  int insert(std::string name, Stype v) { return scopes.back().insert(name, v); }
+private:
+  std::vector<Scope<TypeClass>> scopes;
+};
+
+
+class CodeGenTable {
 /*  - lookup(name::string) : search for a name in SymbolTable
     return nullptr upon not founding 
 
@@ -91,19 +120,22 @@ class SymbolTable {
 public:
   void openScope() {
     int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
-    scopes.push_back(Scope(ofs));
+    scopes.push_back(Scope<llvm::Value>(ofs));
   }
   void closeScope() { scopes.pop_back(); };
-  SymbolEntry *lookup(std::string name) {
+  SymbolEntry<llvm::Value> *lookup(std::string name) {
+    SymbolEntry<llvm::Value> *e;
     for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
-      SymbolEntry *e = i->lookup(name);
-      return e; 
+      e = i->lookup(name);
+      if (e != nullptr) return e;
     }    
-    return nullptr; 
+    return e; 
   }
   int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
   int insert(std::string name, llvm::Value* v) { return scopes.back().insert(name, v); }
 private:
-  std::vector<Scope> scopes;
+  std::vector<Scope<llvm::Value>> scopes;
 };
+
+
 

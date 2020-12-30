@@ -11,5 +11,6 @@ Type* AST::i32;
 Type* AST::i64;
 Type* AST::r64;
 Type* AST::voidTy;
+CodeGenTable AST::ct = CodeGenTable();
 SymbolTable AST::st = SymbolTable();
 

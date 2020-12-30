@@ -52,8 +52,8 @@ class AST{
                 Function::ExternalLinkage, "GC_init",TheModule
             );
             */
-            st.openScope();
-            add_libs(*TheModule,st, TheContext);
+            ct.openScope();
+            add_libs(*TheModule,ct, TheContext);
 
             // MAIN FUNCTION
             Function *main = Function::Create(
@@ -66,7 +66,7 @@ class AST{
 
             compile();
             Builder.CreateRet(c_i32(0));
-            st.closeScope();
+            ct.closeScope();
             // VERIFICATION
             bool failed = verifyModule(*TheModule,&errs());
             if (failed) { 
@@ -94,7 +94,9 @@ class AST{
         ConstantInt* c_i8(char c){ return ConstantInt::get(TheContext,APInt(8,c,false)); }
         ConstantInt* c_i1(int n){ return ConstantInt::get(TheContext,APInt(1,n,false)); }
         ConstantFP* c_r64(double d) {return ConstantFP::get(TheContext,APFloat(d));}
-        static SymbolTable st; 
+
+        static CodeGenTable ct; 
+        static SymbolTable st ; 
 
 
         Type* TypeConvert  (Stype t) {
@@ -350,7 +352,7 @@ class Id : public Expr {
         std::string name ;
         Id(std::string n) : name(n) {}
         void printOn(std::ostream &out) const {out << name ;}
-        Value* compile() { return st.lookup(name)->value; };
+        Value* compile() { return ct.lookup(name)->value; };
 };
 
 typedef std::variant<int,double,char,bool> data_const ;
@@ -402,7 +404,7 @@ class CallFunc : public Expr {
             if (!parameters.list.empty()) parameters.printOn(out); 
             out << ")";}
         Value* compile()  {
-            Value* func = st.lookup(fname)->value;
+            Value* func = ct.lookup(fname)->value;
             std::vector<Value*> param_values;
             for (auto p : parameters.list){
                 param_values.push_back(p->compile());
@@ -425,7 +427,7 @@ class CallProc : public Stmt {
             if (!parameters.list.empty()) parameters.printOn(out); 
             out << ")";}
         Value* compile()  {
-            Value* func = st.lookup(fname)->value;
+            Value* func = ct.lookup(fname)->value;
             std::vector<Value*> param_values;
             for (auto p : parameters.list){
                 param_values.push_back(p->compile());
@@ -577,7 +579,7 @@ class VarDef : public Stmt {
                 BasicBlock* entryBlock =&TheFunction->getEntryBlock();
                 IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
                 Value* value = Builder.CreateAlloca(TypeConvert(var->type), 0, var->name.c_str());
-                st.insert(var->name,value);
+                ct.insert(var->name,value);
             }                    
             return nullptr;}
 
@@ -615,7 +617,7 @@ class FormalsGroup : public Stmt {
                 BasicBlock* entryBlock =&TheFunction->getEntryBlock();
                 IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
                 Value* value = Builder.CreateAlloca(TypeConvert(type), 0, var.c_str());
-                st.insert(var.c_str(),value);
+                ct.insert(var.c_str(),value);
             }       
             return nullptr; 
         }
@@ -645,7 +647,7 @@ class FunctionDef : public Stmt {
         Value* compile()  {
             // if its already defined or this is a forward declaration 
             Function *routine;
-            if (isForward || st.lookup(name) != nullptr){ 
+            if (isForward || ct.lookup(name) == nullptr){ 
                 std::vector<Type*> param_types; 
                 for (auto param : parameters.list){
                     param_types.push_back(TypeConvert(param->type)) ;
@@ -655,21 +657,21 @@ class FunctionDef : public Stmt {
                 routine = Function::Create(Ftype,
                     Function::ExternalLinkage,name,TheModule
                 );
-                st.insert(name,routine);
+                ct.insert(name,routine);
             }
-            else {routine = (Function*)st.lookup(name)->value;}
+            else {routine = (Function*)ct.lookup(name)->value;}
             if (!isForward){
                 //create a new basic block 
                 BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
                 Builder.SetInsertPoint(BB);
                 // create a new scope
-                st.openScope();
+                ct.openScope();
                 for (FormalsGroup* f : parameters.list){
-                    // create allocas and add to symbolTable
+
                     f->compile();                    
                 }
                 body->compile(); 
-                st.closeScope();
+                ct.closeScope();
             }
             return nullptr; 
         }
@@ -771,13 +773,13 @@ class Label : public Stmt {
         std::string lbl;
         Stmt *target;
     public:
-        Label(std::string name, Stmt* st) : lbl(name), target(st) {}
+        Label(std::string name, Stmt* ct) : lbl(name), target(ct) {}
         void printOn(std::ostream &out) const { out <<  lbl << " : "; target->printOn(out);  }
         Value* compile()  {
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
             BasicBlock * LabelBB  = BasicBlock::Create(TheContext,lbl, TheFunction);
             Builder.SetInsertPoint(LabelBB);
-            st.insert(lbl,LabelBB);
+            ct.insert(lbl,LabelBB);
             target->compile();            
             return nullptr; 
         }
@@ -790,7 +792,7 @@ class GoTo : public Stmt {
         GoTo(std::string lbl) : label(lbl) {}
         void printOn(std::ostream &out) const {out << "LABEL : " << label;}
         Value* compile()  {
-            BasicBlock* val = (BasicBlock*)st.lookup(label)->value;
+            BasicBlock* val = (BasicBlock*)ct.lookup(label)->value;
             Builder.CreateBr(val);
             return nullptr; 
         }
@@ -802,7 +804,7 @@ class ReturnStmt : public Stmt {
         ReturnStmt(){};
         void printOn(std::ostream &out) const {out << "RET" ; }
         Value* compile()  {
-            Value* ret = st.lookup("return")->value;
+            Value* ret = ct.lookup("return")->value;
             Builder.CreateRet(ret);
             return nullptr;}
 
