@@ -6,6 +6,7 @@
 #include <variant> 
 
 #include "symbol.hpp"
+#include "external.hpp"
 
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
@@ -19,9 +20,7 @@
 using namespace llvm;
 
 
-
-
-class AST {
+class AST{
     public:
         virtual ~AST() {}
         virtual void semantic() {}
@@ -29,7 +28,7 @@ class AST {
         virtual Value* compile() = 0 ;
         void compile_llvm(){
             // Initialize Module
-            TheModule = new Module("add program name here?",TheContext);
+            TheModule = new Module("program",TheContext);
 
             // TODO : find how to make optimizations passes in new LLVM versions. 
 
@@ -41,24 +40,21 @@ class AST {
             r64 =  Type::getDoubleTy(TheContext);
             voidTy = Type::getVoidTy(TheContext);
 
-
-            /*
-                These functions should be in the global namespcae
-                unless shadowed by other variable nabes, so they should be added the symbol table
-            */
-
             // GARBAGE COLLECTION
             // optional, let's leave it for now 
             /*TheMalloc = Function::Create(
                 FunctionType::get( PointerType::get(i8,0), {i64}, false),
                 Function::ExternalLinkage, "GC_malloc",TheModule
             );
-            
+          
             TheInit = Function::Create(
                 FunctionType::get(voidTy, {}, false),
                 Function::ExternalLinkage, "GC_init",TheModule
             );
             */
+            st.openScope();
+            add_libs(*TheModule,st, TheContext);
+
             // MAIN FUNCTION
             Function *main = Function::Create(
                 FunctionType::get(i32,{}, false), 
@@ -70,7 +66,7 @@ class AST {
 
             compile();
             Builder.CreateRet(c_i32(0));
-
+            st.closeScope();
             // VERIFICATION
             bool failed = verifyModule(*TheModule,&errs());
             if (failed) { 
@@ -80,8 +76,9 @@ class AST {
             } 
 
             // PRINT INTERMEDIATE IR 
-            // https://stackoverflow.com/questions/65000322/creating-raw-ostream-object-in-llvm
-            TheModule->print(outs(),nullptr);
+            std::error_code EC;
+            raw_ostream * out = new raw_fd_ostream("out.ll",EC);
+            TheModule->print(*out,nullptr);
         }
 
         static LLVMContext TheContext; 
@@ -119,15 +116,14 @@ class AST {
         }
 
 
-}   
-;
+};
 
 // Operator << on AST
 inline std::ostream& operator<<(std::ostream &out, const AST &t) {
   t.printOn(out);
   return out;
 }
-
+// print a vector of string 
 inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t) {
         out << "[";
         for (std::size_t i = 0; i < t.size(); i++) {
@@ -353,17 +349,9 @@ class Id : public Expr {
     public:
         std::string name ;
         Id(std::string n) : name(n) {}
-        void printOn(std::ostream &out) const {out << "Id(" << name <<  ")";}
-        Value* compile() {
-            // TODO 
-            /*
-                Search for name in symbol table, 
-                return associated Value
-            */
-            return nullptr; }
-
+        void printOn(std::ostream &out) const {out << name ;}
+        Value* compile() { return st.lookup(name)->value; };
 };
-
 
 typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
@@ -402,8 +390,6 @@ class Const : public Expr {
 
 
 
-// remember to account for both a return argument
-// and no return argument
 class CallFunc : public Expr {
     private:
         std::string fname;
@@ -412,18 +398,17 @@ class CallFunc : public Expr {
         CallFunc(std::string name, ASTvector<Expr*>* params) : fname(name), parameters(*params) {}
         CallFunc(std::string name) : fname(name) {}
         void printOn(std::ostream &out) const {
-            out << "Call(" << fname; 
+            out << fname << "("; 
             if (!parameters.list.empty()) parameters.printOn(out); 
             out << ")";}
         Value* compile()  {
-            // TODO get function from symbol table 
-            // Function func = nullptr; 
-            // calculate values for arguments
-            // parameters->compile();
-            // Value* ret = Builder.CreateCall(func,parameters->values);
-            //return ret;
-
-            return nullptr; 
+            Value* func = st.lookup(fname)->value;
+            std::vector<Value*> param_values;
+            for (auto p : parameters.list){
+                param_values.push_back(p->compile());
+            }
+            Value* ret = Builder.CreateCall(func,param_values);
+            return ret;
             }
 
 };
@@ -436,39 +421,56 @@ class CallProc : public Stmt {
         CallProc(std::string name, ASTvector<Expr*>* params) : fname(name), parameters(*params) {}
         CallProc(std::string name) : fname(name){}
         void printOn(std::ostream &out) const {
-            out << "Call(" << fname; 
+            out << fname << "("; 
             if (!parameters.list.empty()) parameters.printOn(out); 
             out << ")";}
         Value* compile()  {
-            // TODO get function from symbol table 
-            // Function func = nullptr; 
-            // calculate values for arguments
-            // parameters->compile();
-            // Value* ret = Builder.CreateCall(func,parameters->values);
-            //return ret;
-
+            Value* func = st.lookup(fname)->value;
+            std::vector<Value*> param_values;
+            for (auto p : parameters.list){
+                param_values.push_back(p->compile());
+            }
+            Builder.CreateCall(func,param_values);
             return nullptr; 
             }
 
 };
 
-/*  String should be handled with care,
-    like an array type but you can't assign ? 
-*/ 
+
+
 class String : public Expr {
+    /*
+        l-value, type : array[n] of char
+        n = #characters + '\0'
+        the only array-type constant
+        so you can use it as str[i], but not to assign since it's a constant 
+    */
     private:
-        std::string s; 
-        // should add type array [n] of char
+        const char* s; 
+        Stype t; 
     public:
-        String(std::string s) : s(s){}
+        String(const char* s) : s(s), t(typeArray(std::string(s).length(),typeChar))  {  }
         void printOn(std::ostream &out) const {out << '\"' << s << '\"';}
         Value* compile()  {
-            /* string is just a static array of i8 (char), 
-               created with alloca, this could be also be unified with the array class
-               TODO 
-            */ 
-            return nullptr;}
+            std::string pstr(s);
+            std::vector<std::pair<std::string,std::string>> rep = {
+                {"\\n" , "\n"} , {"\\t", "\t"}, {"\\r", "\r"} , {"\\\\", "\\"} , {"\\0", "\0"}, 
+                {"\\'","'"}, {"\\\"", "\""}  };
+            for (auto p : rep){
+                ReplaceStringInPlace(pstr,p.first, p.second);
+            }
+            Value *ret = Builder.CreateGlobalString(pstr.c_str(),"str",0);
+            return ret;
 
+            }
+        void ReplaceStringInPlace(std::string& subject, const std::string& search,
+                                const std::string& replace) {
+            size_t pos = 0;
+            while((pos = subject.find(search, pos)) != std::string::npos) {
+                subject.replace(pos, search.length(), replace);
+                pos += replace.length();
+            }
+        }
 };
 
 class ArrayAccess : public Expr {
@@ -479,11 +481,10 @@ class ArrayAccess : public Expr {
         ArrayAccess(Expr* lval, Expr* pos) : lval(lval) , pos(pos){}
         void printOn(std::ostream &out) const { lval->printOn(out); out << "[";  pos->printOn(out); out << "]";}
         Value* compile()  {
-            /*
-                TODO 
-                probably need a GEP instruction
-            */
-            return nullptr;}
+            Value *index = pos->compile();
+            Value *ptr = lval->compile();
+            return Builder.CreateGEP(ptr, {0, index});
+            }
 
 
 };
@@ -495,9 +496,9 @@ class Dereference : public Expr {
         Dereference(Expr* e) : e(e) {}
         void printOn(std::ostream &out) const { e->printOn(out) ; out << "^";}
         Value* compile()  {
-            // TODO 
-            // do the right GEP instruction for the Pointer
-            return nullptr; 
+            Value *ptr = e->compile();
+            return Builder.CreateGEP(ptr, {0});
+            
         }
 
 };
@@ -509,9 +510,9 @@ class Block : public Stmt {
         This class implements the body of each structure
 
         local :
-            variable definitions : VariableGroupStack( [variables]) , variable = {type,id}
-            label definitions : Label( [id] ) 
-            a function definition : Routine() , routine is a 
+            variable definitions : VarDef( [variables]) , variable = {type,id}
+            label definitions : LabelDef( [id] ) 
+            a function definition : FuncDdef() 
             a "forward" function definition : Routine() with forward=True, body = undefined; 
                 - a Routine is a structure and has its own Block() 
             ;
@@ -534,11 +535,13 @@ class Block : public Stmt {
             out << "\t\tbody: " ; body.printOn(out); out <<  std::endl; 
         }
         Value* compile()  {
+            // A block is the right time to open a scope 
             // we compile each locals, calling the right method for its initial class
             // one of Label(),Routine(),etc. 
             for (auto x : locals.list) x->compile();
             for (auto x : body.list) x->compile();
             return nullptr;
+
         }
 
 };
@@ -549,18 +552,18 @@ class Block : public Stmt {
 
 class Variable : public Stmt {
     public:
-    Stype t;
-    std::string s; 
-    Variable(std::string s, Stype t) : s(s), t(t){}
+    Stype type;
+    std::string name; 
+    Variable(std::string s, Stype t) : name(s), type(t){}
     Value * compile(){return nullptr;}
-    void printOn(std::ostream &out) const { out << s << " : " << t;}
+    void printOn(std::ostream &out) const { out << name << " : " << type;}
 };
 
 class VarDef : public Stmt {
     /* Class containing variable definitions
     */ 
     private:
-        ASTvector<Stmt*> vars;    
+        ASTvector<Variable*> vars;    
     public:
         void push(std::vector<std::string>* var_ids, Stype t){
             for (std::string s : *var_ids ) {
@@ -569,8 +572,13 @@ class VarDef : public Stmt {
         }
         void printOn(std::ostream &out) const { out << "VarDef :"; vars.printOn(out) ;}
         Value* compile()  {
-            // create an alloca for each variable
-            // add to symbol table  
+            for (auto var : vars.list){
+                Function *TheFunction = Builder.GetInsertBlock()->getParent();
+                BasicBlock* entryBlock =&TheFunction->getEntryBlock();
+                IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
+                Value* value = Builder.CreateAlloca(TypeConvert(var->type), 0, var->name.c_str());
+                st.insert(var->name,value);
+            }                    
             return nullptr;}
 
 };
@@ -582,13 +590,8 @@ class LabelDef : public Stmt {
         LabelDef(std::vector<std::string>* names) : labels(*names) {}
         void printOn(std::ostream &out) const { out << "LabelDef";  out << labels ;}
         Value* compile()  {
-            // TODO 
-            /*
-                labels are essentially created as new BasicBlocks
-                here we just declare labels , add them to symbol table 
-            */
-            return nullptr; 
-        }
+            //no need to do anything, labels are basic blocks
+            return nullptr; }
 
 };
 typedef enum{PASS_BY_REFERENCE,PASS_BY_VALUE} PassMode;
@@ -607,11 +610,13 @@ class FormalsGroup : public Stmt {
             out <<  " : " ; out << type; 
         }
         Value* compile()  {
-            /*  TODO 
-                alloca for parameter variables, add to symbol table
-                how to signify pass_by value or by reference? 
-                use byref(<ty>), byval(<ty>) in llvm language specification ? 
-            */           
+            for (auto var : formals){
+                Function *TheFunction = Builder.GetInsertBlock()->getParent();
+                BasicBlock* entryBlock =&TheFunction->getEntryBlock();
+                IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
+                Value* value = Builder.CreateAlloca(TypeConvert(type), 0, var.c_str());
+                st.insert(var.c_str(),value);
+            }       
             return nullptr; 
         }
 
@@ -638,40 +643,53 @@ class FunctionDef : public Stmt {
         void add_body(Block* theBody){this->body = theBody;}
 
         Value* compile()  {
-
-            std::vector<Type*> param_types; 
-            for (auto param : parameters.list){
-                // for some reason passing it as is, results in const error 
-                param_types.push_back(TypeConvert(param->type)) ;
+            // if its already defined or this is a forward declaration 
+            Function *routine;
+            if (isForward || st.lookup(name) != nullptr){ 
+                std::vector<Type*> param_types; 
+                for (auto param : parameters.list){
+                    param_types.push_back(TypeConvert(param->type)) ;
+                }
+                // TODO : see how to handle by val and by reference params   
+                FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
+                routine = Function::Create(Ftype,
+                    Function::ExternalLinkage,name,TheModule
+                );
+                st.insert(name,routine);
             }
-            // TODO : see how to handle by val and by reference params   
-            FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
-            Function *routine = Function::Create(Ftype,
-            Function::ExternalLinkage,name,TheModule
-            );
-            BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
-            Builder.SetInsertPoint(BB);
-            if (!isForward) body->compile();
-            // TODO : symbol.insert(Function); 
+            else {routine = (Function*)st.lookup(name)->value;}
+            if (!isForward){
+                //create a new basic block 
+                BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
+                Builder.SetInsertPoint(BB);
+                // create a new scope
+                st.openScope();
+                for (FormalsGroup* f : parameters.list){
+                    // create allocas and add to symbolTable
+                    f->compile();                    
+                }
+                body->compile(); 
+                st.closeScope();
+            }
             return nullptr; 
         }
 
 };
 class Declaration : public Stmt {
     private:
-        Expr *lval,*val ;
+        Expr *lval,*rval ;
     public:
-        Declaration(Expr* lval, Expr* val) : lval(lval) , val(val) {}
+        Declaration(Expr* lval, Expr* rval) : lval(lval) , rval(rval) {}
         void printOn(std::ostream &out) const {
             lval->printOn(out);
             out << " := " ; 
-            val->printOn(out);
+            rval->printOn(out);
         }
         Value* compile()  {
-            // TODO 
-            /*  store command, check language specification, 
-                and how to assign with heap structures
-            */ 
+            Value* l = lval->compile();
+            Value* r = rval->compile();
+            Builder.CreateLoad(r);
+            Builder.CreateStore(l,r);
             return nullptr;}
 
 };
@@ -723,15 +741,14 @@ class While : public Stmt {
         }        
         Value *compile() {
             // get current block 
-            BasicBlock *PrevBB = Builder.GetInsertBlock();
-            Function *TheFunction = PrevBB->getParent();
+            Function *TheFunction = Builder.GetInsertBlock()->getParent();
             BasicBlock *LoopBB = BasicBlock::Create(TheContext,"loop", TheFunction);
             BasicBlock *AfterBB = BasicBlock::Create(TheContext,"endloop", TheFunction);
             BasicBlock *BodyBB = BasicBlock::Create(TheContext,"body", TheFunction);
             // jump to loop block 
             Builder.CreateBr(LoopBB);
-
             Builder.SetInsertPoint(LoopBB);
+
             // calculate condition
             Value* Vcond = cond->compile(); 
             Builder.CreateCondBr(Vcond, BodyBB,AfterBB);
@@ -760,10 +777,8 @@ class Label : public Stmt {
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
             BasicBlock * LabelBB  = BasicBlock::Create(TheContext,lbl, TheFunction);
             Builder.SetInsertPoint(LabelBB);
-            // TODO
-            // update symbol table with the BasicBlock*
-            // label is already added in the Label() class
-            target->compile();
+            st.insert(lbl,LabelBB);
+            target->compile();            
             return nullptr; 
         }
 };
@@ -775,9 +790,8 @@ class GoTo : public Stmt {
         GoTo(std::string lbl) : label(lbl) {}
         void printOn(std::ostream &out) const {out << "LABEL : " << label;}
         Value* compile()  {
-            // TODO :
-            // search into symbol table for label 
-            //Builder.CreateBr();
+            BasicBlock* val = (BasicBlock*)st.lookup(label)->value;
+            Builder.CreateBr(val);
             return nullptr; 
         }
 
@@ -788,9 +802,8 @@ class ReturnStmt : public Stmt {
         ReturnStmt(){};
         void printOn(std::ostream &out) const {out << "RET" ; }
         Value* compile()  {
-            // TODO 
-            // search for result in symboltable 
-            // if result is set return it with CreateRet()
+            Value* ret = st.lookup("return")->value;
+            Builder.CreateRet(ret);
             return nullptr;}
 
 };
@@ -804,11 +817,7 @@ class Init : public Stmt {
         Init(Expr* lval) {}
         void printOn(std::ostream &out) const {out << "Init"; lval->printOn(out); }
         Value* compile()  {
-            // TODO
-            /*  Create call to malloc_gc ,
-                for concrete type pointers, e.g. everything except dynamic arrays
-                need to have type of Expr
-            */
+            
             return nullptr;}
 
 };

@@ -3,7 +3,7 @@
 LLVMCONFIG=llvm-config
 CXX=g++
 
-CXXFLAGS= -Wall -Wno-reorder -Wno-switch `$(LLVMCONFIG) --cxxflags` -std=c++17
+CXXFLAGS= -Wall -Wno-reorder -Wno-switch `$(LLVMCONFIG) --cxxflags` -std=c++17 -g 
 LDFLAGS=`$(LLVMCONFIG) --ldflags --system-libs --libs all`
 
 
@@ -15,7 +15,7 @@ LDFLAGS=`$(LLVMCONFIG) --ldflags --system-libs --libs all`
 default: pcl
 
 lexer.cpp: lexer.l
-	flex -s -o lexer.cpp lexer.l
+	flex -s  $(DEBUG_L) -o lexer.cpp lexer.l
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $<

@@ -7,7 +7,7 @@
 %union {
     int num;
     double real;
-    char* str;
+    char *str;
     char *op;
     char ch;
     Stype type;
@@ -100,7 +100,8 @@
 
 program :
       "program" T_id ';' body '.' {
-        std::cout << "AST: " << *$4 << std::endl;}
+        //std::cout << "AST: " << *$4 << std::endl; 
+        $4->compile_llvm();}
         
     ;
 
@@ -212,7 +213,7 @@ r_value:
 l_value:
       T_id                      { $$ = new Id($1); }
     | "result"                  { $$ = new Id("result"); } 
-    | "string-literal"          { $$ = new String($1); }
+    | "string-literal"          { $$ = new String($1);    }
     | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3); }
     | expr '^'                  { $$ = new Dereference($1); }
     | '(' l_value ')'           { $$ = $2; }
@@ -221,7 +222,7 @@ l_value:
 ll_value:
       T_id                      { $$ = new Id($1); }
     | "result"                  { $$ = new Id("result"); }
-    | "string-literal"          { $$ = new String($1); }
+    | "string-literal"          { $$ = new String($1);  }
     | ll_value '[' expr ']'     { $$ = new ArrayAccess($1, $3); } 
     | '(' l_value ')'           { $$ = $2; }
     ;
@@ -261,11 +262,11 @@ int main(int argc, char *argv[]) {
   #if YYDEBUG
       yydebug = 1;
   #endif
-  if (argc == 2) {
-    yyin = fopen(argv[1], "r");
-  }
+  //if (argc == 2) {
+  //  yyin = fopen(argv[1], "r");
+  //}
   int ret = yyparse();
-  if (!ret) { std::cout << "Parse successful.\n";}
+  //if (!ret) { std::cout << "Parse successful.\n";}
 
   fclose(yyin);
 
