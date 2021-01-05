@@ -41,17 +41,23 @@ class AST{
             voidTy = Type::getVoidTy(TheContext);
 
             // GARBAGE COLLECTION
-            // optional, let's leave it for now 
-            /*TheMalloc = Function::Create(
+            GC_Malloc = Function::Create(
                 FunctionType::get( PointerType::get(i8,0), {i64}, false),
                 Function::ExternalLinkage, "GC_malloc",TheModule
             );
           
-            TheInit = Function::Create(
+            GC_Init = Function::Create(
                 FunctionType::get(voidTy, {}, false),
                 Function::ExternalLinkage, "GC_init",TheModule
             );
-            */
+
+            GC_Free = Function::Create(
+                FunctionType::get(voidTy ,{PointerType::get(i8,0)}, false), 
+                Function::ExternalLinkage,"GC_free",TheModule
+                );
+            
+            
+
             ct.openScope();
             add_libs(*TheModule,ct, TheContext);
 
@@ -62,7 +68,7 @@ class AST{
                 );
             BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
             Builder.SetInsertPoint(BB);
-            //Builder.CreateCall(TheInit, {});
+            Builder.CreateCall(GC_Init, {});
 
             compile();
             Builder.CreateRet(c_i32(0));
@@ -74,11 +80,17 @@ class AST{
                 TheModule->print(errs(), nullptr);
                 std::exit(1);
             } 
-
             // PRINT INTERMEDIATE IR 
+            // TODO find out how to get the global filename 
             std::error_code EC;
-            raw_ostream * out = new raw_fd_ostream("out.ll",EC);
+            raw_ostream * out = new raw_fd_ostream("out.imm",EC);
             TheModule->print(*out,nullptr);
+
+            // PRINT MACHINE CODE
+            //TODO find out how to print machine code 
+
+
+
         }
 
         static LLVMContext TheContext; 
@@ -95,10 +107,17 @@ class AST{
         ConstantInt* c_i1(int n){ return ConstantInt::get(TheContext,APInt(1,n,false)); }
         ConstantFP* c_r64(double d) {return ConstantFP::get(TheContext,APFloat(d));}
 
+        static Function* GC_Malloc;
+        static Function* GC_Init;
+        static Function* GC_Free;
+
         static CodeGenTable ct; 
         static SymbolTable st ; 
-
-
+        /*  for each SymbolTable scope we want a pointer to 
+            to the corresponding function
+        */
+        static std::vector<AST*> functions;
+        
         Type* TypeConvert  (Stype t) {
             switch(t->kind) {
                 case TYPE_VOID      : return voidTy;
@@ -116,6 +135,15 @@ class AST{
             }
             return voidTy;
         }
+        bool is_arithmetic(Stype t) { return t->kind == TYPE_REAL || t->kind == TYPE_INTEGER;}
+        bool is_concrete(Stype t) {return ! ( t->kind == TYPE_IARRAY);}
+        bool check_type(Stype t1,Stype t2,bool check_size = true){ 
+            if (t1->kind != t2->kind ) return false;
+            if (t1->kind == TYPE_ARRAY && check_size && t1->size != t2->size) return false ;
+            if (t1->kind == TYPE_POINTER || t1->kind == TYPE_IARRAY || t1->kind == TYPE_ARRAY) 
+                return check_type(t1->refType, t2->refType);
+        }
+
 
 
 };
@@ -137,8 +165,10 @@ inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string
 class Expr : public AST {
     public:
         Stype type;
+        bool lvalue = false; 
         virtual void printOn(std::ostream &out) const = 0;
         virtual Value* compile()  = 0;
+        void error(const char* str){ std::cerr << str; }    
 };
 class Stmt : public AST {
     public : 
@@ -149,7 +179,7 @@ class Stmt : public AST {
 template<class T>
 class ASTvector : public Stmt , public Expr{
     public : 
-    Value* compile() {return nullptr;}
+  
     std::vector<T> list; 
     void printOn(std::ostream &out) const {
         out << "[";
@@ -176,13 +206,64 @@ class BinOp : public Expr{
         std::string op;        
     public:
         BinOp(Expr* l, std::string o, Expr* r) : left(l), right(r), op(o) {}
-        void semantic() override{}
         void printOn(std::ostream &out) const {
             left->printOn(out); 
             out << " " << op; 
             out << " ";
             right->printOn(out); 
         }
+        void semantic() {
+            // calclulate types of operants and check for validity 
+            left->semantic();
+            right->semantic();
+            bool numeric = is_arithmetic(left->type) && is_arithmetic(right->type);
+            bool boolean = check_type(left->type,typeBoolean) && check_type(right->type,typeBoolean);
+
+            switch( hashf(op.c_str()) ){
+                case "+"_ : case "-"_ : case "*"_ : 
+                    if (! numeric) {error("Not numeric");}
+                    if (check_type(left->type,typeReal) || check_type(right->type,typeReal))
+                        this->type = typeReal;
+                    else 
+                        this->type = typeInteger;       
+                    break; 
+
+                case "/"_ : if (! numeric) {error("Not numeric");}
+                    this->type = typeReal;
+                    break; 
+
+                case "div"_ : case "mod"_ : 
+                    if (check_type(left->type,typeInteger) && check_type(right->type,typeInteger)) 
+                        this->type = typeInteger;
+                    else   { error("Not integer");}
+                    break; 
+
+
+                case "and"_  : case "or"_ : 
+                    if (! boolean) {error("Not boolean");}
+                    this->type = typeBoolean ;  
+
+                case "<>"_ : case "="_ : 
+                {
+                    bool same_type = check_type(left->type,right->type);
+                    // type must be same but not of type array 
+                    same_type = same_type && (left->type->kind == TYPE_IARRAY || left->type->kind == TYPE_ARRAY);
+                    if (numeric || same_type) { this->type = typeBoolean;}
+                    else { error("Equality error");}
+                    break; 
+                }
+                case ">"_ :                     
+                case "<"_ :
+                case "<="_ : 
+                case ">="_ : 
+                    if (! numeric) { error("Not numeric");}
+                    this->type = typeBoolean;
+                    break; 
+                default : 
+                    error("should not be reached");
+            }
+        }
+
         Value* compile()  {
             Value *l = left->compile();
             Value *r = nullptr; 
@@ -190,10 +271,10 @@ class BinOp : public Expr{
             if (op != "and" && op != "or") r = right->compile();
             bool real_ops = false; 
             // sign exted to real if necessary
-            if (left->type->kind == TYPE_REAL || right->type->kind == TYPE_REAL) {
+            if (check_type(left->type,typeReal) || check_type(right->type,typeReal)) {
                 // can also use Value type here for cmp 
-                if (left->type->kind != TYPE_REAL) Builder.CreateSExt(l,r64);
-                if (right->type->kind != TYPE_REAL) Builder.CreateSExt(r,r64);
+                if (! check_type(left->type, typeReal))  Builder.CreateSExt(l,r64);
+                if (! check_type(right->type, typeReal)) Builder.CreateSExt(r,r64);
                 real_ops = true ;
             }
             switch( hashf(op.c_str()) ){
@@ -208,7 +289,7 @@ class BinOp : public Expr{
                     if (real_ops)   return Builder.CreateFMul(l,r,"addtmp");
                     else            return Builder.CreateMul(l,r,"addtmp");
                 case "/"_ : 
-                    if (left->type->kind == TYPE_INTEGER && right->type->kind == TYPE_INTEGER) {
+                    if (check_type(left->type,typeInteger) || check_type(right->type,typeInteger)) {
                         Builder.CreateSExt(l,r64);
                         Builder.CreateSExt(r,r64);
                     }
@@ -319,7 +400,24 @@ class UnOp : public Expr {
     public:
         UnOp(std::string _o, Expr* _e) : op(_o), e(_e) {}
         
-        void semantic() override{}
+        void semantic() override{
+            e->semantic();
+            switch( hashf(op.c_str()) ){
+                case "+"_ : case "-"_ :
+                    if (! is_arithmetic(e->type)) error("not arithmetic");
+                    this->type = e->type;  
+                    break;
+                case "not"_ : 
+                    if (!check_type(e->type,typeBoolean)) error("not bool");
+                    this->type = e->type; 
+                    break;
+                case "@"_ : 
+                    if (!e->lvalue)  error("not l-value");
+                    this->type = typePointer(e->type);
+                    break;
+            }
+
+        }
         void printOn(std::ostream &out) const {out << "(" << op ;
         e->printOn(out); 
         out << ")";}
@@ -350,9 +448,18 @@ class Id : public Expr {
     */
     public:
         std::string name ;
-        Id(std::string n) : name(n) {}
+        Id(std::string n) : name(n) { this->lvalue = true; }
         void printOn(std::ostream &out) const {out << name ;}
         Value* compile() { return ct.lookup(name)->value; };
+        void semantic(){
+            SymbolEntry* e =  st.lookup(name);
+            this->type = e->type; 
+            int depth = e->depth; 
+            vector<AST*> 
+            while(depth --)
+            FunctionDef* f = functions.back();
+            f->add_parameter(name,e->depth);
+        }
 };
 
 typedef std::variant<int,double,char,bool> data_const ;
@@ -367,13 +474,11 @@ class Const : public Expr {
         Const(data_const val, Stype t) : val(val) , type(t) {}      
         void printOn(std::ostream &out) const {
             switch(type->kind) {
-            
                 case TYPE_INTEGER : out << std::get<int>(val) ; break;
                 case TYPE_BOOLEAN : out << std::get<bool>(val) ; break;
                 case TYPE_CHAR : out << std::get<char>(val) ; break;
                 case TYPE_REAL : out << std::get<double>(val) ; break;
                 case TYPE_VOID : out << "Nil" ; break; 
-
             } 
         }
         Value* compile() {
@@ -412,6 +517,18 @@ class CallFunc : public Expr {
             Value* ret = Builder.CreateCall(func,param_values);
             return ret;
             }
+        void semantic(){
+            SymbolEntry * e = st.lookup(fname);  
+            vector<Stype> defined_types = e->param_types;
+            if (defined_types->length() != parameters->length() )  error("different type of parameters")
+            for(int i ; i < vector.length() ; i++){
+                Expr* ex = parameters[i] 
+                Stype t = efined_types[i]; 
+                ex->semantic();
+                if (ex->type != t) error("function call parameters do not match")
+            }            
+            this->type = e->type;
+        }
 
 };
 
@@ -435,6 +552,17 @@ class CallProc : public Stmt {
             Builder.CreateCall(func,param_values);
             return nullptr; 
             }
+        void semantic(){
+            SymbolEntry * e = st.lookup(fname);  
+            vector<Stype> defined_types = e->param_types;
+            if (defined_types->length() != parameters->length() )  error("different type of parameters")
+            for(int i ; i < vector.length() ; i++){
+                Expr* ex = parameters[i] 
+                Stype t = efined_types[i]; 
+                ex->semantic();
+                if (ex->type != t) error("function call parameters do not match")
+            }            
+        }
 
 };
 
@@ -451,7 +579,7 @@ class String : public Expr {
         const char* s; 
         Stype t; 
     public:
-        String(const char* s) : s(s), t(typeArray(std::string(s).length(),typeChar))  {  }
+        String(const char* s) : s(s), t(typeArray(std::string(s).length(),typeChar))  { this->lvalue = true; }
         void printOn(std::ostream &out) const {out << '\"' << s << '\"';}
         Value* compile()  {
             std::string pstr(s);
@@ -473,6 +601,8 @@ class String : public Expr {
                 pos += replace.length();
             }
         }
+        // don't need to do anything 
+        void semantic(){}
 };
 
 class ArrayAccess : public Expr {
@@ -487,6 +617,11 @@ class ArrayAccess : public Expr {
             Value *ptr = lval->compile();
             return Builder.CreateGEP(ptr, {0, index});
             }
+        void semantic(){
+            if (lval->type->kind != TYPE_ARRAY) error("accesing non array");
+            if (!check_type(pos->type,typeInteger)) error("non integer access constant");
+            this->type = lval->type->refType;
+        }
 
 
 };
@@ -500,7 +635,10 @@ class Dereference : public Expr {
         Value* compile()  {
             Value *ptr = e->compile();
             return Builder.CreateGEP(ptr, {0});
-            
+        }
+        void semantic(){
+            if (e->type->kind != TYPE_POINTER) error("dereferencing non pointer");
+            this->type = lval->type->refType;
         }
 
 };
@@ -537,13 +675,15 @@ class Block : public Stmt {
             out << "\t\tbody: " ; body.printOn(out); out <<  std::endl; 
         }
         Value* compile()  {
-            // A block is the right time to open a scope 
             // we compile each locals, calling the right method for its initial class
-            // one of Label(),Routine(),etc. 
             for (auto x : locals.list) x->compile();
             for (auto x : body.list) x->compile();
             return nullptr;
 
+        }
+        void semantic(){
+            for (auto x : locals.list) x->semantic();
+            for (auto x : body.list) x->semantic();
         }
 
 };
@@ -557,8 +697,15 @@ class Variable : public Stmt {
     Stype type;
     std::string name; 
     Variable(std::string s, Stype t) : name(s), type(t){}
-    Value * compile(){return nullptr;}
+    Value * compile(){
+        Value* value = Builder.CreateAlloca(TypeConvert(type), 0, name.c_str());
+        ct.insert(name,value);
+    }
     void printOn(std::ostream &out) const { out << name << " : " << type;}
+    void semantic(){
+        // just insert into symbol table
+        st.insert(name,type);
+    }
 };
 
 class VarDef : public Stmt {
@@ -572,16 +719,25 @@ class VarDef : public Stmt {
                 vars.list.push_back(new Variable(s,t));
             }
         }
+        
         void printOn(std::ostream &out) const { out << "VarDef :"; vars.printOn(out) ;}
+        
         Value* compile()  {
-            for (auto var : vars.list){
-                Function *TheFunction = Builder.GetInsertBlock()->getParent();
-                BasicBlock* entryBlock =&TheFunction->getEntryBlock();
-                IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
-                Value* value = Builder.CreateAlloca(TypeConvert(var->type), 0, var->name.c_str());
-                ct.insert(var->name,value);
+            // get entry block of current function for allocas to work properly 
+            Function *TheFunction = Builder.GetInsertBlock()->getParent();
+            BasicBlock* entryBlock =&TheFunction->getEntryBlock();
+            IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
+            
+            for (auto var : vars.list){ 
+                var->compile();
             }                    
             return nullptr;}
+        
+        void semanic(){
+            for (auto var : vars.list){ 
+                var->semantic();
+            }  
+        }
 
 };
 
@@ -594,8 +750,12 @@ class LabelDef : public Stmt {
         Value* compile()  {
             //no need to do anything, labels are basic blocks
             return nullptr; }
-
+        void semantic(){
+            // we assume type void for labels 
+            st.insert(name,typeVoid);
+        }
 };
+
 typedef enum{PASS_BY_REFERENCE,PASS_BY_VALUE} PassMode;
 class FormalsGroup : public Stmt {
     public:
@@ -611,20 +771,25 @@ class FormalsGroup : public Stmt {
             out << formals;
             out <<  " : " ; out << type; 
         }
-        Value* compile()  {
-            for (auto var : formals){
-                Function *TheFunction = Builder.GetInsertBlock()->getParent();
-                BasicBlock* entryBlock =&TheFunction->getEntryBlock();
-                IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
-                Value* value = Builder.CreateAlloca(TypeConvert(type), 0, var.c_str());
-                ct.insert(var.c_str(),value);
-            }       
-            return nullptr; 
+        Value* compile()  {return nullptr; }
+        void semantic(){
+            // variables that pass by value, can't have pointer type 
         }
 
 };
 
 
+
+
+/*
+    Function::getArgumentList()
+    to get arguments of funcion in block code 
+    so allocas should be replaced with the actual function
+    arguments created internally by builder
+
+    if a parameter is by reference we just pass a pointer
+    instead of the actual parameter
+*/ 
 class FunctionDef : public Stmt {
     private:
         std::string name;
@@ -644,37 +809,36 @@ class FunctionDef : public Stmt {
         void set_forward(){this->isForward = true;}
         void add_body(Block* theBody){this->body = theBody;}
 
-        Value* compile()  {
-            // if its already defined or this is a forward declaration 
+        Value* compile() {
+                
             Function *routine;
-            if (isForward || ct.lookup(name) == nullptr){ 
-                std::vector<Type*> param_types; 
-                for (auto param : parameters.list){
-                    param_types.push_back(TypeConvert(param->type)) ;
-                }
-                // TODO : see how to handle by val and by reference params   
-                FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
-                routine = Function::Create(Ftype,
-                    Function::ExternalLinkage,name,TheModule
-                );
-                ct.insert(name,routine);
+            std::vector<Type*> param_types; 
+            for (auto param : parameters.list){
+                param_types.push_back(TypeConvert(param->type)) ;
             }
-            else {routine = (Function*)ct.lookup(name)->value;}
-            if (!isForward){
-                //create a new basic block 
-                BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
-                Builder.SetInsertPoint(BB);
-                // create a new scope
-                ct.openScope();
-                for (FormalsGroup* f : parameters.list){
+            FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
+            routine = Function::Create(Ftype,
+                Function::ExternalLinkage,name,TheModule
+            );
+            ct.insert(name,routine);
 
-                    f->compile();                    
-                }
-                body->compile(); 
-                ct.closeScope();
+            //create a new basic block 
+            BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
+            Builder.SetInsertPoint(BB);
+            // create a new scope
+            ct.openScope();
+            // for each formal group link with the funcion 
+            for (FormalsGroup* f : parameters.list){
+
+                                 
             }
+            body->compile(); 
+            ct.closeScope();
+        
             return nullptr; 
+        
         }
+        
 
 };
 class Declaration : public Stmt {
@@ -847,11 +1011,11 @@ class Dispose : public Stmt {
     public:
         Dispose(Expr *lval) : lval(lval) {} 
         void printOn(std::ostream &out) const {out << "Destroy"; lval->printOn(out); }
+        void semantic();
         Value* compile()  {
             // TODO 
             /* Dispose should be some function call from gc library 
             */ 
             return nullptr;}
-
 };
 
