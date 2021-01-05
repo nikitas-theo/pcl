@@ -14,7 +14,7 @@ Type* AST::voidTy;
 Function* AST::GC_Free; 
 Function* AST::GC_Malloc;
 Function* AST::GC_Init;
-std::vector<AST*> AST::functions();
+
 CodeGenTable AST::ct = CodeGenTable();
 SymbolTable AST::st = SymbolTable();
 

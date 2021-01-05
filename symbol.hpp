@@ -5,7 +5,7 @@
 #include <map> 
 #include <iostream>
 #include <llvm/IR/Value.h>
-#include "ast.hpp"
+
 // Stype for llvm::Type disambiguation 
 typedef enum {                       
    TYPE_VOID, TYPE_INTEGER, TYPE_BOOLEAN, TYPE_CHAR,   

@@ -20,7 +20,7 @@
 using namespace llvm;
 
 
-class AST{
+class AST {
     public:
         virtual ~AST() {}
         virtual void semantic() {}
@@ -115,9 +115,7 @@ class AST{
         static SymbolTable st ; 
         /*  for each SymbolTable scope we want a pointer to 
             to the corresponding function
-        */
-        static std::vector<AST*> functions;
-        
+        */        
         Type* TypeConvert  (Stype t) {
             switch(t->kind) {
                 case TYPE_VOID      : return voidTy;
@@ -142,6 +140,7 @@ class AST{
             if (t1->kind == TYPE_ARRAY && check_size && t1->size != t2->size) return false ;
             if (t1->kind == TYPE_POINTER || t1->kind == TYPE_IARRAY || t1->kind == TYPE_ARRAY) 
                 return check_type(t1->refType, t2->refType);
+            return true; 
         }
 
 
@@ -179,7 +178,7 @@ class Stmt : public AST {
 template<class T>
 class ASTvector : public Stmt , public Expr{
     public : 
-  
+    Value* compile(){return nullptr;}
     std::vector<T> list; 
     void printOn(std::ostream &out) const {
         out << "[";
@@ -208,7 +207,7 @@ class BinOp : public Expr{
         BinOp(Expr* l, std::string o, Expr* r) : left(l), right(r), op(o) {}
         void printOn(std::ostream &out) const {
             left->printOn(out); 
-            out << " " << op; 
+            out << " " << op;  
             out << " ";
             right->printOn(out); 
         }
@@ -284,7 +283,6 @@ class BinOp : public Expr{
                 case "-"_ : 
                     if (real_ops)   return Builder.CreateFSub(l,r,"addtmp");
                     else            return Builder.CreateSub(l,r,"addtmp");
-                return Builder.CreateSub(l,r,"subtmp");
                 case "*"_ : 
                     if (real_ops)   return Builder.CreateFMul(l,r,"addtmp");
                     else            return Builder.CreateMul(l,r,"addtmp");
@@ -455,10 +453,9 @@ class Id : public Expr {
             SymbolEntry* e =  st.lookup(name);
             this->type = e->type; 
             int depth = e->depth; 
-            vector<AST*> 
-            while(depth --)
-            FunctionDef* f = functions.back();
-            f->add_parameter(name,e->depth);
+            while(depth --);
+            //FunctionDef* f = functions.back();
+            //f->add_parameter(name,e->depth);
         }
 };
 
@@ -518,16 +515,18 @@ class CallFunc : public Expr {
             return ret;
             }
         void semantic(){
-            SymbolEntry * e = st.lookup(fname);  
-            vector<Stype> defined_types = e->param_types;
-            if (defined_types->length() != parameters->length() )  error("different type of parameters")
-            for(int i ; i < vector.length() ; i++){
+            //SymbolEntry * e = st.lookup(fname);  
+            //std::vector<Stype> defined_types = e->param_types;
+            //if (defined_types->length() != parameters->length() )  
+            //    error("different type of parameters");
+            /*for(int i ; i < vector.length() ; i++){
                 Expr* ex = parameters[i] 
                 Stype t = efined_types[i]; 
                 ex->semantic();
                 if (ex->type != t) error("function call parameters do not match")
             }            
             this->type = e->type;
+            */
         }
 
 };
@@ -553,7 +552,8 @@ class CallProc : public Stmt {
             return nullptr; 
             }
         void semantic(){
-            SymbolEntry * e = st.lookup(fname);  
+            
+            /*SymbolEntry * e = st.lookup(fname);  
             vector<Stype> defined_types = e->param_types;
             if (defined_types->length() != parameters->length() )  error("different type of parameters")
             for(int i ; i < vector.length() ; i++){
@@ -562,6 +562,7 @@ class CallProc : public Stmt {
                 ex->semantic();
                 if (ex->type != t) error("function call parameters do not match")
             }            
+            */
         }
 
 };
@@ -638,7 +639,7 @@ class Dereference : public Expr {
         }
         void semantic(){
             if (e->type->kind != TYPE_POINTER) error("dereferencing non pointer");
-            this->type = lval->type->refType;
+            this->type = e->type->refType;
         }
 
 };
@@ -700,6 +701,7 @@ class Variable : public Stmt {
     Value * compile(){
         Value* value = Builder.CreateAlloca(TypeConvert(type), 0, name.c_str());
         ct.insert(name,value);
+        return nullptr; 
     }
     void printOn(std::ostream &out) const { out << name << " : " << type;}
     void semantic(){
@@ -752,7 +754,8 @@ class LabelDef : public Stmt {
             return nullptr; }
         void semantic(){
             // we assume type void for labels 
-            st.insert(name,typeVoid);
+            for(auto l : labels)
+                st.insert(l,typeVoid);
         }
 };
 
@@ -808,7 +811,7 @@ class FunctionDef : public Stmt {
         }
         void set_forward(){this->isForward = true;}
         void add_body(Block* theBody){this->body = theBody;}
-
+        
         Value* compile() {
                 
             Function *routine;
@@ -828,10 +831,10 @@ class FunctionDef : public Stmt {
             // create a new scope
             ct.openScope();
             // for each formal group link with the funcion 
-            for (FormalsGroup* f : parameters.list){
-
+            //for (FormalsGroup* f : parameters.list){
+            //    ;        
                                  
-            }
+            //}
             body->compile(); 
             ct.closeScope();
         
@@ -937,7 +940,7 @@ class Label : public Stmt {
         std::string lbl;
         Stmt *target;
     public:
-        Label(std::string name, Stmt* ct) : lbl(name), target(ct) {}
+        Label(std::string name, Stmt* stmt) : lbl(name), target(stmt) {}
         void printOn(std::ostream &out) const { out <<  lbl << " : "; target->printOn(out);  }
         Value* compile()  {
             Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -970,7 +973,9 @@ class ReturnStmt : public Stmt {
         Value* compile()  {
             Value* ret = ct.lookup("return")->value;
             Builder.CreateRet(ret);
-            return nullptr;}
+            return nullptr;
+        }
+            
 
 };
 
@@ -1007,11 +1012,10 @@ class InitArray : public Stmt {
 class Dispose : public Stmt {
     private:
         Expr *lval;
-            
     public:
         Dispose(Expr *lval) : lval(lval) {} 
         void printOn(std::ostream &out) const {out << "Destroy"; lval->printOn(out); }
-        void semantic();
+        void semantic(){};
         Value* compile()  {
             // TODO 
             /* Dispose should be some function call from gc library 
