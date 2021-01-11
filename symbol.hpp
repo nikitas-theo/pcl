@@ -15,10 +15,20 @@ typedef enum {
 
 class TypeClass {
     public: 
-    oftype kind; 
-    TypeClass* refType; 
-    int size;
-    TypeClass(oftype k, TypeClass* t, int s) : kind(k) , refType(t) , size(s) {};
+      oftype kind; 
+      TypeClass* refType; 
+      int size;
+
+      TypeClass(oftype k, TypeClass* t, int s) : kind(k) , refType(t) , size(s) {};
+
+      bool equals(TypeClass* targetType)
+      {
+        if (kind != targetType->kind) return false;
+        if (kind == TYPE_ARRAY && size != targetType->size) return false;
+        if (kind == TYPE_POINTER || kind == TYPE_IARRAY || kind == TYPE_ARRAY)
+            return refType->equals(targetType->refType);
+        return true;
+      }
 };
 typedef  TypeClass* Stype;
 

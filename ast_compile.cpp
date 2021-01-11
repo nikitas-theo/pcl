@@ -1,0 +1,464 @@
+#include "ast.hpp"
+
+// static LLVMContext TheContext; 
+// static IRBuilder<>  Builder; 
+// static Module* TheModule;
+// static Type* i1; 
+// static Type* i8; 
+// static Type* i32;
+// static Type* i64;
+// static Type* r64;
+// static Type* voidTy;
+
+// static Function* GC_Malloc;
+// static Function* GC_Init;
+// static Function* GC_Free;
+
+// static CodeGenTable ct; 
+// static SymbolTable st ; 
+
+void AST::compile_llvm()
+{
+    // Initialize Module
+    TheModule = new Module("program",TheContext);
+
+    // TODO : find how to make optimizations passes in new LLVM versions. 
+
+    // USEFUL TYPES
+    i1 = IntegerType::get(TheContext,1);
+    i8 = IntegerType::get(TheContext,8);
+    i32 = IntegerType::get(TheContext,32);
+    i64 = IntegerType::get(TheContext,64);
+    r64 =  Type::getDoubleTy(TheContext);
+    voidTy = Type::getVoidTy(TheContext);
+
+    // GARBAGE COLLECTION
+    GC_Malloc = Function::Create(
+        FunctionType::get( PointerType::get(i8,0), {i64}, false),
+        Function::ExternalLinkage, "GC_malloc",TheModule
+    );
+    
+    GC_Init = Function::Create(
+        FunctionType::get(voidTy, {}, false),
+        Function::ExternalLinkage, "GC_init",TheModule
+    );
+
+    GC_Free = Function::Create(
+        FunctionType::get(voidTy ,{PointerType::get(i8,0)}, false), 
+        Function::ExternalLinkage,"GC_free",TheModule
+        );
+    
+    
+
+    ct.openScope();
+    add_libs(*TheModule,ct, TheContext);
+
+    // MAIN FUNCTION
+    Function *main = Function::Create(
+        FunctionType::get(i32,{}, false), 
+        Function::ExternalLinkage,"main",TheModule
+        );
+    BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
+    Builder.SetInsertPoint(BB);
+    Builder.CreateCall(GC_Init, {});
+
+    compile();
+    Builder.CreateRet(c_i32(0));
+    ct.closeScope();
+    // VERIFICATION
+    bool failed = verifyModule(*TheModule,&errs());
+    if (failed) { 
+        std::cerr << "Problem in the IR" << std::endl; 
+        TheModule->print(errs(), nullptr);
+        std::exit(1);
+    } 
+    // PRINT INTERMEDIATE IR 
+    // TODO find out how to get the global filename 
+    std::error_code EC;
+    raw_ostream * out = new raw_fd_ostream("out.imm",EC);
+    TheModule->print(*out,nullptr);
+
+    // PRINT MACHINE CODE
+    //TODO find out how to print machine code 
+}
+
+Value* BinOp::compile() /* override */
+{
+    Value *l = left->compile();
+    Value *r = nullptr; 
+    // need to implement short-circuit
+    if (op != "and" && op != "or") r = right->compile();
+    bool real_ops = false; 
+    // sign exted to real if necessary
+    if (check_type(left->type,typeReal) || check_type(right->type,typeReal)) {
+        // can also use Value type here for cmp 
+        if (! check_type(left->type, typeReal))  Builder.CreateSExt(l,r64);
+        if (! check_type(right->type, typeReal)) Builder.CreateSExt(r,r64);
+        real_ops = true ;
+    }
+    switch( hashf(op.c_str()) ){
+        case "+"_ :
+            if (real_ops)   return Builder.CreateFAdd(l,r,"addtmp");
+            else            return Builder.CreateAdd(l,r,"addtmp");
+        case "-"_ : 
+            if (real_ops)   return Builder.CreateFSub(l,r,"addtmp");
+            else            return Builder.CreateSub(l,r,"addtmp");
+        case "*"_ : 
+            if (real_ops)   return Builder.CreateFMul(l,r,"addtmp");
+            else            return Builder.CreateMul(l,r,"addtmp");
+        case "/"_ : 
+            if (check_type(left->type,typeInteger) || check_type(right->type,typeInteger)) {
+                Builder.CreateSExt(l,r64);
+                Builder.CreateSExt(r,r64);
+            }
+            return Builder.CreateFDiv(l,r,"addtmp");
+
+        // we use signed modulo ops of integer operants
+        case "div"_ : return Builder.CreateSDiv(l,r,"divtmp");
+        case "mod"_ : return Builder.CreateSRem(l,r,"modtmp"); 
+
+        // we implement short circuit with a branch 
+        case "and"_  :
+        {
+            Function *TheFunction = Builder.GetInsertBlock()->getParent();
+            BasicBlock *shortBB = BasicBlock::Create(TheContext,"short_and", TheFunction);
+            BasicBlock *fullBB = BasicBlock::Create(TheContext,"full_and", TheFunction);
+            BasicBlock *endBB = BasicBlock::Create(TheContext,"end_and", TheFunction);
+
+            Value* cond = Builder.CreateICmpEQ(l,c_i1(0)); 
+            Builder.CreateCondBr(cond, shortBB,fullBB);
+            
+            // just jump 
+            Builder.SetInsertPoint(shortBB);
+            Builder.CreateBr(endBB);
+
+            // need to evaluate second operant                    
+            Builder.SetInsertPoint(fullBB);
+            r = right->compile();
+
+            // get current block because compile can be arbitrary
+            BasicBlock *CurrBB = Builder.GetInsertBlock();
+            Value *OP =  Builder.CreateAnd(l,r,"andtmp");
+            Builder.CreateBr(endBB);
+
+            Builder.SetInsertPoint(endBB);
+            // combine the 2 branches 
+            PHINode *phi = Builder.CreatePHI(i32, 2, "phi_and");
+            phi->addIncoming(c_i1(0),shortBB);
+            phi->addIncoming(OP,CurrBB);
+
+            return phi;
+            }
+        case "or"_ : 
+        {
+            Function *TheFunction = Builder.GetInsertBlock()->getParent();
+            BasicBlock *shortBB = BasicBlock::Create(TheContext,"short_or", TheFunction);
+            BasicBlock *fullBB = BasicBlock::Create(TheContext,"full_or", TheFunction);
+            BasicBlock *endBB = BasicBlock::Create(TheContext,"end_or", TheFunction);
+
+            Value* cond = Builder.CreateICmpEQ(l,c_i1(1)); 
+            Builder.CreateCondBr(cond, shortBB,fullBB);
+            
+            // just jump 
+            Builder.SetInsertPoint(shortBB);
+            Builder.CreateBr(endBB);
+
+            // need to evaluate second operant                    
+            Builder.SetInsertPoint(fullBB);
+            r = right->compile();
+
+            // get current block because compile can be arbitrary
+            BasicBlock *CurrBB = Builder.GetInsertBlock();
+            Value *OP =  Builder.CreateAnd(l,r,"ortmp");
+            Builder.CreateBr(endBB);
+
+            Builder.SetInsertPoint(endBB);
+            // combine the 2 branches 
+            PHINode *phi = Builder.CreatePHI(i32, 2, "phi_or");
+            phi->addIncoming(c_i1(1),shortBB);
+            phi->addIncoming(OP,CurrBB);
+
+            return phi;
+            }
+        case "="_ : 
+            if (real_ops)   return Builder.CreateFCmpOEQ(l,r,"eqtmp");
+            else            return Builder.CreateICmpEQ(l,r,"eqtmp");
+        case "<>"_ : 
+            if (real_ops)   return Builder.CreateFCmpONE(l,r,"neqtmp");
+            else            return Builder.CreateICmpNE(l,r,"neqtmp");
+        /* "=,<>" :  results are boolean, 
+            * if operants are both arithmetic then we compare values, 
+                we have taken care of type casting
+            * if they are of any other type we simply compare, 
+                type checking takes care of type matching
+        */
+        case ">"_ :                     
+            if (real_ops)   return Builder.CreateFCmpOGT(l,r);
+            else            return Builder.CreateICmpSGT(l,r);
+        case "<"_ :
+            if (real_ops)   return Builder.CreateFCmpOLT(l,r);
+            else            return Builder.CreateICmpSLT(l,r);
+        case "<="_ : 
+            if (real_ops)   return Builder.CreateFCmpOLE(l,r);
+            else            return Builder.CreateICmpSLE(l,r);
+        case ">="_ : 
+            if (real_ops)   return Builder.CreateFCmpOGT(l,r);
+            else            return Builder.CreateICmpSGT(l,r);
+        // results must be arithmetic, some typecasting req
+    }
+    return nullptr; 
+}
+
+Value* UnOp::compile() /* override */
+{
+    Value* val = e->compile();
+    switch( hashf(op.c_str()) ){
+        case "+"_ : return val;
+        case "-"_ : return Builder.CreateNeg(val,"negtmp");
+        case "not"_ : return Builder.CreateNot(val,"nottmp");
+        case "@"_ : 
+            // TODO 
+            // does not seem straightforward
+            /*  generally we have 2 types of variable,
+                those created with alloca, 
+                and heap arrays, 
+                need to see  
+            */
+            std::cerr << "NOT_IMPLEMENTED";
+            return nullptr; 
+    }
+    return nullptr;
+}
+
+Value* Id::compile() /* override */
+{
+    return ct.lookup(name)->value;
+}
+
+Value* Const::compile() /* override */
+{
+    switch(type->kind)
+    {
+        case TYPE_INTEGER : return c_i32(std::get<int>(val));
+        case TYPE_BOOLEAN : return c_i1(std::get<bool>(val));
+        case TYPE_CHAR : return c_i8(std::get<char>(val));
+        case TYPE_REAL : return c_r64(std::get<double>(val));;
+        case TYPE_VOID : return nullptr;  
+    }
+    return nullptr;  
+}
+
+Value* CallFunc::compile() /* override */
+{
+    Value* func = ct.lookup(fname)->value;
+    std::vector<Value*> param_values;
+    for (auto p : parameters.list){
+        param_values.push_back(p->compile());
+    }
+    Value* ret = Builder.CreateCall(func,param_values);
+    return ret;
+}
+
+Value* CallProc::compile() /* override */
+{
+    Value* func = ct.lookup(fname)->value;
+    std::vector<Value*> param_values;
+    for (auto p : parameters.list){
+        param_values.push_back(p->compile());
+    }
+    Builder.CreateCall(func,param_values);
+    return nullptr; 
+}
+
+Value* String::compile() /* override */
+{
+    std::string pstr(s);
+    std::vector<std::pair<std::string,std::string>> rep = {
+        {"\\n" , "\n"} , {"\\t", "\t"}, {"\\r", "\r"} , {"\\\\", "\\"} , {"\\0", "\0"}, 
+        {"\\'","'"}, {"\\\"", "\""}  };
+    for (auto p : rep){
+        ReplaceStringInPlace(pstr,p.first, p.second);
+    }
+    Value *ret = Builder.CreateGlobalString(pstr.c_str(),"str",0);
+    return ret;
+
+}
+
+Value* ArrayAccess::compile() /* override */
+{
+    Value *index = pos->compile();
+    Value *ptr = lval->compile();
+    return Builder.CreateGEP(ptr, {0, index});
+}
+
+Value* Dereference::compile() /* override */
+{
+    Value *ptr = e->compile();
+    return Builder.CreateGEP(ptr, {0});
+}
+
+Value* Block::compile() /* override */
+{
+    // we compile each locals, calling the right method for its initial class
+    for (auto x : locals.list) x->compile();
+    for (auto x : body.list) x->compile();
+    return nullptr;
+
+}
+
+Value* Variable::compile() /* override */
+{
+    Value* value = Builder.CreateAlloca(TypeConvert(type), 0, name.c_str());
+    ct.insert(name,value);
+    return nullptr; 
+}
+
+Value* VarDef::compile() /* override */
+{
+    // get entry block of current function for allocas to work properly 
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    BasicBlock* entryBlock =&TheFunction->getEntryBlock();
+    IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
+    
+    for (auto var : vars.list){ 
+        var->compile();
+    }                    
+    return nullptr;
+}
+
+Value* LabelDef::compile() /* override */
+{
+    //no need to do anything, labels are basic blocks
+    return nullptr;
+}
+
+Value* FormalsGroup::compile() /* override */
+{
+    return nullptr;
+}
+
+Value* FunctionDef::compile() /* override */
+{
+        
+    Function *routine;
+    std::vector<Type*> param_types; 
+    for (auto param : parameters.list){
+        param_types.push_back(TypeConvert(param->type)) ;
+    }
+    FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
+    routine = Function::Create(Ftype,
+        Function::ExternalLinkage,name,TheModule
+    );
+    ct.insert(name,routine);
+
+    //create a new basic block 
+    BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
+    Builder.SetInsertPoint(BB);
+    // create a new scope
+    ct.openScope();
+    // for each formal group link with the funcion 
+    //for (FormalsGroup* f : parameters.list){
+    //    ;        
+                            
+    //}
+    body->compile(); 
+    ct.closeScope();
+
+    return nullptr; 
+}
+
+Value* Declaration::compile() /* override */
+{
+    Value* l = lval->compile();
+    Value* r = rval->compile();
+    Builder.CreateLoad(r);
+    Builder.CreateStore(l,r);
+    return nullptr;
+}
+
+Value* IfThenElse::compile() /* override */
+{
+    Value *v = cond->compile();
+    Value *cond = Builder.CreateICmpNE(v,c_i32(0), "if_cond");
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    BasicBlock *ThenBB = BasicBlock::Create(TheContext,"then", TheFunction);
+    BasicBlock *AfterBB = BasicBlock::Create(TheContext,"endif", TheFunction);
+    BasicBlock *ElseBB = BasicBlock::Create(TheContext,"else", TheFunction);
+    Builder.CreateCondBr(cond,ThenBB,ElseBB);
+    Builder.SetInsertPoint(ThenBB);
+    st_then->compile();
+    Builder.CreateBr(AfterBB);
+    Builder.SetInsertPoint(ElseBB);
+    if (hasElse) st_else->compile();
+    Builder.CreateBr(AfterBB);
+    Builder.SetInsertPoint(AfterBB);
+    return nullptr; 
+}
+
+Value* While::compile() /* override */
+{
+    // get current block 
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    BasicBlock *LoopBB = BasicBlock::Create(TheContext,"loop", TheFunction);
+    BasicBlock *AfterBB = BasicBlock::Create(TheContext,"endloop", TheFunction);
+    BasicBlock *BodyBB = BasicBlock::Create(TheContext,"body", TheFunction);
+    // jump to loop block 
+    Builder.CreateBr(LoopBB);
+    Builder.SetInsertPoint(LoopBB);
+
+    // calculate condition
+    Value* Vcond = cond->compile(); 
+    Builder.CreateCondBr(Vcond, BodyBB,AfterBB);
+
+    Builder.SetInsertPoint(BodyBB);
+    body->compile();
+    Builder.CreateBr(LoopBB);
+
+    Builder.SetInsertPoint(AfterBB);
+    return nullptr; 
+}
+
+Value* Label::compile() /* override */
+{
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    BasicBlock * LabelBB  = BasicBlock::Create(TheContext,lbl, TheFunction);
+    Builder.SetInsertPoint(LabelBB);
+    ct.insert(lbl,LabelBB);
+    target->compile();            
+    return nullptr; 
+}
+
+Value* GoTo::compile() /* override */
+{
+    BasicBlock* val = (BasicBlock*)ct.lookup(label)->value;
+    Builder.CreateBr(val);
+    return nullptr; 
+}
+
+Value* ReturnStmt::compile() /* override */
+{
+    Value* ret = ct.lookup("return")->value;
+    Builder.CreateRet(ret);
+    return nullptr;
+}
+
+Value* Init::compile() /* override */
+{
+    return nullptr;
+}
+
+Value* InitArray::compile() /* override */
+{
+    // TODO 
+    /* add a conrete type array [n] of t, to an l-value of ^array of t
+    */
+    return nullptr; 
+}
+
+Value* Dispose::compile() /* override */
+{
+    // TODO 
+    /* Dispose should be some function call from gc library 
+    */ 
+    return nullptr;
+}
