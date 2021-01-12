@@ -33,16 +33,16 @@ ast%.o: ast%.cpp ast.hpp
 # --------------------------------------
 
 # PCL COMPILER -------------------------
-pcl: lexer.o parser.o symbol.o ast_core.o ast_compile.o ast_semantic.o ast_helpers.o ast_printon.o
+pcl: lexer.o parser.o symbol.o ast_compile.o ast_semantic.o ast_helpers.o ast_printon.o
 	$(CXX) -o $@ $(CXXFLAGS) $^ $(LDFLAGS)
 # --------------------------------------
 
 # Cleaning -----------------------------
-#$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
+# $(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
+# ${MAKE} -C $(SYM_DIR) clean
 clean: 
-	$(RM) symbol.o ast_core.o ast_compile.o ast_semantic.o ast_helpers.o ast_printon.o
+	$(RM) symbol.o ast_compile.o ast_semantic.o ast_helpers.o ast_printon.o
 
 distclean: clean
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output lexer.o parser.o
-	${MAKE} -C $(SYM_DIR) clean
 	$(RM) pcl

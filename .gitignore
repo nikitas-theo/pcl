@@ -14,7 +14,7 @@ lexer.cpp
 
 # ignore test and dev files
 *_test.*
-*_dev
+*_dev*
 
 # just some pdfs with info
 reading_mat/*
