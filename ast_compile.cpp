@@ -1,21 +1,89 @@
 #include "ast.hpp"
+#include "symbol.hpp"
 
-// static LLVMContext TheContext; 
-// static IRBuilder<>  Builder; 
-// static Module* TheModule;
-// static Type* i1; 
-// static Type* i8; 
-// static Type* i32;
-// static Type* i64;
-// static Type* r64;
-// static Type* voidTy;
+using namespace llvm;
 
-// static Function* GC_Malloc;
-// static Function* GC_Init;
-// static Function* GC_Free;
+LLVMContext TheContext; 
+IRBuilder<> Builder(TheContext); 
+Module* TheModule;
 
-// static CodeGenTable ct; 
-// static SymbolTable st ; 
+Type* i1; 
+Type* i8; 
+Type* i32;
+Type* i64;
+Type* r64;
+Type* voidTy;
+
+Function* GC_Malloc;
+Function* GC_Init;
+Function* GC_Free;
+
+CodeGenTable ct = CodeGenTable();
+
+ConstantInt* c_i32(int n)
+{
+    return ConstantInt::get(TheContext,APInt(32,n,true));
+}
+
+ConstantInt* c_i8(char c)
+{
+    return ConstantInt::get(TheContext,APInt(8,c,false));
+}
+
+ConstantInt* c_i1(int n)
+{
+    return ConstantInt::get(TheContext,APInt(1,n,false));
+}
+
+ConstantFP* c_r64(double d)
+{
+    return ConstantFP::get(TheContext,APFloat(d));
+}
+
+inline void AST::add_func(FunctionType *type, std::string name)
+{
+    Function *func = Function::Create(
+            type, 
+            Function::ExternalLinkage, name, TheModule
+        );
+        ct.insert(name,func);
+};
+
+inline void AST::add_libs()
+{
+    // PREDEFINED LIBRARY FUNCTIONS 
+
+    // WRITE UTILS 
+
+    add_func(FunctionType::get(voidTy,{i32},false),"writeInteger");
+    add_func(FunctionType::get(voidTy,{i1},false), "writeBoolean");
+    add_func(FunctionType::get(voidTy,{i8},false), "writeChar");
+    add_func(FunctionType::get(voidTy,{r64},false), "writeReal");
+    add_func(FunctionType::get(voidTy,{PointerType::get(i8, 0)}),"writeString");
+
+    // READ UTILS
+
+    add_func(FunctionType::get(r64,{},false),"readInteger");
+    add_func(FunctionType::get(i1,{},false), "readBoolean");
+    add_func(FunctionType::get(i8,{},false), "readChar");
+    add_func(FunctionType::get(r64,{},false), "readReal");
+    add_func(FunctionType::get(PointerType::get(i8, 0),{},false),"readString");
+
+
+    // MATH UTILS 
+
+    add_func(FunctionType::get(i32,{i32},false),"abs");
+    add_func(FunctionType::get(r64,{r64},false),"fabs");
+    add_func(FunctionType::get(r64,{r64},false),"sqrt");
+    add_func(FunctionType::get(r64,{r64},false),"sin");
+    add_func(FunctionType::get(r64,{r64},false),"cos");
+    add_func(FunctionType::get(r64,{r64},false),"tan");
+    add_func(FunctionType::get(r64,{r64},false),"arctan");
+    add_func(FunctionType::get(r64,{r64},false),"exp");
+    add_func(FunctionType::get(r64,{r64},false),"ln");
+    add_func(FunctionType::get(r64,{},false),"pi");
+
+};
 
 void AST::compile_llvm()
 {
@@ -51,7 +119,7 @@ void AST::compile_llvm()
     
 
     ct.openScope();
-    add_libs(*TheModule,ct, TheContext);
+    add_libs();
 
     // MAIN FUNCTION
     Function *main = Function::Create(
@@ -62,7 +130,9 @@ void AST::compile_llvm()
     Builder.SetInsertPoint(BB);
     Builder.CreateCall(GC_Init, {});
 
+    // PROGRAM COMPILATION SECTION
     compile();
+
     Builder.CreateRet(c_i32(0));
     ct.closeScope();
     // VERIFICATION

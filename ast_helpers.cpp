@@ -1,44 +1,10 @@
 #include "ast.hpp"
-
-ConstantInt* AST::c_i32(int n)
-{
-    return ConstantInt::get(TheContext,APInt(32,n,true));
-}
-
-ConstantInt* AST::c_i8(char c)
-{
-    return ConstantInt::get(TheContext,APInt(8,c,false));
-}
-
-ConstantInt* AST::c_i1(int n)
-{
-    return ConstantInt::get(TheContext,APInt(1,n,false));
-}
-
-ConstantFP* AST::c_r64(double d)
-{
-    return ConstantFP::get(TheContext,APFloat(d));
-}
+#include "symbol.hpp"
 
 void error(const char* str)
 { 
     std::cerr << str; 
 }
-
-// inline std::ostream& operator<<(std::ostream &out, const AST &t)
-// {
-//   t.printOn(out);
-//   return out;
-// }
-
-// inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t)
-// {
-//         out << "[";
-//         for (std::size_t i = 0; i < t.size(); i++) {
-//             out << t[t.size() - 1 - i] << (i == t.size() - 1 ? "" : ",");
-//         }
-//         return out << "]" ;
-// }
 
 Type* AST::TypeConvert(Stype t) 
 {

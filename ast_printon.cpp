@@ -1,4 +1,5 @@
 #include "ast.hpp"
+#include "symbol.hpp"
 
 void BinOp::printOn(std::ostream &out) const /* override */
 {

@@ -5,8 +5,9 @@
 #include <iostream>
 #include <variant> 
 
-#include "symbol.hpp"
-#include "external.hpp"
+// #include "symbol.hpp"
+// #include "external.hpp"
+#include "types.hpp"
 
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
@@ -24,6 +25,13 @@ using namespace llvm;
 // ConstantInt* c_i1(int n);
 // ConstantFP* c_r64(double d);
 
+extern Type* i1; 
+extern Type* i8; 
+extern Type* i32;
+extern Type* i64;
+extern Type* r64;
+extern Type* voidTy;
+
 typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
 // https://en.cppreference.com/w/cpp/utility/variant
@@ -38,6 +46,10 @@ extern void error(const char* str);
 
 class AST
 {
+    private:
+        inline void add_func(FunctionType *type, std::string name);
+        inline void add_libs();
+        
     public:
         virtual ~AST() {}
 
@@ -47,28 +59,6 @@ class AST
 
         virtual Value* compile() = 0;
         void compile_llvm();
-
-        static LLVMContext TheContext; 
-        static IRBuilder<>  Builder; 
-        static Module* TheModule;
-        static Type* i1; 
-        static Type* i8; 
-        static Type* i32;
-        static Type* i64;
-        static Type* r64;
-        static Type* voidTy;
-
-        static Function* GC_Malloc;
-        static Function* GC_Init;
-        static Function* GC_Free;
-
-        static CodeGenTable ct; 
-        static SymbolTable st ;
-
-        ConstantInt* c_i32(int n);
-        ConstantInt* c_i8(char c);
-        ConstantInt* c_i1(int n);
-        ConstantFP* c_r64(double d);
 
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);

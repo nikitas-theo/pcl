@@ -1,4 +1,7 @@
 #include "ast.hpp"
+#include "symbol.hpp"
+
+SymbolTable st = SymbolTable();
 
 void BinOp::semantic() /* override */
 {
