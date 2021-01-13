@@ -1,6 +1,6 @@
+#include  <cstdlib>
 #include "ast.hpp"
 #include "symbol.hpp"
-
 using namespace llvm;
 
 LLVMContext TheContext; 
@@ -145,11 +145,12 @@ void AST::compile_llvm()
     // PRINT INTERMEDIATE IR 
     // TODO find out how to get the global filename 
     std::error_code EC;
-    raw_ostream * out = new raw_fd_ostream("out.imm",EC);
+    raw_ostream * out = new raw_fd_ostream("out.ll",EC);
     TheModule->print(*out,nullptr);
 
     // PRINT MACHINE CODE
-    //TODO find out how to print machine code 
+    system("clang out.ll libPCL.a -lgc -o out");
+
 }
 
 Value* BinOp::compile() /* override */

@@ -44,21 +44,6 @@ bool AST::check_type(Stype t1,Stype t2,bool check_size)
     return true; 
 }
 
-// Type* Expr::ToCompilerType()
-// {
-//     switch(this->type->kind)
-//     {
-//         case TYPE_VOID    : return voidTy;
-//         case TYPE_INTEGER : return i32;
-//         case TYPE_BOOLEAN : return i1;
-//         case TYPE_CHAR    : return i8;
-//         case TYPE_REAL    : return i64;
-//         case TYPE_ARRAY   : return ArrayType::get(???, this->type->size);
-//         case TYPE_IARRAY  : return PointerType::get(???, 0);
-//         case TYPE_POINTER : return PointerType::get(???, 0);
-//         default           : return voidTy;
-//     }
-// }
 
 bool Expr::type_verify(Stype t)
 {
