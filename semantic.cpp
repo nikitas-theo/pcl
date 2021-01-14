@@ -3,6 +3,8 @@
 
 SymbolTable st = SymbolTable();
 
+void EmptyStmt::semantic() {return;}
+
 void BinOp::semantic() /* override */
 {
     // calclulate types of operants and check for validity 

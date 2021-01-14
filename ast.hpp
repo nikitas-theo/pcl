@@ -58,7 +58,7 @@ class AST
         virtual void printOn(std::ostream &out) const = 0;
 
         virtual Value* compile() = 0;
-        void compile_llvm();
+        void compile_llvm(std::string  program_name, bool optimize, bool imm_stdout );
 
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
@@ -92,10 +92,7 @@ class Expr : public AST
 };
 
 class Stmt : public AST
-{
-    public:    
-};
-
+{};
 template<class T>
 class ASTvector : public Stmt , public Expr
 {
@@ -138,10 +135,14 @@ constexpr inline unsigned int operator "" _(char const * p, size_t)
     return hashf(p);
 }
 
-// constexpr inline size_t operator s""(std::string s)
-// {
-//     return std::hash<std::string>()(s);
-// }
+
+class EmptyStmt : public Stmt {
+    void printOn(std::ostream &out) const;
+    void semantic();
+    Value* compile(); 
+};
+
+
 
 class BinOp : public Expr {
     private:

@@ -2,6 +2,11 @@
 #include "lexer.hpp"
 #include "ast.hpp"
 #include "symbol.hpp"
+
+std::string program_name; 
+bool imm_stdout; 
+bool optimize; 
+bool print_ast; 
 %}
 
 %union {
@@ -67,7 +72,6 @@
 %token<real> T_const_real   "real-const"
 %token<ch> T_const_char    "char-const"
 %token<str> T_string        "string-literal"
-
 %precedence T_then
 %precedence T_else
 
@@ -83,7 +87,8 @@
 
 %token END 0 "end of file" /* nice error messages */
 
-%type<op> binop_high binop_med binop_low sign
+%type<op> binop_high binop_med binop_low 
+%type<op> sign
 %type<type> type
 %type<expr> expr r_value l_value ll_value func_call
 %type<stmt> local stmt proc_call
@@ -95,13 +100,16 @@
 %type<fgs> parameter_list formal_list
 %type<sts> block stmt_list
 %type<exs> expr_list
-
 %%
 
 program :
       "program" T_id ';' body '.' {
-        //std::cout << "AST: " << *$4 << std::endl; 
-        $4->compile_llvm();}
+        if (print_ast) {
+          std::cout << "AST: " << *$4 << std::endl; 
+          std::cout << "AST parsed" << std::endl;
+        }
+        if (program_name == "") program_name = $2;
+        $4->compile_llvm(program_name,optimize, imm_stdout);}
         
     ;
 
@@ -167,7 +175,8 @@ stmt_list :
     ;
 
 stmt:
-      l_value T_decl expr           { $$ = new Declaration($1, $3); } 
+      %empty                        { $$ = new EmptyStmt();}
+    | l_value T_decl expr           { $$ = new Declaration($1, $3); } 
     | block                         { $$ = $1; }
     | proc_call                     { $$ = $1; }
     | "if" expr "then" stmt                 { $$ = new IfThenElse($2, $4); }
@@ -208,6 +217,7 @@ r_value:
     | expr binop_high expr %prec '*'    { $$ = new BinOp($1, $2, $3); }
     | expr binop_med expr %prec '+'     { $$ = new BinOp($1, $2, $3); }
     | expr binop_low expr %prec '='     { $$ = new BinOp($1, $2, $3); }
+
 
 
 l_value:
@@ -255,6 +265,8 @@ binop_high:
     ;
 
 
+
+
 %%
 
 
@@ -262,12 +274,39 @@ int main(int argc, char *argv[]) {
   #if YYDEBUG
       yydebug = 1;
   #endif
-  //if (argc == 2) {
-  //  yyin = fopen(argv[1], "r");
-  //}
-  int ret = yyparse();
-  //if (!ret) { std::cout << "Parse successful.\n";}
+  optimize = false; 
+  imm_stdout = false; 
+  print_ast = false; 
+  program_name = "";
+  for (int i = 0 ; i < argc ; i++){
+    std::string arg(argv[i]);
+    if (arg.find("-O") != std::string::npos) optimize = true; 
+    if (arg.find("-i") != std::string::npos) imm_stdout = true;   
+    if (arg.find("--ast") != std::string::npos) print_ast = true; 
 
+  }
+
+
+
+
+  // read from cmd argument file
+  if (! imm_stdout){
+
+    std::string file(argv[1]);
+    std::string base_filename = file.substr(file.find_last_of("/\\") + 1);
+    std::string::size_type const p(base_filename.find_last_of('.'));
+    std::string file_without_extension = base_filename.substr(0, p);
+
+    program_name = file_without_extension;
+
+    yyin = fopen(argv[1], "r");
+  
+  }
+
+
+  // read from stdin
+  int ret = yyparse();
   fclose(yyin);
+
 
 }

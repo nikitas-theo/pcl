@@ -1,6 +1,14 @@
 #include  <cstdlib>
 #include "ast.hpp"
 #include "symbol.hpp"
+
+// for optimization 
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Utils.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+
 using namespace llvm;
 
 LLVMContext TheContext; 
@@ -59,7 +67,7 @@ inline void AST::add_libs()
     add_func(FunctionType::get(voidTy,{i1},false), "writeBoolean");
     add_func(FunctionType::get(voidTy,{i8},false), "writeChar");
     add_func(FunctionType::get(voidTy,{r64},false), "writeReal");
-    add_func(FunctionType::get(voidTy,{PointerType::get(i8, 0)}),"writeString");
+    add_func(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString");
 
     // READ UTILS
 
@@ -85,14 +93,12 @@ inline void AST::add_libs()
 
 };
 
-void AST::compile_llvm()
+void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
 {
     // Initialize Module
-    TheModule = new Module("program",TheContext);
+    TheModule = new Module(program_name,TheContext);
 
-    // TODO : find how to make optimizations passes in new LLVM versions. 
-
-    // USEFUL TYPES
+    // useful types
     i1 = IntegerType::get(TheContext,1);
     i8 = IntegerType::get(TheContext,8);
     i32 = IntegerType::get(TheContext,32);
@@ -100,7 +106,7 @@ void AST::compile_llvm()
     r64 =  Type::getDoubleTy(TheContext);
     voidTy = Type::getVoidTy(TheContext);
 
-    // GARBAGE COLLECTION
+    // garbage collection and dynamic heap alloc
     GC_Malloc = Function::Create(
         FunctionType::get( PointerType::get(i8,0), {i64}, false),
         Function::ExternalLinkage, "GC_malloc",TheModule
@@ -117,11 +123,13 @@ void AST::compile_llvm()
         );
     
     
-
+    // open global scope 
     ct.openScope();
+
+    // add external libraries 
     add_libs();
 
-    // MAIN FUNCTION
+    // add main 
     Function *main = Function::Create(
         FunctionType::get(i32,{}, false), 
         Function::ExternalLinkage,"main",TheModule
@@ -130,28 +138,56 @@ void AST::compile_llvm()
     Builder.SetInsertPoint(BB);
     Builder.CreateCall(GC_Init, {});
 
-    // PROGRAM COMPILATION SECTION
+    // compile program 
     compile();
 
     Builder.CreateRet(c_i32(0));
     ct.closeScope();
-    // VERIFICATION
+
+    // verify module for badly formed IR
     bool failed = verifyModule(*TheModule,&errs());
     if (failed) { 
-        std::cerr << "Problem in the IR" << std::endl; 
         TheModule->print(errs(), nullptr);
+        std::cerr << "Problem in the IR" << std::endl; 
         std::exit(1);
     } 
-    // PRINT INTERMEDIATE IR 
-    // TODO find out how to get the global filename 
-    std::error_code EC;
-    raw_ostream * out = new raw_fd_ostream("out.ll",EC);
-    TheModule->print(*out,nullptr);
 
-    // PRINT MACHINE CODE
-    system("clang out.ll libPCL.a -lgc -o out");
+    // do optimizations if necessary 
+    if (optimize) {
+        /*  This is legacy optimization 
+            TODO : add newer version 
+        */
+        legacy::FunctionPassManager TheFPM = legacy::FunctionPassManager(TheModule);
+        TheFPM.add(createPromoteMemoryToRegisterPass());
+        TheFPM.add(createInstructionCombiningPass());
+        TheFPM.add(createReassociatePass());
+        TheFPM.add(createGVNPass());
+        TheFPM.add(createCFGSimplificationPass());
+        TheFPM.doInitialization();
+        TheFPM.run(*main);
+    }
 
+
+
+    if (imm_stdout){
+
+        // print IR to stdout 
+        TheModule->print(outs(),nullptr);
+    }
+    else {
+
+        // print IR to file 
+        std::error_code EC;
+        raw_ostream * out = new raw_fd_ostream(program_name + ".ll",EC);
+        TheModule->print(*out,nullptr);
+
+        // print bin to file 
+        std::string cmd = "clang " + program_name + ".ll libPCL.a -lgc -o " +  program_name + ".out" + " -g";
+        system(cmd.c_str());
+    }
 }
+
+Value* EmptyStmt::compile() {return nullptr;}
 
 Value* BinOp::compile() /* override */
 {
@@ -288,13 +324,7 @@ Value* UnOp::compile() /* override */
         case "-"_ : return Builder.CreateNeg(val,"negtmp");
         case "not"_ : return Builder.CreateNot(val,"nottmp");
         case "@"_ : 
-            // TODO 
-            // does not seem straightforward
-            /*  generally we have 2 types of variable,
-                those created with alloca, 
-                and heap arrays, 
-                need to see  
-            */
+            // not sure how to implement this 
             std::cerr << "NOT_IMPLEMENTED";
             return nullptr; 
     }
@@ -350,7 +380,7 @@ Value* String::compile() /* override */
     for (auto p : rep){
         ReplaceStringInPlace(pstr,p.first, p.second);
     }
-    Value *ret = Builder.CreateGlobalString(pstr.c_str(),"str",0);
+    Value *ret = Builder.CreateGlobalStringPtr(pstr.c_str(),"str",0);
     return ret;
 
 }
@@ -413,13 +443,20 @@ Value* FunctionDef::compile() /* override */
         
     Function *routine;
     std::vector<Type*> param_types; 
-    for (auto param : parameters.list){
-        param_types.push_back(TypeConvert(param->type)) ;
+    for (FormalsGroup* param : parameters.list){
+        Stype t = param->type;
+        // by reference passing is just adding a pointer
+        if (param->pass_by == PASS_BY_REFERENCE) 
+            t = typePointer(t);            
+        for (std::string name : param->formals){
+             param_types.push_back(TypeConvert(param->type)) ;
+        }
     }
     FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
     routine = Function::Create(Ftype,
         Function::ExternalLinkage,name,TheModule
     );
+    // insert function in current scope 
     ct.insert(name,routine);
 
     //create a new basic block 
@@ -427,19 +464,20 @@ Value* FunctionDef::compile() /* override */
     Builder.SetInsertPoint(BB);
     // create a new scope
     ct.openScope();
-    // for each formal group link with the funcion 
-    //for (FormalsGroup* f : parameters.list){
-    //    ;        
-                            
-    //}
+    auto param_iter = routine->arg_begin(); 
+    for (FormalsGroup* param : parameters.list){
+        for (std::string name : param->formals ){
+            ct.insert(name,param_iter);
+            param_iter++;
+        }
+    }
     body->compile(); 
     ct.closeScope();
-
     return nullptr; 
 }
 
 Value* Declaration::compile() /* override */
-{
+{   // := 
     Value* l = lval->compile();
     Value* r = rval->compile();
     Builder.CreateLoad(r);
@@ -515,21 +553,23 @@ Value* ReturnStmt::compile() /* override */
 
 Value* Init::compile() /* override */
 {
+    Value* ptr = lval->compile();
+    Builder.CreateCall(GC_Malloc,{ptr});
     return nullptr;
 }
 
 Value* InitArray::compile() /* override */
 {
-    // TODO 
-    /* add a conrete type array [n] of t, to an l-value of ^array of t
-    */
+    /* add a conrete type array [n] of t, to an l-value of ^array of t */
+    Value* ptr = lval->compile();
+    Builder.CreateCall(GC_Malloc,{ptr});
     return nullptr; 
 }
 
 Value* Dispose::compile() /* override */
 {
-    // TODO 
-    /* Dispose should be some function call from gc library 
-    */ 
+    /* Dispose should be some function call from gc library */ 
+    Value* ptr = lval->compile();
+    Builder.CreateCall(GC_Free,ptr);
     return nullptr;
 }

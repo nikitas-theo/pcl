@@ -1,6 +1,11 @@
 #include "ast.hpp"
 #include "symbol.hpp"
 
+void EmptyStmt::printOn(std::ostream &out) const /* override */
+{
+    out << "empty";
+}
+
 void BinOp::printOn(std::ostream &out) const /* override */
 {
     left->printOn(out); 

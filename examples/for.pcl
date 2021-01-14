@@ -1,0 +1,10 @@
+program for;
+    var n : integer;
+    begin
+        n := 10;
+        while n < 10 do 
+        begin 
+            writeString("Hello world!\n")
+        end
+       
+    end.
