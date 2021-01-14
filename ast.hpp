@@ -9,11 +9,10 @@
 // #include "external.hpp"
 #include "types.hpp"
 
-#include <llvm/IR/Value.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Value.h>
 #include <llvm/IR/Type.h>
-#include <llvm/IR/Verifier.h>
+
 
 // for garbage collection of malloc arrays 
 // add -lgc to lib flags 
@@ -84,15 +83,15 @@ class Expr : public AST
     public:
         Stype type;
         bool lvalue = false;
-
-        // Type* ToCompilerType();
+        Expr(Stype t) : type(t) {};
+        Expr() {};
         bool is_arithmetic();
         bool is_concrete();
         bool type_verify(Stype t);
 };
 
-class Stmt : public AST
-{};
+class Stmt : public AST {};
+
 template<class T>
 class ASTvector : public Stmt , public Expr
 {
@@ -187,9 +186,7 @@ class Const : public Expr {
 
     public:
         data_const val;     
-        Stype type;
-        Const(data_const val, Stype t) : val(val) , type(t) {}
-        
+        Const(data_const val, Stype t) : val(val) , Expr(t) {};       
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
@@ -318,7 +315,6 @@ class VarDef : public Stmt {
         ASTvector<Variable*> vars;    
     public:
         void push(std::vector<std::string>* var_ids, Stype t);
-        
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 

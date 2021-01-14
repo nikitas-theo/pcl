@@ -1,10 +1,6 @@
-program for;
-    var n : integer;
+program aa;
+
+    var n : real;
     begin
-        n := 10;
-        while n < 10 do 
-        begin 
-            writeString("Hello world!\n")
-        end
-       
+        n := 2;       
     end.

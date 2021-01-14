@@ -3,6 +3,9 @@
 #include "symbol.hpp"
 
 // for optimization 
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Verifier.h>
+
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
@@ -480,8 +483,13 @@ Value* Declaration::compile() /* override */
 {   // := 
     Value* l = lval->compile();
     Value* r = rval->compile();
-    Builder.CreateLoad(r);
-    Builder.CreateStore(l,r);
+    //Builder.CreateLoad(r);
+    Value* source; 
+    if (lval->type_verify(typeReal) && rval->type_verify(typeInteger)){
+        source = Builder.CreateSExt(r,r64);
+    }
+    else source = r; 
+    Builder.CreateStore(source,l);
     return nullptr;
 }
 

@@ -1,5 +1,5 @@
 #include "ast.hpp"
-#include "symbol.hpp"
+
 
 void error(const char* str)
 { 

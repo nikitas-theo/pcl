@@ -1,10 +1,8 @@
 #pragma once
 
-#include <cstdlib>
 #include <vector>
 #include <map> 
-#include <iostream>
-#include <llvm/IR/Value.h>
+#include <iosfwd>
 
 #include "types.hpp"
 #include "ast.hpp"
@@ -139,6 +137,7 @@ class SymbolTable {
     return 1 on duplicate entry 
 */
 public:
+  SymbolTable() {openScope();}
   void openScope() {
     int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
     scopes.push_back(Scope(ofs));

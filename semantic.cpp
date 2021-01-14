@@ -142,7 +142,7 @@ void Dereference::semantic() /* override */
 }
 
 void Block::semantic() /* override */
-{
+{   
     for (auto x : locals.list) x->semantic();
     for (auto x : body.list) x->semantic();
 }
@@ -179,8 +179,12 @@ void FunctionDef::semantic() /* override */
 
 void Declaration::semantic() /* override */
 {
-
-}
+    lval->semantic();
+    rval->semantic();
+    bool cond = lval->type_verify(rval->type) && lval->is_concrete();
+    cond = cond || (lval->type_verify(typeReal) && rval->type_verify(typeInteger));
+    // find out how to check for : ^array of t := ^array [n] of t
+    }
 
 void IfThenElse::semantic() /* override */
 {
@@ -195,7 +199,6 @@ void While::semantic() /* override */
 {
     cond->semantic();
     cond->type_verify(typeBoolean);
-
     body->semantic();
 }
 
