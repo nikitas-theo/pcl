@@ -190,7 +190,7 @@ stmt:
     | "new" l_value                 { $$ = new Init($2); } 
     | "new" '[' expr ']' l_value    { $$ = new InitArray($5, $3); }
     | "dispose" l_value             { $$ = new Dispose($2); } 
-    | "dispose" '[' ']' l_value     { $$ = new Dispose($4); }
+    | "dispose" '[' ']' l_value     { $$ = new DisposeArray($4); }
     ;
 
 expr:
@@ -225,7 +225,7 @@ r_value:
 l_value:
       T_id                      { $$ = new Id($1); }
     | "result"                  { $$ = new Id("result"); } 
-    | "string-literal"          { $$ = new String($1);    }
+    | "string-literal"          { $$ = new StringLiteral($1);    }
     | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3); }
     | expr '^'                  { $$ = new Dereference($1); }
     | '(' l_value ')'           { $$ = $2; }
@@ -234,7 +234,7 @@ l_value:
 ll_value:
       T_id                      { $$ = new Id($1); }
     | "result"                  { $$ = new Id("result"); }
-    | "string-literal"          { $$ = new String($1);  }
+    | "string-literal"          { $$ = new StringLiteral($1);  }
     | ll_value '[' expr ']'     { $$ = new ArrayAccess($1, $3); } 
     | '(' l_value ')'           { $$ = $2; }
     ;

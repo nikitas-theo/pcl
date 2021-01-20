@@ -50,7 +50,7 @@ void CallProc::printOn(std::ostream &out) const /* override */
     out << ")";
 }
 
-void String::printOn(std::ostream &out) const /* override */
+void StringLiteral::printOn(std::ostream &out) const /* override */
 {
     out << '\"' << s << '\"';
 }
@@ -146,6 +146,12 @@ void InitArray::printOn(std::ostream &out) const /* override */
 }
 
 void Dispose::printOn(std::ostream &out) const /* override */
+{
+    out << "Destroy";
+    lval->printOn(out);
+}
+
+void DisposeArray::printOn(std::ostream &out) const /* override */
 {
     out << "Destroy";
     lval->printOn(out);

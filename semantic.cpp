@@ -3,7 +3,10 @@
 
 SymbolTable st = SymbolTable();
 
-void EmptyStmt::semantic() {return;}
+void EmptyStmt::semantic()
+{
+    return;
+}
 
 void BinOp::semantic() /* override */
 {
@@ -114,18 +117,29 @@ void CallProc::semantic() /* override */
 {
 }
 
-void String::semantic() /* override */ {/* empty */}
+void StringLiteral::semantic() /* override */
+{
+
+}
 
 void ArrayAccess::semantic() /* override */
 {
-    if (lval->type->kind != TYPE_ARRAY) error("accesing non array");
-    if (!pos->type_verify(typeInteger)) error("non integer access constant");
+    lval->semantic();
+    pos->semantic();
+
+    if (lval->type->kind != TYPE_ARRAY || lval->type->kind != TYPE_IARRAY)
+        error("accesing non array");
+    if (pos->type_verify(typeInteger))
+        error("non integer access constant");
+    
     this->type = lval->type->refType;
 }
 
 void Dereference::semantic() /* override */
 {
-    if (e->type->kind != TYPE_POINTER) error("dereferencing non pointer");
+    e->semantic();
+    if (e->type->kind != TYPE_POINTER)
+        error("dereferencing non pointer");
     this->type = e->type->refType;
 }
 
@@ -139,6 +153,7 @@ void Variable::semantic() /* override */
 {
     // just insert into symbol table
     st.insert(name,type);
+    //st.newVariable(name, type);
 }
 
 void VarDef::semantic() /* override */
@@ -153,59 +168,39 @@ void LabelDef::semantic() /* override */
     // we assume type void for labels 
     for(auto l : labels)
         st.insert(l,typeVoid);
+        //st.newVariable(l, typeVoid);
 }
 
 void FormalsGroup::semantic() /* override */
 {
-    if (type->kind == TYPE_POINTER && pass_by == PASS_BY_VALUE)
-        error ("variables that pass by value, can't have pointer type")
-    
-    for (auto p : formals){    
-        st.insert(p,type);
-    }
+    // collection of variable names with specific type that represent the formal parameters of a function
+    // each of the variables needs to be added to the current function scope
+    // variables that pass by value, can't have pointer type
+
+    for (std::string f : formals)
+        //newParameter(????)
 }
 
 void FunctionDef::semantic() /* override */
-{   
-    // if its forward just insert function to scope;
-    if (isForward) {
-        SymbolEntry* e = st.insert(name,type);
-        e->add_func(this);
-    }
-    else {
-        SymbolEntry *e = st.lookup(name);  
-        // this has been forward defined before
-        if  (e != nullptr){
-            FunctionDef* f = e->function;
-            if (f == nullptr) 
-                error("forward definition, but previous function doesn't exist");
-            
-            // check if parameters are correct
-            if (defined_types->length() != parameters->length() )  
-                error("different type of parameters");
-
-        }   
-        else {
-            SymbolEntry* e = st.insert(name,type);
-            e->add_func(this);
-            
-        }
-    }    
+{
+    //need symbol table
 }
 
 void Declaration::semantic() /* override */
 {
     lval->semantic();
     rval->semantic();
-    bool cond = lval->type_verify(rval->type) && lval->is_concrete();
-    cond = cond || (lval->type_verify(typeReal) && rval->type_verify(typeInteger));
-    // find out how to check for : ^array of t := ^array [n] of t
-    }
+
+    if ( !lval->type->is_compatible_with(rval->type) )
+        error("incompatible types");
+}
 
 void IfThenElse::semantic() /* override */
 {
     cond->semantic();
-    cond->type_verify(typeBoolean);
+    if (!cond->type_verify(typeBoolean))
+        error("invalid type");
+
     st_then->semantic();
     if (st_else != nullptr) st_else->semantic();
 }
@@ -213,36 +208,63 @@ void IfThenElse::semantic() /* override */
 void While::semantic() /* override */
 {
     cond->semantic();
-    cond->type_verify(typeBoolean);
+    if (!cond->type_verify(typeBoolean))
+        error("invalid type");
     body->semantic();
 }
 
 void Label::semantic() /* override */
 {
-    
+    //check if label exists and set it in bind state
 }
 
 void GoTo::semantic() /* override */
 {
-    
+    //check if label exists (and is bound ???) IN CURRENT SCOPE ONLYYYYY
 }
 
 void ReturnStmt::semantic() /* override */
 {
-    
+    return;
 }
 
 void Init::semantic() /* override */
 {
-    
+    lval->semantic();
+
+    bool cc = lval->type->kind == TYPE_POINTER && lval->type->refType->is_concrete();
+
+    if (!cc)
+        error("invalid type");
 }
 
 void InitArray::semantic() /* override */
 {
-    
+    lval->semantic();
+    size->semantic();
+
+    bool cc = size->type_verify(typeInteger) && ( lval->type->kind == TYPE_POINTER && (lval->type->refType->kind == TYPE_ARRAY || lval->type->refType->kind == TYPE_IARRAY) );
+
+    if (!cc)
+        error("invalid type");
 }
 
 void Dispose::semantic() /* override */
 {
-    
+    lval->semantic();
+
+    bool cc = lval->type->kind == TYPE_POINTER && lval->type->refType->is_concrete();
+
+    if (!cc)
+        error("invalid type");
+}
+
+void DisposeArray::semantic() /* override */
+{
+    lval->semantic();
+
+    bool cc = lval->type->kind == TYPE_POINTER && (lval->type->refType->kind == TYPE_ARRAY || lval->type->refType->kind == TYPE_IARRAY);
+
+    if (!cc)
+        error("Invalid type");
 }

@@ -41,7 +41,7 @@ bool Expr::type_verify(Stype t)
     return this->type->equals(t);
 }
 
-void String::ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace)
+void StringLiteral::ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace)
 {
     size_t pos = 0;
     while((pos = subject.find(search, pos)) != std::string::npos) {

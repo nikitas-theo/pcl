@@ -31,6 +31,8 @@ extern Type* i64;
 extern Type* r64;
 extern Type* voidTy;
 
+typedef std::vector<std::string> IdCollection;
+
 typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
 // https://en.cppreference.com/w/cpp/utility/variant
@@ -186,7 +188,7 @@ class Const : public Expr {
 
     public:
         data_const val;     
-        Const(data_const val, Stype t) : val(val) , Expr(t) {};       
+        Const(data_const val, Stype t) : val(val) , type(t) {};       
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
@@ -218,7 +220,7 @@ class CallProc : public Stmt {
         Value* compile(); 
 };
 
-class String : public Expr {
+class StringLiteral : public Expr {
     /*
         l-value, type : array[n] of char
         n = #characters + '\0'
@@ -228,7 +230,7 @@ class String : public Expr {
     private:
         const char* s; 
     public:
-        String(const char* s) : s(s), Expr(typeArray(std::string(s).length(),typeChar))
+        StringLiteral(const char* s) : s(s), t(typeArray(std::string(s).length(),typeChar))
         {
             this->lvalue = true;
         }
@@ -453,7 +455,7 @@ class Init : public Stmt {
     private:
         Expr *lval;
     public:
-        Init(Expr* lval) {}
+        Init(Expr* lval) : lval(lval) {}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -463,16 +465,27 @@ class Init : public Stmt {
 class InitArray : public Stmt {
     private:
         Expr *lval;
+        Expr *size;
     public:
-        InitArray(Expr* lval, Expr* sz) {}
+        InitArray(Expr* lval, Expr* sz) : lval(lval), size(sz) {}
         
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
 };
 
-// we merged the DisposeArray class
 class Dispose : public Stmt {
+    private:
+        Expr *lval;
+    public:
+        Dispose(Expr *lval) : lval(lval) {} 
+        
+        void printOn(std::ostream &out) const;
+        void semantic();
+        Value* compile(); 
+};
+
+class DisposeArray : public Stmt {
     private:
         Expr *lval;
     public:
