@@ -30,6 +30,31 @@ class SemanticType
             return refType->equals(targetType->refType);
         return true;
       }
+
+      bool is_concrete()
+      {
+        return kind != TYPE_IARRAY;
+      }
+
+      bool is_compatible_with(SemanticType* t)
+      {
+        switch(kind)
+        {
+          case TYPE_BOOLEAN:
+          case TYPE_CHAR:
+          case TYPE_INTEGER:
+            return t->kind == kind;
+          case TYPE_REAL:
+            return t->kind == TYPE_REAL || t->kind == TYPE_INTEGER;
+          case TYPE_POINTER:
+            return t->kind == TYPE_POINTER && refType->is_compatible_with(t->refType);
+          case TYPE_ARRAY:
+          case TYPE_IARRAY:
+            return t->kind == TYPE_ARRAY && refType->equals(t->refType);
+          default:
+            return false;
+        }
+      }
 };
 
 typedef  SemanticType* Stype;
