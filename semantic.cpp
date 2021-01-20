@@ -11,7 +11,7 @@ void BinOp::semantic() /* override */
     left->semantic();
     right->semantic();
     bool numeric = left->is_arithmetic() && right->is_arithmetic();
-    bool boolean = check_type(left->type,typeBoolean) && check_type(right->type,typeBoolean);
+    bool boolean = left->type_verify(typeBoolean) && right->type_verify(typeBoolean);
 
     switch( hashf(op.c_str()) ){
         case "+"_ : case "-"_ : case "*"_ : 
@@ -27,7 +27,7 @@ void BinOp::semantic() /* override */
             break; 
 
         case "div"_ : case "mod"_ : 
-            if (check_type(left->type,typeInteger) && check_type(right->type,typeInteger)) 
+            if (left->type_verify(typeInteger) && right->type_veify(typeInteger))
                 this->type = typeInteger;
             else   { error("Not integer");}
             break; 
@@ -39,7 +39,7 @@ void BinOp::semantic() /* override */
 
         case "<>"_ : case "="_ : 
         {
-            bool same_type = check_type(left->type,right->type);
+            bool same_type = left->type_verify(right->type);
             // type must be same but not of type array 
             same_type = same_type && (left->type->kind == TYPE_IARRAY || left->type->kind == TYPE_ARRAY);
             if (numeric || same_type) { this->type = typeBoolean;}
@@ -67,7 +67,7 @@ void UnOp::semantic() /* override */
             this->type = e->type;  
             break;
         case "not"_ : 
-            if (!check_type(e->type,typeBoolean)) error("not bool");
+            if (!e->type_verify(typeBoolean)) error("not bool");
             this->type = e->type; 
             break;
         case "@"_ : 
@@ -80,58 +80,46 @@ void UnOp::semantic() /* override */
 void Id::semantic() /* override */
 {
     SymbolEntry* e =  st.lookup(name);
+    if (e == nullptr) error("Id " + name + " not found");
     this->type = e->type; 
-    int depth = e->depth; 
-    while(depth --);
-    //FunctionDef* f = functions.back();
-    //f->add_parameter(name,e->depth);
 }
 
-void Const::semantic() /* override */
-{
-
-}
+void Const::semantic() /* override */ {/* empty */}
 
 void CallFunc::semantic() /* override */
 {
-    //SymbolEntry * e = st.lookup(fname);  
-    //std::vector<Stype> defined_types = e->param_types;
-    //if (defined_types->length() != parameters->length() )  
-    //    error("different type of parameters");
-    /*for(int i ; i < vector.length() ; i++){
+    SymbolEntry * e = st.lookup(fname);   
+
+    // find corresponding function definition in symbol table 
+    FunctionDef f = e->function;
+    if (FunctionDef == nullptr) error("Function" + fname + " not defined");
+    std::vector<Stype> defined_types = f->param_types;
+
+    // check if parameters are correct
+    if (defined_types->length() != parameters->length() )  
+        error("different type of parameters");
+
+    for(int i ; i < vector.length() ; i++){
         Expr* ex = parameters[i] 
-        Stype t = efined_types[i]; 
+        Stype t = defined_types[i]; 
         ex->semantic();
         if (ex->type != t) error("function call parameters do not match")
     }            
+    // return type 
     this->type = e->type;
-    */
+    
 }
 
 void CallProc::semantic() /* override */
 {
-    
-    /*SymbolEntry * e = st.lookup(fname);  
-    vector<Stype> defined_types = e->param_types;
-    if (defined_types->length() != parameters->length() )  error("different type of parameters")
-    for(int i ; i < vector.length() ; i++){
-        Expr* ex = parameters[i] 
-        Stype t = efined_types[i]; 
-        ex->semantic();
-        if (ex->type != t) error("function call parameters do not match")
-    }            
-    */
 }
 
-void String::semantic() /* override */
-{
-
-}
+void String::semantic() /* override */ {/* empty */}
 
 void ArrayAccess::semantic() /* override */
 {
     if (lval->type->kind != TYPE_ARRAY) error("accesing non array");
-    if (!check_type(pos->type,typeInteger)) error("non integer access constant");
+    if (!pos->type_verify(typeInteger)) error("non integer access constant");
     this->type = lval->type->refType;
 }
 
@@ -169,12 +157,40 @@ void LabelDef::semantic() /* override */
 
 void FormalsGroup::semantic() /* override */
 {
-    // variables that pass by value, can't have pointer type 
+    if (type->kind == TYPE_POINTER && pass_by == PASS_BY_VALUE)
+        error ("variables that pass by value, can't have pointer type")
+    
+    for (auto p : formals){    
+        st.insert(p,type);
+    }
 }
 
 void FunctionDef::semantic() /* override */
-{
+{   
+    // if its forward just insert function to scope;
+    if (isForward) {
+        SymbolEntry* e = st.insert(name,type);
+        e->add_func(this);
+    }
+    else {
+        SymbolEntry *e = st.lookup(name);  
+        // this has been forward defined before
+        if  (e != nullptr){
+            FunctionDef* f = e->function;
+            if (f == nullptr) 
+                error("forward definition, but previous function doesn't exist");
+            
+            // check if parameters are correct
+            if (defined_types->length() != parameters->length() )  
+                error("different type of parameters");
 
+        }   
+        else {
+            SymbolEntry* e = st.insert(name,type);
+            e->add_func(this);
+            
+        }
+    }    
 }
 
 void Declaration::semantic() /* override */
@@ -190,7 +206,6 @@ void IfThenElse::semantic() /* override */
 {
     cond->semantic();
     cond->type_verify(typeBoolean);
-
     st_then->semantic();
     if (st_else != nullptr) st_else->semantic();
 }

@@ -90,10 +90,11 @@ private:
 struct SymbolEntry {
   int offset;
   Stype type; 
-  // set depth upon lookup
-  int depth;
+  // optional for storing function objects 
+  FunctionDef* function = nullptr;
   SymbolEntry() {}
   SymbolEntry(Stype v, int ofs) : type(v), offset(ofs) {}
+  void add_func(FunctionDef* f) {function = f};
 };
 
 class Scope {
@@ -107,13 +108,14 @@ public:
     if (locals.find(name) == locals.end()) return nullptr;
     return &(locals[name]);
   }
-  int insert(std::string name, Stype v) {
+  SymbolEntry *insert(std::string name, Stype v) {
     if (locals.find(name) != locals.end()) {
-      return 1;
+      // seems like this error handling is ok 
+      error("Name " + name + " already defined in Namespace");
     }
     locals[name] = SymbolEntry(v, offset++);
     ++size;
-    return 0; 
+    return &locals[name]; 
   }
 
 private:
@@ -145,12 +147,9 @@ public:
   void closeScope() { scopes.pop_back(); };
   SymbolEntry *lookup(std::string name) {
     SymbolEntry *e;
-    int depth = 0;
     for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
       e = i->lookup(name);
-      depth++; 
       if (e != nullptr){
-        e->depth = depth;
         return e;
       }
     }
@@ -159,7 +158,6 @@ public:
 
   int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
   int insert(std::string name, Stype v) { return scopes.back().insert(name, v); }
-
 private:
   std::vector<Scope> scopes;
 };

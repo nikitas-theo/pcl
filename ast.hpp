@@ -227,9 +227,8 @@ class String : public Expr {
     */
     private:
         const char* s; 
-        Stype t; 
     public:
-        String(const char* s) : s(s), t(typeArray(std::string(s).length(),typeChar))
+        String(const char* s) : s(s), Expr(typeArray(std::string(s).length(),typeChar))
         {
             this->lvalue = true;
         }

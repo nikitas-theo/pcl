@@ -4,6 +4,7 @@
 void error(const char* str)
 { 
     std::cerr << str; 
+    std::exit(1);
 }
 
 Type* AST::TypeConvert(Stype t) 
@@ -34,16 +35,6 @@ bool Expr::is_concrete()
 {
     return ! (this->type->kind == TYPE_IARRAY);
 }
-
-bool AST::check_type(Stype t1,Stype t2,bool check_size)
-{ 
-    if (t1->kind != t2->kind ) return false;
-    if (t1->kind == TYPE_ARRAY && check_size && t1->size != t2->size) return false ;
-    if (t1->kind == TYPE_POINTER || t1->kind == TYPE_IARRAY || t1->kind == TYPE_ARRAY) 
-        return check_type(t1->refType, t2->refType);
-    return true; 
-}
-
 
 bool Expr::type_verify(Stype t)
 {
