@@ -26,6 +26,11 @@ Type* AST::TypeConvert(Stype t)
     return voidTy;
 }
 
+bool AST::check_type(Stype t1,Stype t2,bool check_size)
+{
+    return t1->equals(t2);
+}
+
 bool Expr::is_arithmetic() 
 { 
     return this->type->kind == TYPE_REAL || this->type->kind == TYPE_INTEGER;
@@ -41,7 +46,7 @@ bool Expr::type_verify(Stype t)
     return this->type->equals(t);
 }
 
-void StringLiteral::ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace)
+void StringValue::ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace)
 {
     size_t pos = 0;
     while((pos = subject.find(search, pos)) != std::string::npos) {
@@ -52,13 +57,13 @@ void StringLiteral::ReplaceStringInPlace(std::string& subject, const std::string
 
 void Block::push_local(Stmt *l)
 {
-    locals.list.push_back(l);
+    locals->push(l);
 }
 
-void VarDef::push(std::vector<std::string>* var_ids, Stype t)
+void VarDef::push(std::list<std::string>* var_ids, Stype t)
 {
     for (std::string s : *var_ids ) {
-        vars.list.push_back(new Variable(s,t));
+        vars.push_back(new Variable(s, t));
     }
 }
 

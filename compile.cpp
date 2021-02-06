@@ -190,7 +190,10 @@ void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
     }
 }
 
-Value* EmptyStmt::compile() {return nullptr;}
+Value* EmptyStmt::compile()
+{
+    return nullptr;
+}
 
 Value* BinOp::compile() /* override */
 {
@@ -339,6 +342,11 @@ Value* Id::compile() /* override */
     return ct.lookup(name)->value;
 }
 
+Value* Result::compile()
+{
+    return nullptr;
+}
+
 Value* Const::compile() /* override */
 {
     switch(type->kind)
@@ -356,7 +364,7 @@ Value* CallFunc::compile() /* override */
 {
     Value* func = ct.lookup(fname)->value;
     std::vector<Value*> param_values;
-    for (auto p : parameters.list){
+    for (auto p : parameters->nodes){
         param_values.push_back(p->compile());
     }
     Value* ret = Builder.CreateCall(func,param_values);
@@ -367,14 +375,14 @@ Value* CallProc::compile() /* override */
 {
     Value* func = ct.lookup(fname)->value;
     std::vector<Value*> param_values;
-    for (auto p : parameters.list){
+    for (auto p : parameters->nodes){
         param_values.push_back(p->compile());
     }
     Builder.CreateCall(func,param_values);
     return nullptr; 
 }
 
-Value* StringLiteral::compile() /* override */
+Value* StringValue::compile() /* override */
 {
     std::string pstr(s);
     std::vector<std::pair<std::string,std::string>> rep = {
@@ -404,8 +412,8 @@ Value* Dereference::compile() /* override */
 Value* Block::compile() /* override */
 {
     // we compile each locals, calling the right method for its initial class
-    for (auto x : locals.list) x->compile();
-    for (auto x : body.list) x->compile();
+    locals->compile();
+    body->compile();
     return nullptr;
 
 }
@@ -424,7 +432,7 @@ Value* VarDef::compile() /* override */
     BasicBlock* entryBlock =&TheFunction->getEntryBlock();
     IRBuilder<> TemporalBuilder(entryBlock, entryBlock->begin());
     
-    for (auto var : vars.list){ 
+    for (auto var : vars){ 
         var->compile();
     }                    
     return nullptr;
@@ -446,12 +454,12 @@ Value* FunctionDef::compile() /* override */
         
     Function *routine;
     std::vector<Type*> param_types; 
-    for (FormalsGroup* param : parameters.list){
+    for (ParameterGroup* param : parameters){
         Stype t = param->type;
         // by reference passing is just adding a pointer
-        if (param->pass_by == PASS_BY_REFERENCE) 
+        if (param->pmode == PASS_BY_REFERENCE) 
             t = typePointer(t);            
-        for (std::string name : param->formals){
+        for (std::string name : param->names){
              param_types.push_back(TypeConvert(param->type)) ;
         }
     }
@@ -468,8 +476,8 @@ Value* FunctionDef::compile() /* override */
     // create a new scope
     ct.openScope();
     auto param_iter = routine->arg_begin(); 
-    for (FormalsGroup* param : parameters.list){
-        for (std::string name : param->formals ){
+    for (ParameterGroup* param : parameters){
+        for (std::string name : param->names ){
             ct.insert(name,param_iter);
             param_iter++;
         }
@@ -538,9 +546,9 @@ Value* While::compile() /* override */
 Value* Label::compile() /* override */
 {
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
-    BasicBlock * LabelBB  = BasicBlock::Create(TheContext,lbl, TheFunction);
+    BasicBlock * LabelBB  = BasicBlock::Create(TheContext, label, TheFunction);
     Builder.SetInsertPoint(LabelBB);
-    ct.insert(lbl,LabelBB);
+    ct.insert(label ,LabelBB);
     target->compile();            
     return nullptr; 
 }
