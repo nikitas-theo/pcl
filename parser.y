@@ -110,13 +110,14 @@ bool print_ast;
 program :
       "program" T_id ';' body '.' {
         std::cout << "Parsed" << std::endl;
-        $4->semantic();
+        $4->semantic(); 
+        std::cout << "Semantically correct" << std::endl;
+
         if (print_ast) {
           std::cout << "AST:\n" << *$4 << std::endl; 
         }
-        std::cout << "Semantically correct" << std::endl;
         if (program_name == "") program_name = $2;
-        /* $4->compile_llvm(program_name,optimize, imm_stdout); */
+        //$4->compile_llvm(program_name,optimize, imm_stdout); 
       }
     ;
 

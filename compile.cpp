@@ -94,6 +94,23 @@ inline void AST::add_libs()
     add_func(FunctionType::get(r64,{r64},false),"ln");
     add_func(FunctionType::get(r64,{},false),"pi");
 
+    // CHAR UTILS
+    add_func(FunctionType::get(i8,{i32},false),"ord");
+    add_func(FunctionType::get(i32,{i8},false),"chr");
+
+    // ROUND UTILS
+
+    Function *trunc = Function::Create(
+        FunctionType::get(r64,{i32},false), 
+        Function::ExternalLinkage, "truncFunc", TheModule);
+    ct.insert("trunc",trunc);
+
+    Function *round = Function::Create(
+        FunctionType::get(r64,{i32},false), 
+        Function::ExternalLinkage, "roundFunc", TheModule);
+    ct.insert("round",round);
+
+
 };
 
 void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
@@ -185,7 +202,7 @@ void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
         TheModule->print(*out,nullptr);
 
         // print bin to file 
-        std::string cmd = "clang " + program_name + ".ll libPCL.a -lgc -o " +  program_name + ".out" + " -g";
+        std::string cmd = "clang " + program_name + ".ll libs.c -lm -lgc -o " +  program_name + ".out" + " -g";
         system(cmd.c_str());
     }
 }
