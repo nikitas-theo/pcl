@@ -384,7 +384,7 @@ Value* CallProc::compile() /* override */
 
 Value* StringValue::compile() /* override */
 {
-    std::string pstr(s);
+    std::string pstr(strvalue);
     std::vector<std::pair<std::string,std::string>> rep = {
         {"\\n" , "\n"} , {"\\t", "\t"}, {"\\r", "\r"} , {"\\\\", "\\"} , {"\\0", "\0"}, 
         {"\\'","'"}, {"\\\"", "\""}  };
@@ -595,5 +595,6 @@ Value* DisposeArray::compile() /* override */
     /* Dispose should be some function call from gc library */ 
     // Value* ptr = lval->compile();
     // Builder.CreateCall(GC_Free,ptr);
-    // return nullptr;
+    return nullptr;
+
 }
