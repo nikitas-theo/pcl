@@ -52,19 +52,19 @@ class AST
         virtual void semantic() = 0;
 
         virtual void printOn(std::ostream &out) const = 0;
-
+        friend inline std::ostream& operator<<(std::ostream &out, const AST &t){
+            t.printOn(out);
+            return out;
+        }
         virtual Value* compile() = 0;
         void compile_llvm(std::string  program_name, bool optimize, bool imm_stdout );
 
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
+        
 };
 
-inline std::ostream& operator<<(std::ostream &out, const AST &t)
-{
-  t.printOn(out);
-  return out;
-}
+
 
 inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t)
 {
@@ -120,6 +120,8 @@ class ASTnodeCollection : public Stmt, public Expr
         }
 };
 
+/* ------ legacy ---------
+
 template<class T>
 class ASTvector : public Stmt , public Expr
 {
@@ -151,6 +153,7 @@ class ASTvector : public Stmt , public Expr
         }
 
 };
+*/ 
 
 constexpr unsigned int hashf(const char *s, int off = 0)
 {                        

@@ -5,9 +5,9 @@ program mean;
 
     begin 
         writeString("Give n: ");
-        n := reaadInteger();
+        n := readInteger();
         writeString("Give k: ");
-        k := reaadInteger();
+        k := readInteger();
 
         i := 0; 
         sum := 0.0; 

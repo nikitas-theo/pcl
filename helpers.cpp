@@ -3,7 +3,7 @@
 
 void error(const char* str)
 { 
-    std::cerr << str; 
+    std::cerr << str << std::endl; 
     std::exit(1);
 }
 

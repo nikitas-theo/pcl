@@ -1,10 +1,12 @@
 #include "ast.hpp"
 #include "symbol.hpp"
 
-template<typename T>
-inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
+
+
+
+inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& l) {
     os << "list(";
-    for (T t : l) {
+    for (auto t : l) {
         os << t;
         if (t != *(l.end()))
             os << " ";
@@ -13,13 +15,26 @@ inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
     return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const std::list<AST*>& l) {
+
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
     os << "list(";
-    for (AST* t : l) {
-        t->printOn(os);
-        os << " ";
+    for (T t : l) {
+        if (std::is_pointer<T>::value) os << *t ; 
+        else  os << t;
+        if (t != *(l.end()))
+            os << " ";
     }
     os << ")";
+    return os;
+}
+
+
+
+
+inline std::ostream& operator<<(std::ostream& os, ParameterGroup& p) {
+    os << "type : "  << p.type << "pass mode : " << p.pmode << p.names;
     return os;
 }
 
@@ -66,12 +81,12 @@ void Const::printOn(std::ostream &out) const /* override */
 
 void CallFunc::printOn(std::ostream &out) const /* override */
 {
-    out << fname << "(" << parameters << ")";
+    out << fname << "(" << parameters->nodes << ")";
 }
 
 void CallProc::printOn(std::ostream &out) const /* override */
 {
-    out << fname << "(" << parameters << ")";
+    out << fname << "(" << parameters->nodes << ")";
 }
 
 void StringValue::printOn(std::ostream &out) const /* override */
