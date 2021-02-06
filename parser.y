@@ -21,11 +21,16 @@ bool print_ast;
     Block* prog;
     VarDef* vgs;
     FunctionDef* rtn;
-    FormalsGroup* flg;
-    std::vector<std::string>* ids;
-    ASTvector<FormalsGroup*>* fgs;
-    ASTvector<Stmt*>* sts;
-    ASTvector<Expr*>*  exs;
+    /* FormalsGroup* flg; */
+    ParameterGroup* flg;
+    /* std::vector<std::string>* ids; */
+    std::list<std::string>* ids;
+    /* ASTvector<FormalsGroup*>* fgs; */
+    std::list<ParameterGroup*>* fgs;
+    /* ASTvector<Stmt*>* sts; */
+    ASTnodeCollection* sts;
+    /* ASTvector<Expr*>*  exs; */
+    ASTnodeCollection* exs;
 }
 
 %locations
@@ -105,13 +110,13 @@ bool print_ast;
 program :
       "program" T_id ';' body '.' {
         std::cout << "Parsed" << std::endl;
+        if (print_ast) {
+          std::cout << "AST:\n" << *$4 << std::endl; 
+        }
         $4->semantic();
         std::cout << "Semantically correct" << std::endl;
-        if (print_ast) {
-          std::cout << "AST: " << *$4 << std::endl; 
-        }
         if (program_name == "") program_name = $2;
-        $4->compile_llvm(program_name,optimize, imm_stdout);
+        /* $4->compile_llvm(program_name,optimize, imm_stdout); */
       }
     ;
 
@@ -133,8 +138,8 @@ var_def:
     ;
 
 id_list :
-      T_id ',' id_list              { $3->push_back($1) ; $$ = $3; }
-    | T_id                          { $$ = new std::vector<std::string>(); $$->push_back($1); }
+      T_id ',' id_list              { $3->push_front($1) ; $$ = $3; }
+    | T_id                          { $$ = new std::list<std::string>(); $$->push_front($1); }
     ;
 
 header :
@@ -143,28 +148,28 @@ header :
 	;
 
 parameter_list: 
-      %empty                        { $$ = new ASTvector<FormalsGroup*>(); } //If we have no params then we need an empty stack
-    | formal formal_list            { $2->push($1); $$ = $2; }  //Even if formal_list is empty, we should have a stack from the next rule
+      %empty                        { $$ = new std::list<ParameterGroup*>(); } /* If we have no params then we need an empty stack */
+    | formal formal_list            { $2->push_front($1); $$ = $2; }  /* Even if formal_list is empty, we should have a stack from the next rule */
     ;
 
 formal_list: 
-      %empty                        { $$ = new ASTvector<FormalsGroup*>(); }
-    | ';' formal formal_list        { $3->push($2) ; $$ = $3; } 
+      %empty                        { $$ = new std::list<ParameterGroup*>(); }
+    | ';' formal formal_list        { $3->push_front($2) ; $$ = $3; } 
     ;
 
 formal:
-      id_list ':' type              { $$ = new FormalsGroup($1, $3, PASS_BY_VALUE); }
-    | "var" id_list ':' type        { $$ = new FormalsGroup($2, $4, PASS_BY_REFERENCE); }
+      id_list ':' type              { $$ = new ParameterGroup {*$1, $3, PASS_BY_VALUE}; /* $$ = new FormalsGroup($1, $3, PASS_BY_VALUE); */ }
+    | "var" id_list ':' type        { $$ = new ParameterGroup {*$2, $4, PASS_BY_REFERENCE}; /* $$ = new FormalsGroup($2, $4, PASS_BY_REFERENCE); */ }
     ;
 
 type :
-      "integer"         { $$ = typeInteger;}
-    | "real"            { $$ = typeReal;}
-    | "boolean"         { $$ = typeBoolean;}
-    | "char"            { $$ = typeChar;}
-    | "array" "of" type[refType]     { $$ = typeIArray($refType); }
+      "integer"                     { $$ = typeInteger;}
+    | "real"                        { $$ = typeReal;}
+    | "boolean"                     { $$ = typeBoolean;}
+    | "char"                        { $$ = typeChar;}
+    | "array" "of" type[refType]    { $$ = typeIArray($refType); }
     | "array" '[' "integer-const"[size] ']' "of" type[refType] 	{ $$ = typeArray($size, $refType); }
-    | '^' type          { $$ =  typePointer($2) ; }
+    | '^' type                      { $$ =  typePointer($2) ; }
     ;
 
 block:
@@ -172,7 +177,7 @@ block:
     ;
 
 stmt_list :
-      stmt                          { $$ = new ASTvector<Stmt*>(); $$->push($1); }
+      stmt                          { $$ = new ASTnodeCollection(); $$->push($1); }
     | stmt ';' stmt_list            { $3->push($1) ; $$ = $3; }
     ;
 
@@ -199,7 +204,7 @@ expr:
     ;
 
 expr_list:
-      expr                      { $$ = new ASTvector<Expr*>(); $$->push($1); }
+      expr                      { $$ = new ASTnodeCollection(); $$->push($1); }
     | expr ',' expr_list        { $3->push($1); $$ = $3; }
     ;
 
@@ -224,8 +229,8 @@ r_value:
 
 l_value:
       T_id                      { $$ = new Id($1); }
-    | "result"                  { $$ = new Id("result"); } 
-    | "string-literal"          { $$ = new StringLiteral($1);    }
+    | "result"                  { $$ = new Result(); }
+    | "string-literal"          { $$ = new StringValue($1); }
     | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3); }
     | expr '^'                  { $$ = new Dereference($1); }
     | '(' l_value ')'           { $$ = $2; }
@@ -233,8 +238,8 @@ l_value:
 
 ll_value:
       T_id                      { $$ = new Id($1); }
-    | "result"                  { $$ = new Id("result"); }
-    | "string-literal"          { $$ = new StringLiteral($1);  }
+    | "result"                  { $$ = new Result(); }
+    | "string-literal"          { $$ = new StringValue($1);  }
     | ll_value '[' expr ']'     { $$ = new ArrayAccess($1, $3); } 
     | '(' l_value ')'           { $$ = $2; }
     ;

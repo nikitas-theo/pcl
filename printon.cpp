@@ -1,5 +1,28 @@
 #include "ast.hpp"
 #include "symbol.hpp"
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
+    os << "list(";
+    for (T t : l) {
+        os << t;
+        if (t != *(l.end()))
+            os << " ";
+    }
+    os << ")";
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const std::list<AST*>& l) {
+    os << "list(";
+    for (AST* t : l) {
+        t->printOn(os);
+        os << " ";
+    }
+    os << ")";
+    return os;
+}
+
 void EmptyStmt::printOn(std::ostream &out) const /* override */
 {
     out << "empty";
@@ -25,6 +48,11 @@ void Id::printOn(std::ostream &out) const /* override */
     out << name;
 }
 
+void Result::printOn(std::ostream &out) const
+{
+    out << "result";
+}
+
 void Const::printOn(std::ostream &out) const /* override */
 {
     switch(type->kind) {
@@ -38,21 +66,17 @@ void Const::printOn(std::ostream &out) const /* override */
 
 void CallFunc::printOn(std::ostream &out) const /* override */
 {
-    out << fname << "("; 
-    if (!parameters.list.empty()) parameters.printOn(out); 
-    out << ")";
+    out << fname << "(" << parameters << ")";
 }
 
 void CallProc::printOn(std::ostream &out) const /* override */
 {
-    out << fname << "("; 
-    if (!parameters.list.empty()) parameters.printOn(out); 
-    out << ")";
+    out << fname << "(" << parameters << ")";
 }
 
-void StringLiteral::printOn(std::ostream &out) const /* override */
+void StringValue::printOn(std::ostream &out) const /* override */
 {
-    out << '\"' << s << '\"';
+    out << "String(\"" << strvalue << "\")";
 }
 
 void ArrayAccess::printOn(std::ostream &out) const /* override */
@@ -68,8 +92,8 @@ void Dereference::printOn(std::ostream &out) const /* override */
 void Block::printOn(std::ostream &out) const /* override */
 {
     out << "Block of: "  << std::endl; 
-    out << "\t\tlocals: " ; locals.printOn(out); out << std::endl; 
-    out << "\t\tbody: " ; body.printOn(out); out <<  std::endl; 
+    out << "\tlocals: " << locals->nodes << std::endl; 
+    out << "\tbody: " << body->nodes <<  std::endl; 
 }
 
 void Variable::printOn(std::ostream &out) const /* override */
@@ -79,12 +103,12 @@ void Variable::printOn(std::ostream &out) const /* override */
 
 void VarDef::printOn(std::ostream &out) const /* override */
 {
-    out << "VarDef :"; vars.printOn(out);
+    out << "VarDef :" << vars;
 }
 
 void LabelDef::printOn(std::ostream &out) const /* override */
 {
-    out << "LabelDef";  out << labels;
+    out << "LabelDef" << labels;
 }
 
 void FormalsGroup::printOn(std::ostream &out) const /* override */
@@ -96,7 +120,7 @@ void FormalsGroup::printOn(std::ostream &out) const /* override */
 
 void FunctionDef::printOn(std::ostream &out) const /* override */
 { 
-    out << name ; parameters.printOn(out); out << " : " << type <<std::endl ;
+    out << name << "(" << parameters << ") : " << type << std::endl ;
     body->printOn(out);
 }
 
@@ -122,7 +146,7 @@ void While::printOn(std::ostream &out) const /* override */
 
 void Label::printOn(std::ostream &out) const /* override */
 {
-    out <<  lbl << " : "; target->printOn(out);
+    out <<  label << " : "; target->printOn(out);
 }
 
 void GoTo::printOn(std::ostream &out) const /* override */

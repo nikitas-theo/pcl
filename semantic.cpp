@@ -14,46 +14,53 @@ void BinOp::semantic() /* override */
     left->semantic();
     right->semantic();
     bool numeric = left->is_arithmetic() && right->is_arithmetic();
-    bool boolean = left->type_verify(typeBoolean) && right->type_verify(typeBoolean);
 
     switch( hashf(op.c_str()) ){
         case "+"_ : case "-"_ : case "*"_ : 
-            if (! numeric) {error("Not numeric");}
+            if (! numeric)
+                error("Not numeric");
             if (left->type_verify(typeReal) || right->type_verify(typeReal))
                 this->type = typeReal;
             else 
                 this->type = typeInteger;       
             break; 
 
-        case "/"_ : if (! numeric) {error("Not numeric");}
+        case "/"_ : 
+            if (! numeric)
+                error("Not numeric");
             this->type = typeReal;
             break; 
 
         case "div"_ : case "mod"_ : 
-            if (left->type_verify(typeInteger) && right->type_veify(typeInteger))
+            if (left->type_verify(typeInteger) && right->type_verify(typeInteger))
                 this->type = typeInteger;
-            else   { error("Not integer");}
+            else
+                error("Not integer");
             break; 
 
-
         case "and"_  : case "or"_ : 
-            if (! boolean) {error("Not boolean");}
+            if (! (left->type_verify(typeBoolean) && right->type_verify(typeBoolean)) )
+                error("Not boolean");
             this->type = typeBoolean ;  
+            break;
 
         case "<>"_ : case "="_ : 
         {
             bool same_type = left->type_verify(right->type);
             // type must be same but not of type array 
-            same_type = same_type && (left->type->kind == TYPE_IARRAY || left->type->kind == TYPE_ARRAY);
-            if (numeric || same_type) { this->type = typeBoolean;}
-            else { error("Equality error");}
+            same_type = same_type && !(left->type->kind == TYPE_IARRAY || left->type->kind == TYPE_ARRAY);
+            if (numeric || same_type)
+                this->type = typeBoolean;
+            else
+                error("Equality error");
             break; 
         }
         case ">"_ :                     
         case "<"_ :
         case "<="_ : 
         case ">="_ : 
-            if (! numeric) { error("Not numeric");}
+            if (! numeric)
+                error("Not numeric");
             this->type = typeBoolean;
             break; 
         default : 
@@ -82,42 +89,103 @@ void UnOp::semantic() /* override */
 
 void Id::semantic() /* override */
 {
-    SymbolEntry* e =  st.lookup(name);
-    if (e == nullptr) error("Id " + name + " not found");
+    VariableEntry* e = st.lookupVariable(name);
+    if (e == nullptr) error("Id not found");
     this->type = e->type; 
 }
 
-void Const::semantic() /* override */ {/* empty */}
+void Result::semantic()
+{
+    VariableEntry* e = st.lookupVariable("result", LOOKUP_CURRENT_SCOPE);
+    if (e == nullptr)
+        error("use of \"result\" is only allowed in functions");
+    else
+        this->type = e->type;
+}
+
+void Const::semantic() /* override */
+{
+    /* empty */
+}
 
 void CallFunc::semantic() /* override */
 {
-    SymbolEntry * e = st.lookup(fname);   
+    // SymbolEntry * e = st.lookup(fname);   
 
-    // find corresponding function definition in symbol table 
-    FunctionDef f = e->function;
-    if (FunctionDef == nullptr) error("Function" + fname + " not defined");
-    std::vector<Stype> defined_types = f->param_types;
+    // // find corresponding function definition in symbol table 
+    // FunctionDef f = e->function;
+    // if (FunctionDef == nullptr) error("Function" + fname + " not defined");
+    // std::vector<Stype> defined_types = f->param_types;
 
-    // check if parameters are correct
-    if (defined_types->length() != parameters->length() )  
-        error("different type of parameters");
+    // // check if parameters are correct
+    // if (defined_types->length() != parameters->length() )  
+    //     error("different type of parameters");
 
-    for(int i ; i < vector.length() ; i++){
-        Expr* ex = parameters[i] 
-        Stype t = defined_types[i]; 
-        ex->semantic();
-        if (ex->type != t) error("function call parameters do not match")
-    }            
-    // return type 
-    this->type = e->type;
+    // for(int i ; i < vector.length() ; i++){
+    //     Expr* ex = parameters[i] 
+    //     Stype t = defined_types[i]; 
+    //     ex->semantic();
+    //     if (ex->type != t) error("function call parameters do not match")
+    // }            
+    // // return type 
+    // this->type = e->type;
+
+    FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
+
+    if (f == nullptr)
+        error("procedure not found");
+    
+    size_t psize = parameters->nodes.size();
+    if (psize != f->arguments.size())
+        error("not enough parameters");
+
+    // for (int i = 0; i < psize; i++) {
+    //     Expr* e = parameters->nodes[i];
+    //     ParameterGroup* p = f->arguments[i];
+    std::list<AST*>::iterator ie;
+    std::list<ParameterGroup*>::iterator ip;
+
+    for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
+        Expr* e = (Expr*) *ie;
+        ParameterGroup* p = *ip;
+
+        e->semantic();
+        if (!e->type->equals(p->type))
+            error("unmatching types");
+    }
+
+    this->type = f->resultType;
     
 }
 
 void CallProc::semantic() /* override */
 {
+    FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
+
+    if (f == nullptr)
+        error("procedure not found");
+    
+    size_t psize = parameters->nodes.size();
+    if (psize != f->arguments.size())
+        error("not enough parameters");
+
+    // for (int i = 0; i < psize; i++) {
+    //     Expr* e = parameters->nodes[i];
+    //     ParameterGroup* p = f->arguments[i];
+    std::list<AST*>::iterator ie;
+    std::list<ParameterGroup*>::iterator ip;
+
+    for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
+        Expr* e = (Expr*) *ie;
+        ParameterGroup* p = *ip;
+
+        e->semantic();
+        if (!e->type->equals(p->type))
+            error("unmatching types");
+    }
 }
 
-void StringLiteral::semantic() /* override */
+void StringValue::semantic() /* override */
 {
 
 }
@@ -145,30 +213,27 @@ void Dereference::semantic() /* override */
 
 void Block::semantic() /* override */
 {   
-    for (auto x : locals.list) x->semantic();
-    for (auto x : body.list) x->semantic();
+    locals->semantic();
+    body->semantic();
 }
 
 void Variable::semantic() /* override */
 {
     // just insert into symbol table
-    st.insert(name,type);
-    //st.newVariable(name, type);
+    st.addEntry(new VariableEntry(name, type));
 }
 
 void VarDef::semantic() /* override */
 {
-    for (auto var : vars.list){ 
+    for (Variable* var : vars) { 
         var->semantic();
     }  
 }
 
 void LabelDef::semantic() /* override */
 {
-    // we assume type void for labels 
-    for(auto l : labels)
-        st.insert(l,typeVoid);
-        //st.newVariable(l, typeVoid);
+    for(std::string l : labels)
+        st.addEntry(new LabelEntry(l));
 }
 
 void FormalsGroup::semantic() /* override */
@@ -177,13 +242,64 @@ void FormalsGroup::semantic() /* override */
     // each of the variables needs to be added to the current function scope
     // variables that pass by value, can't have pointer type
 
-    for (std::string f : formals)
-        //newParameter(????)
+    return;
 }
 
 void FunctionDef::semantic() /* override */
 {
-    //need symbol table
+    FunctionEntry* f = st.lookupFunction(name, LOOKUP_CURRENT_SCOPE);
+
+    if (f == nullptr) {
+        f = new FunctionEntry(name);
+        f->pardef = PARDEF_DEFINE;
+        st.addEntry(f);
+    }
+
+    switch (f->pardef) {
+        case PARDEF_DEFINE:
+            //clone parameters to f->arguments
+            f->arguments = parameters;
+
+            //set result type
+            f->resultType = type;
+            
+            break;
+        case PARDEF_PENDING_CHECK:
+            for (std::list<ParameterGroup*>::iterator defit = parameters.begin(), symbit = f->arguments.begin(); defit != parameters.end() && symbit != f->arguments.end(); ++defit, ++symbit) {
+                if (*defit != *symbit)
+                    error("non matching parameters");
+            }
+
+            if (!f->resultType->equals(type))
+                error("non matching function type");
+            
+            break;
+        case PARDEF_COMPLETE:
+            error("cannot redefine function");
+            break;
+    }
+
+    if (isForward) {
+        f->pardef = PARDEF_PENDING_CHECK;
+    }
+    else {
+        st.openScope();
+
+        if (!type->equals(typeVoid))
+            st.addEntry(new VariableEntry("result", type));
+
+        for (ParameterGroup* p : parameters) {
+            for (std::string v : p->names) {
+                st.addEntry(new VariableEntry(v, p->type));
+            }
+        }
+
+        f->pardef = PARDEF_COMPLETE;
+        body->semantic();
+
+        st.closeScope();
+    }
+
 }
 
 void Declaration::semantic() /* override */
@@ -216,11 +332,22 @@ void While::semantic() /* override */
 void Label::semantic() /* override */
 {
     //check if label exists and set it in bind state
+    LabelEntry *l = st.lookupLabel(label);
+    if (l == nullptr)
+        error("label not declared");
+    if (l->isBound)
+        error("label already assigned");
+    l->isBound = true;
 }
 
 void GoTo::semantic() /* override */
 {
     //check if label exists (and is bound ???) IN CURRENT SCOPE ONLYYYYY
+    LabelEntry *l = st.lookupLabel(label);
+    if (l == nullptr)
+     error("label not declared");
+    if (!l->isBound)
+     error("label not bound to a target");
 }
 
 void ReturnStmt::semantic() /* override */

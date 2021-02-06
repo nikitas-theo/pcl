@@ -3,7 +3,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <variant> 
+#include <variant>
+#include <list>
 
 // #include "symbol.hpp"
 // #include "external.hpp"
@@ -36,12 +37,6 @@ typedef std::vector<std::string> IdCollection;
 typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
 // https://en.cppreference.com/w/cpp/utility/variant
-
-typedef enum
-{
-    PASS_BY_REFERENCE,
-    PASS_BY_VALUE
-} PassMode;
 
 extern void error(const char* str);  
 
@@ -93,6 +88,37 @@ class Expr : public AST
 };
 
 class Stmt : public AST {};
+
+class ASTnodeCollection : public Stmt, public Expr
+{
+    
+    public:
+        std::list<AST *> nodes;
+
+        void printOn(std::ostream &out) const
+        {
+            for (AST* n : nodes)
+                n->printOn(out); 
+        }
+
+        void semantic()
+        {
+            for (AST* n : nodes)
+                n->semantic();
+        }
+        
+        Value* compile()
+        {
+            for (AST* n : nodes)
+                n->compile();
+            return nullptr;
+        }
+
+        void push(AST* node)
+        {
+            nodes.push_front(node);
+        }
+};
 
 template<class T>
 class ASTvector : public Stmt , public Expr
@@ -184,11 +210,18 @@ class Id : public Expr {
         Value* compile(); 
 };
 
+class Result : public Expr {
+    public:
+        void printOn(std::ostream &out) const;
+        void semantic();
+        Value* compile();
+};
+
 class Const : public Expr {
 
     public:
         data_const val;     
-        Const(data_const val, Stype t) : val(val) , type(t) {};       
+        Const(data_const val, Stype t) : val(val) , Expr(t) {};       
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
@@ -197,9 +230,9 @@ class Const : public Expr {
 class CallFunc : public Expr {
     private:
         std::string fname;
-        ASTvector<Expr*> parameters;
+        ASTnodeCollection *parameters;
     public:
-        CallFunc(std::string name, ASTvector<Expr*>* params) : fname(name), parameters(*params) {}
+        CallFunc(std::string name, ASTnodeCollection* params) : fname(name), parameters(params) {}
         CallFunc(std::string name) : fname(name) {}
         
         void printOn(std::ostream &out) const;
@@ -210,9 +243,9 @@ class CallFunc : public Expr {
 class CallProc : public Stmt {
     private:
         std::string fname;
-        ASTvector<Expr*> parameters;
+        ASTnodeCollection *parameters;
     public:
-        CallProc(std::string name, ASTvector<Expr*>* params) : fname(name), parameters(*params) {}
+        CallProc(std::string name, ASTnodeCollection* params) : fname(name), parameters(params) {}
         CallProc(std::string name) : fname(name){}
         
         void printOn(std::ostream &out) const;
@@ -220,7 +253,7 @@ class CallProc : public Stmt {
         Value* compile(); 
 };
 
-class StringLiteral : public Expr {
+class StringValue : public Expr {
     /*
         l-value, type : array[n] of char
         n = #characters + '\0'
@@ -228,10 +261,18 @@ class StringLiteral : public Expr {
         so you can use it as str[i], but not to assign since it's a constant 
     */
     private:
-        const char* s; 
+        std::string strvalue; 
     public:
-        StringLiteral(const char* s) : s(s), t(typeArray(std::string(s).length(),typeChar))
+        StringValue(const char* s)
         {
+            size_t len = strlen(s);
+
+            type = typeArray(len, typeChar);
+            
+            if (len > 0)
+                strvalue(len, s);
+            else
+                strvalue = "";
             this->lvalue = true;
         }
         void ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace);
@@ -281,11 +322,20 @@ class Block : public Stmt {
 
     */
     private:
-        ASTvector<Stmt*> locals;
-        ASTvector<Stmt*> body;
+        ASTnodeCollection* locals;
+        ASTnodeCollection* body;
     
     public:
-        Block( ASTvector<Stmt*>* theBody) : body(*theBody){}
+        Block( ASTnodeCollection* theBody) : body(theBody)
+        {
+            locals = new ASTnodeCollection();
+        }
+
+        ~Block()
+        {
+            delete(locals);
+            delete(body);
+        }
 
         void push_local(Stmt *l);
         
@@ -313,9 +363,9 @@ class VarDef : public Stmt {
     /* Class containing variable definitions
     */ 
     private:
-        ASTvector<Variable*> vars;    
+        std::list<Variable *> vars;   
     public:
-        void push(std::vector<std::string>* var_ids, Stype t);
+        void push(std::list<std::string>* var_ids, Stype t);
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
@@ -323,9 +373,9 @@ class VarDef : public Stmt {
 
 class LabelDef : public Stmt {
     private:
-        std::vector<std::string> labels;
+        std::list<std::string> labels;
     public:
-        LabelDef(std::vector<std::string>* names) : labels(*names) {}
+        LabelDef(std::list<std::string>* names) : labels(*names) {}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -334,11 +384,11 @@ class LabelDef : public Stmt {
 
 class FormalsGroup : public Stmt {
     public:
-        std::vector<std::string> formals;
+        std::list<std::string> formals;
         Stype type;
         PassMode pass_by;
 
-        FormalsGroup(std::vector<std::string>* f, Stype t, PassMode pm) : formals(*f), type(t), pass_by(pm) {}
+        FormalsGroup(std::list<std::string>* f, Stype t, PassMode pm) : formals(*f), type(t), pass_by(pm) {}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -359,12 +409,12 @@ class FunctionDef : public Stmt {
     private:
         std::string name;
         Stype type;
-        ASTvector<FormalsGroup*> parameters;
+        std::list<ParameterGroup*> parameters;
         Block* body;
         bool isForward;
         
     public:
-        FunctionDef(std::string n, ASTvector<FormalsGroup*>* params, Stype t) 
+        FunctionDef(std::string n, std::list<ParameterGroup*>* params, Stype t) 
         : name(n), parameters(*params), type(t) { isForward = false;}
 
         void set_forward();
@@ -419,10 +469,10 @@ class Label : public Stmt {
     Implements actual label encounter in code
 */
     private:
-        std::string lbl;
+        std::string label;
         Stmt *target;
     public:
-        Label(std::string name, Stmt* stmt) : lbl(name), target(stmt) {}
+        Label(std::string name, Stmt* stmt) : label(name), target(stmt) {}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -489,7 +539,7 @@ class DisposeArray : public Stmt {
     private:
         Expr *lval;
     public:
-        Dispose(Expr *lval) : lval(lval) {} 
+        DisposeArray(Expr *lval) : lval(lval) {} 
         
         void printOn(std::ostream &out) const;
         void semantic();

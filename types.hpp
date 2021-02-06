@@ -1,5 +1,8 @@
 #pragma once
 
+#include <list>
+#include <string>
+
 // Stype for llvm::Type disambiguation 
 typedef enum 
 {                       
@@ -36,6 +39,7 @@ class SemanticType
         return kind != TYPE_IARRAY;
       }
 
+      /* One way function: parameter type IS ASSIGNMENT COMPATIBLE with the caller. */
       bool is_compatible_with(SemanticType* t)
       {
         switch(kind)
@@ -58,6 +62,18 @@ class SemanticType
 };
 
 typedef  SemanticType* Stype;
+
+typedef enum {            
+   PASS_BY_VALUE,                        /* Κατ' αξία                  */
+   PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
+} PassMode;
+
+typedef struct
+{
+    std::list<std::string> names;
+    Stype type;
+    PassMode pmode;
+} ParameterGroup;
 
 extern Stype typeInteger;
 extern Stype typeReal;
