@@ -62,11 +62,7 @@ class AST
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
         int linecnt; 
-        void error(const char* str)
-        { 
-            std::cerr << "line " << linecnt << ":" << str << std::endl; 
-            std::exit(1);
-        }
+        void error(const char* str);
 
 };
 
