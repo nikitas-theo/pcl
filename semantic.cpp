@@ -3,9 +3,68 @@
 
 SymbolTable st = SymbolTable();
 
+
+void add_lib_func(std::string name,std::list<ParameterGroup*> parameters, Stype type){
+    FunctionEntry* f = new FunctionEntry(name);
+    f->pardef = PARDEF_DEFINE;
+    st.addEntry(f);
+    f->arguments = parameters;
+    f->resultType = type;        
+}
+
+void AST::semantic_analysis(){
+    
+    add_lib_func("writeInteger",{ new ParameterGroup { {}, typeInteger, PASS_BY_VALUE}  }, typeVoid);
+    add_lib_func("writeString",{ new ParameterGroup { {}, typeIArray(typeChar), PASS_BY_REFERENCE}  }, typeVoid);
+    add_lib_func("readInteger",{}, typeInteger);
+    st.openScope();
+    semantic();
+    std::cout << "Semantically correct" << std::endl;
+
+    /*
+    add_func(FunctionType::get(voidTy,{i1},false), "writeBoolean");
+    add_func(FunctionType::get(voidTy,{i8},false), "writeChar");
+    add_func(FunctionType::get(voidTy,{r64},false), "writeReal");
+    add_func(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString");
+
+    // READ UTILS
+
+    add_func(FunctionType::get(r64,{},false),"readInteger");
+    add_func(FunctionType::get(i1,{},false), "readBoolean");
+    add_func(FunctionType::get(i8,{},false), "readChar");
+    add_func(FunctionType::get(r64,{},false), "readReal");
+    add_func(FunctionType::get(PointerType::get(i8, 0),{},false),"readString");
+
+
+    // MATH UTILS 
+
+    add_func(FunctionType::get(i32,{i32},false),"abs");
+    add_func(FunctionType::get(r64,{r64},false),"fabs");
+    add_func(FunctionType::get(r64,{r64},false),"sqrt");
+    add_func(FunctionType::get(r64,{r64},false),"sin");
+    add_func(FunctionType::get(r64,{r64},false),"cos");
+    add_func(FunctionType::get(r64,{r64},false),"tan");
+    add_func(FunctionType::get(r64,{r64},false),"arctan");
+    add_func(FunctionType::get(r64,{r64},false),"exp");
+    add_func(FunctionType::get(r64,{r64},false),"ln");
+    add_func(FunctionType::get(r64,{},false),"pi");
+
+    // CHAR UTILS
+    add_func(FunctionType::get(i8,{i32},false),"ord");
+    add_func(FunctionType::get(i32,{i8},false),"chr");
+
+    st.openScope();
+    */
+}
+
 void EmptyStmt::semantic()
 {
     return;
+}
+
+void ASTnodeCollection :: semantic(){
+    for (AST* n : nodes)
+    n->semantic();
 }
 
 void BinOp::semantic() /* override */

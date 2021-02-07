@@ -1,11 +1,6 @@
 #include "ast.hpp"
 
 
-void error(const char* str)
-{ 
-    std::cerr << str << std::endl; 
-    std::exit(1);
-}
 
 Type* AST::TypeConvert(Stype t) 
 {

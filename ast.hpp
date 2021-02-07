@@ -50,7 +50,7 @@ class AST
         virtual ~AST() {}
 
         virtual void semantic() = 0;
-
+        void semantic_analysis();
         virtual void printOn(std::ostream &out) const = 0;
         friend inline std::ostream& operator<<(std::ostream &out, const AST &t){
             t.printOn(out);
@@ -61,19 +61,18 @@ class AST
 
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
-        
+        int linecnt; 
+        void error(const char* str)
+        { 
+            std::cerr << "line " << linecnt << ":" << str << std::endl; 
+            std::exit(1);
+        }
+
 };
 
 
 
-inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t)
-{
-        out << "[";
-        for (std::size_t i = 0; i < t.size(); i++) {
-            out << t[t.size() - 1 - i] << (i == t.size() - 1 ? "" : ",");
-        }
-        return out << "]" ;
-}
+
 
 class Expr : public AST
 {
@@ -85,6 +84,7 @@ class Expr : public AST
         bool is_arithmetic();
         bool is_concrete();
         bool type_verify(Stype t);
+
 };
 
 class Stmt : public AST {};
@@ -95,24 +95,10 @@ class ASTnodeCollection : public Stmt, public Expr
     public:
         std::list<AST *> nodes;
 
-        void printOn(std::ostream &out) const
-        {
-            for (AST* n : nodes)
-                n->printOn(out); 
-        }
-
-        void semantic()
-        {
-            for (AST* n : nodes)
-                n->semantic();
-        }
+        void printOn(std::ostream &out) const;
+        void semantic();
         
-        Value* compile()
-        {
-            for (AST* n : nodes)
-                n->compile();
-            return nullptr;
-        }
+        Value* compile();
 
         void push(AST* node)
         {
@@ -123,6 +109,7 @@ class ASTnodeCollection : public Stmt, public Expr
 /* ------ legacy ---------
 
 template<class T>
+
 class ASTvector : public Stmt , public Expr
 {
     public :
@@ -152,6 +139,15 @@ class ASTvector : public Stmt , public Expr
             list.push_back(t);
         }
 
+inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t)
+{
+        out << "[";
+        for (std::size_t i = 0; i < t.size(); i++) {
+            out << t[t.size() - 1 - i] << (i == t.size() - 1 ? "" : ",");
+        }
+        return out << "]" ;
+}
+
 };
 */ 
 
@@ -167,6 +163,8 @@ constexpr inline unsigned int operator "" _(char const * p, size_t)
 
 
 class EmptyStmt : public Stmt {
+    public : 
+    EmptyStmt(int cnt) {linecnt = cnt;};
     void printOn(std::ostream &out) const;
     void semantic();
     Value* compile(); 
@@ -179,7 +177,7 @@ class BinOp : public Expr {
         Expr *left, *right;
         std::string op;        
     public:
-        BinOp(Expr* l, std::string o, Expr* r) : left(l), right(r), op(o) {}
+        BinOp(Expr* l, std::string o, Expr* r, int cnt) : left(l), right(r), op(o) {linecnt = cnt;};
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -192,7 +190,7 @@ class UnOp : public Expr {
         std::string op;
         
     public:
-        UnOp(std::string _o, Expr* _e) : op(_o), e(_e) {}
+        UnOp(std::string _o, Expr* _e, int cnt) : op(_o), e(_e)  {linecnt = cnt;};
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -203,8 +201,8 @@ class Id : public Expr {
     /* Id as an l-value */
     public:
         std::string name ;
-        Id(std::string n) : name(n)
-        { 
+        Id(std::string n, int cnt) : name(n) 
+        {   linecnt = cnt;
             this->lvalue = true; 
         }
         
@@ -215,6 +213,7 @@ class Id : public Expr {
 
 class Result : public Expr {
     public:
+        Result(int cnt) {linecnt = cnt;};
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile();
@@ -224,7 +223,7 @@ class Const : public Expr {
 
     public:
         data_const val;     
-        Const(data_const val, Stype t) : val(val) , Expr(t) {};       
+        Const(data_const val, Stype t, int cnt) : val(val) , Expr(t) {linecnt = cnt;};       
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
@@ -235,8 +234,8 @@ class CallFunc : public Expr {
         std::string fname;
         ASTnodeCollection *parameters;
     public:
-        CallFunc(std::string name, ASTnodeCollection* params) : fname(name), parameters(params) {}
-        CallFunc(std::string name) : fname(name) {}
+        CallFunc(std::string name, ASTnodeCollection* params, int cnt) : fname(name), parameters(params) {linecnt = cnt;}
+        CallFunc(std::string name, int cnt) : fname(name) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -248,8 +247,8 @@ class CallProc : public Stmt {
         std::string fname;
         ASTnodeCollection *parameters;
     public:
-        CallProc(std::string name, ASTnodeCollection* params) : fname(name), parameters(params) {}
-        CallProc(std::string name) : fname(name){}
+        CallProc(std::string name, ASTnodeCollection* params, int cnt ) : fname(name), parameters(params) {linecnt = cnt;}
+        CallProc(std::string name, int cnt) : fname(name)  {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -266,8 +265,9 @@ class StringValue : public Expr {
     private:
         std::string strvalue; 
     public:
-        StringValue(const char* s)
+        StringValue(const char* s, int cnt) 
         {
+            linecnt = cnt;
             size_t len = strlen(s);
             type = typeArray(len, typeChar);
             strvalue = s ;
@@ -285,7 +285,7 @@ class ArrayAccess : public Expr {
         Expr* lval; 
         Expr* pos; 
     public:
-        ArrayAccess(Expr* lval, Expr* pos) : lval(lval) , pos(pos){}
+        ArrayAccess(Expr* lval, Expr* pos, int cnt) : lval(lval) , pos(pos){linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -296,7 +296,7 @@ class Dereference : public Expr {
     private:
         Expr* e;
     public:
-        Dereference(Expr* e) : e(e) {}
+        Dereference(Expr* e, int cnt) : e(e) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -324,8 +324,9 @@ class Block : public Stmt {
         ASTnodeCollection* body;
     
     public:
-        Block( ASTnodeCollection* theBody) : body(theBody)
+        Block( ASTnodeCollection* theBody, int cnt) : body(theBody) 
         {
+            linecnt = cnt;
             locals = new ASTnodeCollection();
         }
 
@@ -350,7 +351,7 @@ class Variable : public Stmt {
     public:
         Stype type;
         std::string name; 
-        Variable(std::string s, Stype t) : name(s), type(t){}
+        Variable(std::string s, Stype t) : name(s), type(t) {};
     
         void printOn(std::ostream &out) const;
         void semantic();
@@ -363,6 +364,7 @@ class VarDef : public Stmt {
     private:
         std::list<Variable *> vars;   
     public:
+        VarDef(int cnt) {linecnt = cnt;};
         void push(std::list<std::string>* var_ids, Stype t);
         void printOn(std::ostream &out) const;
         void semantic();
@@ -373,7 +375,7 @@ class LabelDef : public Stmt {
     private:
         std::list<std::string> labels;
     public:
-        LabelDef(std::list<std::string>* names) : labels(*names) {}
+        LabelDef(std::list<std::string>* names, int cnt) : labels(*names)  {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -386,7 +388,7 @@ class FormalsGroup : public Stmt {
         Stype type;
         PassMode pass_by;
 
-        FormalsGroup(std::list<std::string>* f, Stype t, PassMode pm) : formals(*f), type(t), pass_by(pm) {}
+        FormalsGroup(std::list<std::string>* f, Stype t, PassMode pm, int cnt) : formals(*f), type(t), pass_by(pm) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -412,8 +414,8 @@ class FunctionDef : public Stmt {
         bool isForward;
         
     public:
-        FunctionDef(std::string n, std::list<ParameterGroup*>* params, Stype t) 
-        : name(n), parameters(*params), type(t) { isForward = false;}
+        FunctionDef(std::string n, std::list<ParameterGroup*>* params, Stype t, int cnt) 
+        : name(n), parameters(*params), type(t) { isForward = false; linecnt = cnt;}
 
         void set_forward();
         void add_body(Block* theBody);
@@ -427,7 +429,7 @@ class Declaration : public Stmt {
     private:
         Expr *lval,*rval ;
     public:
-        Declaration(Expr* lval, Expr* rval) : lval(lval) , rval(rval) {}
+        Declaration(Expr* lval, Expr* rval, int cnt) : lval(lval) , rval(rval)  {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -441,8 +443,8 @@ class IfThenElse : public Stmt {
         bool hasElse; 
         
     public:
-        IfThenElse(Expr* c, Stmt* t) : cond(c), st_then(t) , hasElse(false) {};
-        IfThenElse(Expr* c, Stmt* t, Stmt* e) : cond(c), st_then(t), st_else(e) , hasElse(true) {};
+        IfThenElse(Expr* c, Stmt* t, int cnt) : cond(c), st_then(t) , hasElse(false) {linecnt = cnt;};
+        IfThenElse(Expr* c, Stmt* t, Stmt* e, int cnt) : cond(c), st_then(t), st_else(e) , hasElse(true) {linecnt = cnt;};
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -453,9 +455,9 @@ class While : public Stmt {
     private:
         Expr *cond;
         Stmt *body;
-        
+
     public:
-        While(Expr* c, Stmt *b) : cond(c), body(b) {}
+        While(Expr* c, Stmt *b, int cnt) : cond(c), body(b) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -470,7 +472,7 @@ class Label : public Stmt {
         std::string label;
         Stmt *target;
     public:
-        Label(std::string name, Stmt* stmt) : label(name), target(stmt) {}
+        Label(std::string name, Stmt* stmt, int cnt) : label(name), target(stmt) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -481,7 +483,7 @@ class GoTo : public Stmt {
     private:
         std::string label;
     public:
-        GoTo(std::string lbl) : label(lbl) {}
+        GoTo(std::string lbl, int cnt) : label(lbl){linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -490,7 +492,7 @@ class GoTo : public Stmt {
 
 class ReturnStmt : public Stmt {
     public: 
-        ReturnStmt(){};
+        ReturnStmt(int cnt) {linecnt = cnt;};
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -503,7 +505,7 @@ class Init : public Stmt {
     private:
         Expr *lval;
     public:
-        Init(Expr* lval) : lval(lval) {}
+        Init(Expr* lval, int cnt) : lval(lval) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -515,18 +517,19 @@ class InitArray : public Stmt {
         Expr *lval;
         Expr *size;
     public:
-        InitArray(Expr* lval, Expr* sz) : lval(lval), size(sz) {}
+        InitArray(Expr* lval, Expr* sz, int cnt) : lval(lval), size(sz) {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
 };
 
+
 class Dispose : public Stmt {
     private:
         Expr *lval;
     public:
-        Dispose(Expr *lval) : lval(lval) {} 
+        Dispose(Expr *lval, int cnt) : lval(lval){linecnt = cnt;} 
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -537,7 +540,7 @@ class DisposeArray : public Stmt {
     private:
         Expr *lval;
     public:
-        DisposeArray(Expr *lval) : lval(lval) {} 
+        DisposeArray(Expr *lval, int cnt) : lval(lval) {linecnt = cnt;} 
         
         void printOn(std::ostream &out) const;
         void semantic();

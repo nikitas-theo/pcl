@@ -207,6 +207,14 @@ void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
     }
 }
 
+
+Value* ASTnodeCollection :: compile()
+{
+    for (AST* n : nodes)
+        n->compile();
+    return nullptr;
+}
+
 Value* EmptyStmt::compile()
 {
     return nullptr;

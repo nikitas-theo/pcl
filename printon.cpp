@@ -5,13 +5,13 @@
 
 
 inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& l) {
-    os << "list(";
+    os << "[";
     for (auto t : l) {
         os << t;
-        if (t != *(l.end()))
-            os << " ";
+        if (t != *(--l.end()))
+            os << ",";
     }
-    os << ")";
+    os << "]";
     return os;
 }
 
@@ -19,18 +19,16 @@ inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& 
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
-    os << "list(";
+    os << "[";
     for (T t : l) {
         if (std::is_pointer<T>::value) os << *t ; 
         else  os << t;
-        if (t != *(l.end()))
-            os << " ";
+        if (t != *(--l.end()))
+            os << ", ";
     }
-    os << ")";
+    os << "]";
     return os;
 }
-
-
 
 
 inline std::ostream& operator<<(std::ostream& os, ParameterGroup& p) {
@@ -38,6 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, ParameterGroup& p) {
     return os;
 }
 
+
+void ASTnodeCollection :: printOn(std::ostream &out) const{
+    out << nodes;
+}
 void EmptyStmt::printOn(std::ostream &out) const /* override */
 {
     out << "empty";
@@ -81,17 +83,21 @@ void Const::printOn(std::ostream &out) const /* override */
 
 void CallFunc::printOn(std::ostream &out) const /* override */
 {
-    out << fname << "(" << parameters->nodes << ")";
+    out << fname << "(";
+    if (parameters != nullptr) out << parameters->nodes;
+    out  << ")";
 }
 
 void CallProc::printOn(std::ostream &out) const /* override */
 {
-    out << fname << "(" << parameters->nodes << ")";
+    out << fname << "(";
+    if (parameters != nullptr) out << parameters->nodes;
+    out  << ")";
 }
 
 void StringValue::printOn(std::ostream &out) const /* override */
 {
-    out << "String(\"" << strvalue << "\")";
+    out << "\"" << strvalue << "\"";
 }
 
 void ArrayAccess::printOn(std::ostream &out) const /* override */
