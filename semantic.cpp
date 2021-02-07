@@ -209,8 +209,8 @@ void CallFunc::semantic() /* override */
         ParameterGroup* p = *ip;
 
         e->semantic();
-        if (!e->type->equals(p->type))
-            error("unmatching types");
+        if ( !e->type->is_compatible_with(p->type) )
+            error("incompatible types");
     }
 
     this->type = f->resultType;
@@ -239,8 +239,8 @@ void CallProc::semantic() /* override */
         ParameterGroup* p = *ip;
 
         e->semantic();
-        if (!e->type->equals(p->type))
-            error("unmatching types");
+        if ( !p->type->is_compatible_with(e->type) )
+            error("incompatible types");
     }
 }
 
@@ -361,7 +361,7 @@ void FunctionDef::semantic() /* override */
 
 }
 
-void Declaration::semantic() /* override */
+void Assignment::semantic() /* override */
 {
     lval->semantic();
     rval->semantic();

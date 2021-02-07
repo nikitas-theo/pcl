@@ -92,7 +92,7 @@ W [ \t\r\n]
 
 [+\-*//^@><=]   |   /* same as the action of next rule */
 [;.(),\[\]:=]   { yylval.op = strdup(yytext); return yytext[0]; }
-":="            { yylval.op = strdup(yytext); return T_decl; }
+":="            { yylval.op = strdup(yytext); return T_assign; }
 "<>"            { yylval.op = strdup(yytext); return T_neq; }
 ">="            { yylval.op = strdup(yytext); return T_geq; }
 "<="            { yylval.op = strdup(yytext); return T_neq; }

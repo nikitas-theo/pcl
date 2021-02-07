@@ -512,7 +512,7 @@ Value* FunctionDef::compile() /* override */
     return nullptr; 
 }
 
-Value* Declaration::compile() /* override */
+Value* Assignment::compile() /* override */
 {   // := 
     Value* l = lval->compile();
     Value* r = rval->compile();

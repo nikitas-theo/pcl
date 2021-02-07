@@ -80,7 +80,7 @@ bool print_ast;
 %precedence T_then
 %precedence T_else
 
-%left<op> T_decl T_geq T_leq T_neq '<' '>' '='
+%left<op> T_assign T_geq T_leq T_neq '<' '>' '='
 %left<op> '-' '+' T_or
 %left<op> T_div T_mod T_and '*' '/'
 %left<op> T_not
@@ -110,10 +110,10 @@ bool print_ast;
 program :
       "program" T_id ';' body '.' {
         std::cout << "Parsed" << std::endl;
-        $4->semantic_analysis(); 
         if (print_ast) {
           std::cout << "AST:\n" << *$4 << std::endl; 
         }
+        $4->semantic_analysis(); 
         if (program_name == "") program_name = $2;
         //$4->compile_llvm(program_name,optimize, imm_stdout); 
       }
@@ -182,7 +182,7 @@ stmt_list :
 
 stmt:
       %empty                        { $$ = new EmptyStmt(yylloc.last_line);}
-    | l_value T_decl expr           { $$ = new Declaration($1, $3, yylloc.last_line); } 
+    | l_value T_assign expr           { $$ = new Assignment($1, $3, yylloc.last_line); } 
     | block                         { $$ = $1; }
     | proc_call                     { $$ = $1; }
     | "if" expr "then" stmt                 { $$ = new IfThenElse($2, $4,yylloc.last_line); }

@@ -145,7 +145,7 @@ void FunctionDef::printOn(std::ostream &out) const /* override */
     body->printOn(out);
 }
 
-void Declaration::printOn(std::ostream &out) const /* override */
+void Assignment::printOn(std::ostream &out) const /* override */
 {
     lval->printOn(out);
     out << " := " ; 

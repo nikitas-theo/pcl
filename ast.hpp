@@ -425,11 +425,11 @@ class FunctionDef : public Stmt {
         Value* compile(); 
 };
 
-class Declaration : public Stmt {
+class Assignment : public Stmt {
     private:
         Expr *lval,*rval ;
     public:
-        Declaration(Expr* lval, Expr* rval, int cnt) : lval(lval) , rval(rval)  {linecnt = cnt;}
+        Assignment(Expr* lval, Expr* rval, int cnt) : lval(lval) , rval(rval)  {linecnt = cnt;}
         
         void printOn(std::ostream &out) const;
         void semantic();
