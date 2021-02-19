@@ -26,6 +26,11 @@ Type* AST::TypeConvert(Stype t)
     return voidTy;
 }
 
+void AST::error(const char* str){
+    std::cerr << "line " << linecnt << ":" << str << std::endl; 
+    std::exit(1);
+}
+
 bool AST::check_type(Stype t1,Stype t2,bool check_size)
 {
     return t1->equals(t2);

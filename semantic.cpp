@@ -229,7 +229,7 @@ void CallFunc::semantic() /* override */
     
     size_t psize = parameters->nodes.size();
     if (psize != f->arguments.size())
-        error("not enough parameters");
+        error("number of arguments mistmatch");
 
     // for (int i = 0; i < psize; i++) {
     //     Expr* e = parameters->nodes[i];
@@ -259,7 +259,7 @@ void CallProc::semantic() /* override */
     
     size_t psize = parameters->nodes.size();
     if (psize != f->arguments.size())
-        error("not enough parameters");
+        error("number of arguments mistmatch");
 
     // for (int i = 0; i < psize; i++) {
     //     Expr* e = parameters->nodes[i];
@@ -287,9 +287,9 @@ void ArrayAccess::semantic() /* override */
     lval->semantic();
     pos->semantic();
 
-    if (lval->type->kind != TYPE_ARRAY || lval->type->kind != TYPE_IARRAY)
+    if (lval->type->kind != TYPE_ARRAY && lval->type->kind != TYPE_IARRAY)
         error("%s", "Accesing non array");
-    if (pos->type_verify(typeInteger))
+    if (!pos->type_verify(typeInteger))
         error("%s", "Non integer access constant");
     
     this->type = lval->type->refType;

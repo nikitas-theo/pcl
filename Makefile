@@ -21,7 +21,7 @@ lexer.cpp: lexer.l
 	
 # Parser -------------------------------
 parser.cpp parser.hpp : parser.y
-	bison -dv --report=lookahead -o parser.cpp parser.y
+	bison -dv --report=lookahead -o parser.cpp parser.y 
 
 # PCL COMPILER -------------------------
 pcl: parser.o lexer.o symbol.o compile.o semantic.o helpers.o printon.o error.o
