@@ -1,6 +1,11 @@
 #include "ast.hpp"
+#include "error.hpp"
 
-
+// void error(const char * str)
+// {
+//     std::cerr << str << std::endl;
+//     exit(-1);
+// }
 
 Type* AST::TypeConvert(Stype t) 
 {
@@ -24,6 +29,37 @@ Type* AST::TypeConvert(Stype t)
 bool AST::check_type(Stype t1,Stype t2,bool check_size)
 {
     return t1->equals(t2);
+}
+
+void Program::mark_optimizable(bool on)
+{
+    this->optimize = on;
+}
+
+void Program::mark_console_interactive(bool dump)
+{
+    this->imm_stdout = dump;
+}
+
+bool Program::is_console_interactive()
+{
+    return imm_stdout;
+}
+
+void Program::mark_printable(bool mark)
+{
+    this->print_ast = mark;
+}
+
+void Program::set_name_if_blank(std::string name)
+{
+    if (program_name.empty())
+        program_name = name;
+}
+
+void Program::attach_AST(AST* root)
+{
+    rootNode = root;
 }
 
 bool Expr::is_arithmetic() 

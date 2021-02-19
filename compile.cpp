@@ -1,6 +1,7 @@
 #include  <cstdlib>
 #include "ast.hpp"
 #include "symbol.hpp"
+#include "error.hpp"
 
 // for optimization 
 #include <llvm/IR/IRBuilder.h>
@@ -51,52 +52,48 @@ ConstantFP* c_r64(double d)
     return ConstantFP::get(TheContext,APFloat(d));
 }
 
-inline void AST::add_func(FunctionType *type, std::string name)
+inline void Program::add_func_llvm(FunctionType *type, std::string name)
 {
-    Function *func = Function::Create(
-            type, 
-            Function::ExternalLinkage, name, TheModule
-        );
-        ct.insert(name,func);
+    ct.insert(name, Function::Create(type, Function::ExternalLinkage, name, TheModule));
 };
 
-inline void AST::add_libs()
+void Program::add_libs_llvm()
 {
     // PREDEFINED LIBRARY FUNCTIONS 
 
     // WRITE UTILS 
 
-    add_func(FunctionType::get(voidTy,{i32},false),"writeInteger");
-    add_func(FunctionType::get(voidTy,{i1},false), "writeBoolean");
-    add_func(FunctionType::get(voidTy,{i8},false), "writeChar");
-    add_func(FunctionType::get(voidTy,{r64},false), "writeReal");
-    add_func(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString");
+    add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger");
+    add_func_llvm(FunctionType::get(voidTy,{i1},false), "writeBoolean");
+    add_func_llvm(FunctionType::get(voidTy,{i8},false), "writeChar");
+    add_func_llvm(FunctionType::get(voidTy,{r64},false), "writeReal");
+    add_func_llvm(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString");
 
     // READ UTILS
 
-    add_func(FunctionType::get(r64,{},false),"readInteger");
-    add_func(FunctionType::get(i1,{},false), "readBoolean");
-    add_func(FunctionType::get(i8,{},false), "readChar");
-    add_func(FunctionType::get(r64,{},false), "readReal");
-    add_func(FunctionType::get(PointerType::get(i8, 0),{},false),"readString");
+    add_func_llvm(FunctionType::get(r64,{},false),"readInteger");
+    add_func_llvm(FunctionType::get(i1,{},false), "readBoolean");
+    add_func_llvm(FunctionType::get(i8,{},false), "readChar");
+    add_func_llvm(FunctionType::get(r64,{},false), "readReal");
+    add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString");
 
 
     // MATH UTILS 
 
-    add_func(FunctionType::get(i32,{i32},false),"abs");
-    add_func(FunctionType::get(r64,{r64},false),"fabs");
-    add_func(FunctionType::get(r64,{r64},false),"sqrt");
-    add_func(FunctionType::get(r64,{r64},false),"sin");
-    add_func(FunctionType::get(r64,{r64},false),"cos");
-    add_func(FunctionType::get(r64,{r64},false),"tan");
-    add_func(FunctionType::get(r64,{r64},false),"arctan");
-    add_func(FunctionType::get(r64,{r64},false),"exp");
-    add_func(FunctionType::get(r64,{r64},false),"ln");
-    add_func(FunctionType::get(r64,{},false),"pi");
+    add_func_llvm(FunctionType::get(i32,{i32},false),"abs");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"fabs");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"sqrt");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"sin");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"cos");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"tan");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"arctan");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"exp");
+    add_func_llvm(FunctionType::get(r64,{r64},false),"ln");
+    add_func_llvm(FunctionType::get(r64,{},false),"pi");
 
     // CHAR UTILS
-    add_func(FunctionType::get(i8,{i32},false),"ord");
-    add_func(FunctionType::get(i32,{i8},false),"chr");
+    add_func_llvm(FunctionType::get(i8,{i32},false),"ord");
+    add_func_llvm(FunctionType::get(i32,{i8},false),"chr");
 
     // ROUND UTILS
 
@@ -113,7 +110,7 @@ inline void AST::add_libs()
 
 };
 
-void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
+void Program::compile_initalize()
 {
     // Initialize Module
     TheModule = new Module(program_name,TheContext);
@@ -147,20 +144,25 @@ void AST::compile_llvm(std::string program_name, bool optimize,bool imm_stdout)
     ct.openScope();
 
     // add external libraries 
-    add_libs();
+    add_libs_llvm();
 
     // add main 
-    Function *main = Function::Create(
+    main = Function::Create(
         FunctionType::get(i32,{}, false), 
         Function::ExternalLinkage,"main",TheModule
         );
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
     Builder.SetInsertPoint(BB);
     Builder.CreateCall(GC_Init, {});
+}
 
-    // compile program 
-    compile();
+void Program::compile_run()
+{
+    rootNode->compile();
+}
 
+void Program::compile_finalize()
+{
     Builder.CreateRet(c_i32(0));
     ct.closeScope();
 

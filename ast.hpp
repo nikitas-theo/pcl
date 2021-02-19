@@ -38,40 +38,79 @@ typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
 // https://en.cppreference.com/w/cpp/utility/variant
 
-extern void error(const char* str);  
+// extern void error(const char* str);  
 
 class AST
 {
     private:
-        inline void add_func(FunctionType *type, std::string name);
-        inline void add_libs();
+        // inline void add_func(FunctionType *type, std::string name);
+        // inline void add_libs();
         
     public:
         virtual ~AST() {}
 
         virtual void semantic() = 0;
-        void semantic_analysis();
+        // void semantic_analysis();
         virtual void printOn(std::ostream &out) const = 0;
         friend inline std::ostream& operator<<(std::ostream &out, const AST &t){
             t.printOn(out);
             return out;
         }
         virtual Value* compile() = 0;
-        void compile_llvm(std::string  program_name, bool optimize, bool imm_stdout );
+        // void compile_llvm(std::string  program_name, bool optimize, bool imm_stdout );
 
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
         int linecnt; 
-        void error(const char* str)
-        { 
-            std::cerr << "line " << linecnt << ":" << str << std::endl; 
-            std::exit(1);
-        }
+        // void error(const char* str)
+        // { 
+        //     //std::cerr << "line " << linecnt << ":" << str << std::endl; 
+        //     std::cerr << "WE HAVE AN ERROR\n";
+        //     std::exit(1);
+        // }
 
 };
 
 
+class Program
+{
+    private:
+        AST* rootNode;
+        std::string program_name;
+        bool optimize;
+        bool imm_stdout;
+        bool print_ast;
 
+        Function* main;
+
+        inline void add_func_llvm(FunctionType *type, std::string name);
+        void add_libs_llvm();
+
+        inline std::list<ParameterGroup*> make_single_parameter(Stype type, PassMode pm);
+        void add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*> parameters);
+    
+    public:
+        // Program(std::string name, AST* root) : program_name(name), rootNode(root), optimize(false), imm_stdout(false) {}
+        Program() : optimize(false), imm_stdout(false), print_ast(false) {}
+
+        void mark_optimizable(bool on=true);
+        void mark_console_interactive(bool dump=true);
+        void mark_printable(bool mark=true);
+
+        bool is_console_interactive();
+
+        void set_name_if_blank(std::string name);
+
+        void attach_AST(AST* root);
+
+        void semantic_initialize();
+        void semantic_run();
+        void semantic_finalize();
+
+        void compile_initalize();
+        void compile_run();
+        void compile_finalize();
+};
 
 
 class Expr : public AST

@@ -1,9 +1,6 @@
 #include "ast.hpp"
 #include "symbol.hpp"
 
-
-
-
 inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& l) {
     os << "[";
     for (auto t : l) {
@@ -15,54 +12,85 @@ inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& 
     return os;
 }
 
-
-
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
-    os << "[";
+    os << "{";
     for (T t : l) {
-        if (std::is_pointer<T>::value) os << *t ; 
-        else  os << t;
+        if (std::is_pointer<T>::value) 
+            os << *t ; 
+        else 
+            os << t;
+        
         if (t != *(--l.end()))
             os << ", ";
     }
-    os << "]";
+    os << "}";
     return os;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const Stype t) {
+    switch (t->kind)
+    {
+        case TYPE_ARRAY:
+            os << "array[" << t->size << "] of " << t->refType;
+            break;
+        case TYPE_BOOLEAN:
+            os << "bool";
+            break;
+        case TYPE_CHAR:
+            os << "char";
+            break;
+        case TYPE_IARRAY:
+            os << "array of " << t->refType;
+            break;
+        case TYPE_INTEGER:
+            os << "int";
+            break;
+        case TYPE_POINTER:
+            os << "pointer on " << t->refType;
+            break;
+        case TYPE_REAL:
+            os << "real";
+            break;
+        case TYPE_VOID:
+            os << "void";
+            break;
+    }
+    return os;
+}
 
 inline std::ostream& operator<<(std::ostream& os, ParameterGroup& p) {
-    os << "type : "  << p.type << "pass mode : " << p.pmode << p.names;
+    if (p.pmode == PASS_BY_REFERENCE)
+        os << "var:";
+    os << p.names << " : " << p.type;
     return os;
 }
-
 
 void ASTnodeCollection :: printOn(std::ostream &out) const{
     out << nodes;
 }
+
 void EmptyStmt::printOn(std::ostream &out) const /* override */
 {
-    out << "empty";
+    out << "NOOP";
 }
 
 void BinOp::printOn(std::ostream &out) const /* override */
 {
     left->printOn(out); 
-    out << " " << op;  
-    out << " ";
+    out << " " << op << " ";
     right->printOn(out); 
 }
 
 void UnOp::printOn(std::ostream &out) const /* override */
 {
-    out << "(" << op ;
-    e->printOn(out); 
-    out << ")";
+    out << "(" << op << ")";
+    e->printOn(out);
 }
 
 void Id::printOn(std::ostream &out) const /* override */
 {
-    out << name;
+    out << "ID(" << name << ")";
 }
 
 void Result::printOn(std::ostream &out) const
@@ -112,9 +140,9 @@ void Dereference::printOn(std::ostream &out) const /* override */
 
 void Block::printOn(std::ostream &out) const /* override */
 {
-    out << "Block of: "  << std::endl; 
-    out << "\tlocals: " << locals->nodes << std::endl; 
-    out << "\tbody: " << body->nodes <<  std::endl; 
+    out << "BLOCK: "  << std::endl; 
+    out << "LOCALS: " << locals->nodes << std::endl; 
+    out << "BODY: " << body->nodes <<  std::endl; 
 }
 
 void Variable::printOn(std::ostream &out) const /* override */
@@ -124,12 +152,12 @@ void Variable::printOn(std::ostream &out) const /* override */
 
 void VarDef::printOn(std::ostream &out) const /* override */
 {
-    out << "VarDef :" << vars;
+    out << "VarDef(" << vars << ")";
 }
 
 void LabelDef::printOn(std::ostream &out) const /* override */
 {
-    out << "LabelDef" << labels;
+    out << "LabelDef(" << labels << ")";
 }
 
 void FormalsGroup::printOn(std::ostream &out) const /* override */
@@ -167,12 +195,12 @@ void While::printOn(std::ostream &out) const /* override */
 
 void Label::printOn(std::ostream &out) const /* override */
 {
-    out <<  label << " : "; target->printOn(out);
+    out <<  label << ": "; target->printOn(out);
 }
 
 void GoTo::printOn(std::ostream &out) const /* override */
 {
-    out << "LABEL : " << label;
+    out << "GOTO: " << label;
 }
 
 void ReturnStmt::printOn(std::ostream &out) const /* override */
