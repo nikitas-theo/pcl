@@ -1,7 +1,9 @@
-#ifndef __SYMBOL_H__
-#define __SYMBOL_H__
+// #ifndef __SYMBOL_H__
+// #define __SYMBOL_H__
+#pragma once
 
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <deque>
 #include <functional>
@@ -97,13 +99,6 @@ class VariableEntry : public SymbolEntry
         VariableEntry(String name, Stype t) : SymbolEntry(name, ENTRY_VARIABLE), type(t) {}
 };
 
-class ConstantEntry : public SymbolEntry
-{
-    public:
-        Stype type;
-        ConstValueType value;
-};
-
 class LabelEntry : public SymbolEntry
 {
     public:
@@ -120,10 +115,7 @@ class ParameterEntry : public VariableEntry
 
         ParameterEntry(String name, Stype t, PassMode m) : VariableEntry(name, t), mode(m) {}
 
-        bool equals(ParameterEntry* p)
-        {
-            return id == p->id && type->equals(p->type) && mode == p->mode;
-        }
+        bool equals(ParameterEntry* p);
 };
 
 class FunctionEntry : public SymbolEntry
@@ -135,54 +127,26 @@ class FunctionEntry : public SymbolEntry
 
         FunctionEntry(String name) : SymbolEntry(name, ENTRY_FUNCTION) {}
 
-        ~FunctionEntry()
-        {
-            arguments.clear();
-        }
-
-        bool isDefinitionComplete()
-        {
-            return pardef == PARDEF_COMPLETE;
-        }
+        ~FunctionEntry();
 };
 
 class Scope
 {
     private:
-        HashMap levelEntries;
+        HashMap* levelEntries;
+        int dummy_variable;
 
     public:
         int nestingLevel;
-        AST* owingFunctionNode;
+        // AST* owingFunctionNode;
 
-        ~Scope()
-        {
-            levelEntries.clear();
-        }
+        Scope();
 
-        bool addEntry(SymbolEntry* e)
-        {
-            std::pair<HashMap::iterator, bool> mapInRes;
+        ~Scope();
 
-            mapInRes = levelEntries.insert(std::make_pair(e->id, e));
+        bool addEntry(SymbolEntry* e);
 
-            return mapInRes.second;
-        }
-
-        SymbolEntry* lookupEntry(String id)
-        {
-            HashMap::iterator it;
-
-            it = levelEntries.find(id);
-
-            if ( it == levelEntries.end() ) {
-                return nullptr;
-            }
-            else {
-                return it->second;
-            }
-            
-        }
+        SymbolEntry* lookupEntry(String id);
 };
 
 class SymbolTable
@@ -193,123 +157,29 @@ class SymbolTable
     public:
         Scope* currentScope;
         
-        SymbolTable()
-        {
-            Scope *s = new Scope();
-            s->nestingLevel = 0;
-            scopeStack.push_back(s);
-            currentScope = s;
-        }
+        SymbolTable();
 
-        ~SymbolTable()
-        {
-            while (!scopeStack.empty())
-            {
-                delete(scopeStack.back());
-                scopeStack.pop_back();
-            }
-        }
+        ~SymbolTable();
 
-        void openScope()
-        {
-            Scope *s = new Scope();
-            s->nestingLevel = currentScope->nestingLevel + 1;
-            scopeStack.push_back(s);
-            currentScope = s;
-        }
+        // void Initialize();
 
-        void closeScope()
-        {
-            delete(currentScope);
-            scopeStack.pop_back();
-            currentScope = scopeStack.back();
-        }
+        void openScope();
 
-        void addEntry(SymbolEntry* e)
-        {
-            currentScope->addEntry(e);
-        }
+        void closeScope();
 
-        SymbolEntry* lookupEntry(String id, LookupType lookup=LOOKUP_ALL_SCOPES)
-        {
-            SymbolEntry *e;
+        void addEntry(SymbolEntry* e);
 
-            switch (lookup)
-            {
-                case LOOKUP_CURRENT_SCOPE:
-                    if ( (e = currentScope->lookupEntry(id)) != nullptr )
-                        return e;
-                    break;
-                
-                case LOOKUP_ALL_SCOPES:
-                    for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {
-                        if ( (e = (*it)->lookupEntry(id)) != nullptr )
-                            return e;
-                    }
-                    break;
-            }
+        SymbolEntry* lookupEntry(String id, LookupType lookup=LOOKUP_ALL_SCOPES);
 
-            return nullptr;
-        }
+        VariableEntry* lookupVariable(String id, LookupType lookup=LOOKUP_ALL_SCOPES);
 
-        VariableEntry* lookupVariable(String id, LookupType lookup=LOOKUP_ALL_SCOPES)
-        {
-            SymbolEntry *e = lookupEntry(id, lookup);
+        LabelEntry* lookupLabel(String id);
 
-            if (e != nullptr && (e->entryType == ENTRY_VARIABLE || e->entryType == ENTRY_PARAMETER)) {
-                return (VariableEntry *)e;
-            }
-            else {
-                return nullptr;
-            }
-            
-        }
-
-        LabelEntry* lookupLabel(String id)
-        {
-            SymbolEntry *e = lookupEntry(id, LOOKUP_CURRENT_SCOPE);
-
-            if (e != nullptr && e->entryType == ENTRY_LABEL) {
-                return (LabelEntry *)e;
-            }
-            else {
-                return nullptr;
-            }
-            
-        }
-
-        FunctionEntry* lookupFunction(String id, LookupType lookup)
-        {
-            SymbolEntry *e = lookupEntry(id, lookup);
-
-            if (e != nullptr && e->entryType == ENTRY_FUNCTION) {
-                return (FunctionEntry *)e;
-            }
-            else {
-                return nullptr;
-            }
-            
-        }
+        FunctionEntry* lookupFunction(String id, LookupType lookup);
 };
 
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------------ */
-
-
-
-inline std::ostream& operator<<(std::ostream& os, const Stype& t){
-    switch(t->kind) {
-        case TYPE_VOID :  os << "void"; break;
-        case TYPE_INTEGER : os << "int"; break;
-        case TYPE_BOOLEAN : os << "bool"; break;
-        case TYPE_CHAR : os << "char"; break;
-        case TYPE_REAL :  os << "real"; break;
-        case TYPE_ARRAY : os << "array of " << t->refType << '[' << t->size << ']'; break;
-        case TYPE_IARRAY : os << "array of " << t->refType; break;
-        case TYPE_POINTER : os << t->refType << "*"; break;
-    }
-    return os ;
-}
 
 /* ---------------------------- CODE GENERATION TABLE ------------------------ */
 
@@ -372,4 +242,4 @@ private:
   std::vector<CodeGenScope> scopes;
 };
 
-#endif
+// #endif
