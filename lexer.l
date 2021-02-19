@@ -1,4 +1,5 @@
 %option noyywrap
+%option nounput
 
 %{
 /* C-code here goes verbatin to lex.yy.c */

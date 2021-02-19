@@ -3,10 +3,9 @@
 #include "ast.hpp"
 #include "symbol.hpp"
 
-std::string program_name; 
-bool imm_stdout; 
-bool optimize; 
-bool print_ast; 
+std::string filename; 
+
+Program* TheProgram;
 %}
 
 %union {
@@ -109,13 +108,8 @@ bool print_ast;
 
 program :
       "program" T_id ';' body '.' {
-        std::cout << "Parsed" << std::endl;
-        if (print_ast) {
-          std::cout << "AST:\n" << *$4 << std::endl; 
-        }
-        $4->semantic_analysis(); 
-        if (program_name == "") program_name = $2;
-        //$4->compile_llvm(program_name,optimize, imm_stdout); 
+        TheProgram->set_name_if_blank($2);
+        TheProgram->attach_AST($4);
       }
     ;
 
@@ -275,44 +269,52 @@ binop_high:
 
 %%
 
+int main(int argc, char *argv[])
+{
+    #if YYDEBUG
+        yydebug = 1;
+    #endif
+    
+    int parseReturnCode;
+    
+    TheProgram = new Program();
 
-int main(int argc, char *argv[]) {
-  #if YYDEBUG
-      yydebug = 1;
-  #endif
-  optimize = false; 
-  imm_stdout = false; 
-  print_ast = false; 
-  program_name = "";
-  for (int i = 0 ; i < argc ; i++){
-    std::string arg(argv[i]);
-    if (arg.find("-O") != std::string::npos) optimize = true; 
-    if (arg.find("-i") != std::string::npos) imm_stdout = true;   
-    if (arg.find("--ast") != std::string::npos) print_ast = true; 
-
-  }
-
-
-
-
-  // read from cmd argument file
-  if (! imm_stdout){
+    for (int i = 0; i < argc; i++) {
+        std::string arg(argv[i]);
+        if (arg.find("-O") != std::string::npos)
+            TheProgram->mark_optimizable();
+        if (arg.find("-i") != std::string::npos)
+            TheProgram->mark_console_interactive();
+        if (arg.find("--ast") != std::string::npos)
+            TheProgram->mark_printable();
+    }
 
     std::string file(argv[1]);
-    std::string base_filename = file.substr(file.find_last_of("/\\") + 1);
-    std::string::size_type const p(base_filename.find_last_of('.'));
-    std::string file_without_extension = base_filename.substr(0, p);
+    filename = file.substr(file.find_last_of("/\\") + 1, file.find_last_of('.'));
 
-    program_name = file_without_extension;
+    if (!TheProgram->is_console_interactive()) {
+        TheProgram->set_name_if_blank(filename);
 
-    yyin = fopen(argv[1], "r");
-  
-  }
+        yyin = fopen(argv[1], "r");
+    }
+    else {
+      std::cout << "INTERACTIVE MODE\n";
+    }
 
+    parseReturnCode = yyparse();
 
-  // read from stdin
-  int ret = yyparse();
-  fclose(yyin);
+    fclose(yyin);
 
+    if (parseReturnCode != 0) {
+        std::cerr << "Parsing failed with errors!\n";
+        std::exit(1);
+    }
 
+    TheProgram->semantic_initialize();
+    TheProgram->semantic_run();
+    TheProgram->semantic_finalize();
+
+    // TheProgram->compile_initalize();
+    // TheProgram->compile_run();
+    // TheProgram->compile_finalize();
 }

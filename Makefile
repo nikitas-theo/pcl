@@ -24,7 +24,7 @@ parser.cpp parser.hpp : parser.y
 	bison -dv --report=lookahead -o parser.cpp parser.y
 
 # PCL COMPILER -------------------------
-pcl: parser.o lexer.o symbol.o compile.o semantic.o helpers.o printon.o
+pcl: parser.o lexer.o symbol.o compile.o semantic.o helpers.o printon.o error.o
 	$(CXX) -o $@ $(CXXFLAGS) $^ $(LDFLAGS)
 # --------------------------------------
 
@@ -32,7 +32,7 @@ pcl: parser.o lexer.o symbol.o compile.o semantic.o helpers.o printon.o
 # $(RM) lexer.cpp parser.cpp parser.hpp parser.output
 # ${MAKE} -C $(SYM_DIR) clean
 clean: 
-	$(RM) *.o
+	$(RM) symbol.o compile.o semantic.o helpers.o printon.o error.o
 
 distclean: clean
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output lexer.o parser.o
