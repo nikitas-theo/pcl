@@ -1,10 +1,11 @@
 #include "ast.hpp"
-#include "error.hpp"
+// #include "error.hpp"
 
-// void error(const char * str)
+// template<typename ...Ts>
+// extern void error(Ts&&... args)
 // {
-//     std::cerr << str << std::endl;
-//     exit(-1);
+//     _error(std::cerr, args...) << "\n";
+//     std::exit(1);
 // }
 
 Type* AST::TypeConvert(Stype t) 
@@ -26,14 +27,22 @@ Type* AST::TypeConvert(Stype t)
     return voidTy;
 }
 
-void AST::error(const char* str){
-    std::cerr << "line " << linecnt << ":" << str << std::endl; 
-    std::exit(1);
-}
+// template<typename ...Ts>
+// void AST::error(Ts&&... args)
+// {
+//     std::cerr << "ERROR in line " << linecnt << ":\n";
+//     _error(std::cerr, args...) << "\n";
+//     std::exit(1);
+// }
 
 bool AST::check_type(Stype t1,Stype t2,bool check_size)
 {
     return t1->equals(t2);
+}
+
+void ASTnodeCollection::push(AST* node)
+{
+    nodes.push_front(node);
 }
 
 void Program::mark_optimizable(bool on)

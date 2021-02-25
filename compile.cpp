@@ -1,7 +1,6 @@
 #include  <cstdlib>
 #include "ast.hpp"
 #include "symbol.hpp"
-#include "error.hpp"
 
 // for optimization 
 #include <llvm/IR/IRBuilder.h>

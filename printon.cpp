@@ -1,7 +1,8 @@
 #include "ast.hpp"
 #include "symbol.hpp"
+#include "helpers.hpp"
 
-inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& l) {
+/* inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& l) {
     os << "[";
     for (auto t : l) {
         os << t;
@@ -64,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, ParameterGroup& p) {
         os << "var:";
     os << p.names << " : " << p.type;
     return os;
-}
+} */
 
 void ASTnodeCollection :: printOn(std::ostream &out) const{
     out << nodes;

@@ -9,6 +9,7 @@
 // #include "symbol.hpp"
 // #include "external.hpp"
 #include "types.hpp"
+#include "helpers.hpp"
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
@@ -38,7 +39,15 @@ typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
 // https://en.cppreference.com/w/cpp/utility/variant
 
-// extern void error(const char* str);  
+// template<typename ...Ts>
+// extern void error(Ts&&... args);
+
+template<typename ...Ts>
+void error(Ts&&... args)
+{
+    _error(std::cerr, args...) << "\n";
+    std::exit(1);
+}
 
 class AST
 {
@@ -50,24 +59,29 @@ class AST
         virtual ~AST() {}
 
         virtual void semantic() = 0;
-        // void semantic_analysis();
         virtual void printOn(std::ostream &out) const = 0;
-        friend inline std::ostream& operator<<(std::ostream &out, const AST &t){
+        virtual Value* compile() = 0;
+
+        friend inline std::ostream& operator<<(std::ostream &out, const AST &t)
+        {
             t.printOn(out);
             return out;
         }
-        virtual Value* compile() = 0;
-        // void compile_llvm(std::string  program_name, bool optimize, bool imm_stdout );
 
         Type* TypeConvert(Stype t);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
-        int linecnt; 
-        // void error(const char* str)
-        // { 
-        //     //std::cerr << "line " << linecnt << ":" << str << std::endl; 
-        //     std::cerr << "WE HAVE AN ERROR\n";
-        //     std::exit(1);
-        // }
+        
+        int linecnt;
+
+        // template<typename ...Ts>
+        // void error(Ts&&... args);
+        template<typename ...Ts>
+        void error(Ts&&... args)
+        {
+            std::cerr << "ERROR in line " << linecnt << ":\n";
+            _error(std::cerr, args...) << "\n";
+            std::exit(1);
+        }
 
 };
 
@@ -86,8 +100,8 @@ class Program
         inline void add_func_llvm(FunctionType *type, std::string name);
         void add_libs_llvm();
 
-        inline std::list<ParameterGroup*> make_single_parameter(Stype type, PassMode pm);
-        void add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*> parameters);
+        inline std::list<ParameterGroup*>* make_single_parameter(Stype type, PassMode pm);
+        void add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters);
     
     public:
         // Program(std::string name, AST* root) : program_name(name), rootNode(root), optimize(false), imm_stdout(false) {}
@@ -139,10 +153,7 @@ class ASTnodeCollection : public Stmt, public Expr
         
         Value* compile();
 
-        void push(AST* node)
-        {
-            nodes.push_front(node);
-        }
+        void push(AST* node);
 };
 
 /* ------ legacy ---------
@@ -274,7 +285,7 @@ class CallFunc : public Expr {
         ASTnodeCollection *parameters;
     public:
         CallFunc(std::string name, ASTnodeCollection* params, int cnt) : fname(name), parameters(params) {linecnt = cnt;}
-        CallFunc(std::string name, int cnt) : fname(name) {linecnt = cnt;}
+        CallFunc(std::string name, int cnt) : fname(name) {linecnt = cnt; parameters=nullptr;}
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -287,7 +298,7 @@ class CallProc : public Stmt {
         ASTnodeCollection *parameters;
     public:
         CallProc(std::string name, ASTnodeCollection* params, int cnt ) : fname(name), parameters(params) {linecnt = cnt;}
-        CallProc(std::string name, int cnt) : fname(name)  {linecnt = cnt;}
+        CallProc(std::string name, int cnt) : fname(name)  {linecnt = cnt; parameters=nullptr;}
         
         void printOn(std::ostream &out) const;
         void semantic();

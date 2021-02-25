@@ -1,21 +1,21 @@
 #include "ast.hpp"
 #include "symbol.hpp"
-#include "error.hpp"
 
 SymbolTable st;
 
-void Program::add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*> parameters={})
+void Program::add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters=nullptr)
 {
     FunctionEntry* f = new FunctionEntry(name);
     f->pardef = PARDEF_COMPLETE;
-    f->arguments = parameters;
+    if (parameters != nullptr)
+        f->arguments = *parameters;
     f->resultType = resultType;
     st.addEntry(f);
 }
 
-inline std::list<ParameterGroup*> Program::make_single_parameter(Stype type, PassMode pm)
+inline std::list<ParameterGroup*>* Program::make_single_parameter(Stype type, PassMode pm)
 {
-    return {
+    return new std::list<ParameterGroup*> {
         new ParameterGroup {
             { "dummy" },
             type,
@@ -110,7 +110,7 @@ void BinOp::semantic() /* override */
     {
         case "+"_ : case "-"_ : case "*"_ : 
             if (! numeric)
-                error("%s%s%s %s %s %s", "Operator '", op, "' requires numeric operands but was given", left->type, "and", right->type);
+                error("Operator '", op, "' requires numeric operands but was given ", left->type, " and ", right->type);
             if (left->type_verify(typeReal) || right->type_verify(typeReal))
                 this->type = typeReal;
             else 
@@ -119,7 +119,7 @@ void BinOp::semantic() /* override */
 
         case "/"_ : 
             if (! numeric)
-                error("%s%s%s %s %s %s", "Operator '", op, "' requires numeric operands but was given", left->type, "and", right->type);
+                error("Operator '", op, "' requires numeric operands but was given ", left->type, " and ", right->type);
             this->type = typeReal;
             break; 
 
@@ -127,12 +127,12 @@ void BinOp::semantic() /* override */
             if (left->type_verify(typeInteger) && right->type_verify(typeInteger))
                 this->type = typeInteger;
             else
-                error("%s%s%s %s %s %s", "Operator '", op, "' requires integer operands but was given", left->type, "and", right->type);
+                error("Operator '", op, "' requires integer operands but was given ", left->type, " and ", right->type);
             break; 
 
         case "and"_  : case "or"_ : 
             if (! (left->type_verify(typeBoolean) && right->type_verify(typeBoolean)) )
-                error("%s%s%s %s %s %s", "Operator '", op, "' requires boolean operands but was given", left->type, "and", right->type);
+                error("Operator '", op, "' requires boolean operands but was given ", left->type, " and ", right->type);
             this->type = typeBoolean ;  
             break;
 
@@ -144,7 +144,7 @@ void BinOp::semantic() /* override */
             if (numeric || same_type)
                 this->type = typeBoolean;
             else
-                error("%s%s%s %s %s %s", "Operator '", op, "' requires same non array operands but was given", left->type, "and", right->type);
+                error("Operator '", op, "' requires same non array operands but was given ", left->type, " and ", right->type);
             break; 
         }
         case ">"_ :                     
@@ -152,11 +152,11 @@ void BinOp::semantic() /* override */
         case "<="_ : 
         case ">="_ : 
             if (! numeric)
-                error("%s%s%s %s %s %s", "Operator '", op, "' requires numeric operands but was given", left->type, "and", right->type);
+                error("Operator '", op, "' requires numeric operands but was given ", left->type, " and ", right->type);
             this->type = typeBoolean;
             break; 
         default : 
-            error("%s", "should not be reached");
+            error("BinOp: Should not be reached");
     }
 }
 
@@ -165,15 +165,15 @@ void UnOp::semantic() /* override */
     e->semantic();
     switch( hashf(op.c_str()) ){
         case "+"_ : case "-"_ :
-            if (! e->is_arithmetic()) error("%s%s%s %s", "Cannot apply ' ", op, "' operator to expression of type", e->type);
+            if (! e->is_arithmetic()) error("Cannot apply ' ", op, "' operator to expression of type ", e->type);
             this->type = e->type;  
             break;
         case "not"_ : 
-            if (!e->type_verify(typeBoolean)) error("%s %s", "Cannot apply 'not' operator to expression of type", e->type);
+            if (!e->type_verify(typeBoolean)) error("Cannot apply 'not' operator to expression of type ", e->type);
             this->type = e->type; 
             break;
         case "@"_ : 
-            if (!e->lvalue)  error("not l-value");
+            if (!e->lvalue)  error("Dereferencing non l-value expression");
             this->type = typePointer(e->type);
             break;
     }
@@ -182,7 +182,7 @@ void UnOp::semantic() /* override */
 void Id::semantic() /* override */
 {
     VariableEntry* e = st.lookupVariable(name);
-    if (e == nullptr) error("%s %s %s", "Id", name, "not found");
+    if (e == nullptr) error("Id ", name, " not found");
     this->type = e->type; 
 }
 
@@ -190,7 +190,7 @@ void Result::semantic()
 {
     VariableEntry* e = st.lookupVariable("result", LOOKUP_CURRENT_SCOPE);
     if (e == nullptr)
-        error("%s", "Use of \"result\" is only allowed in functions");
+        error("Use of \"result\" is only allowed in functions");
     else
         this->type = e->type;
 }
@@ -225,11 +225,11 @@ void CallFunc::semantic() /* override */
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
 
     if (f == nullptr)
-        error("procedure not found");
+        error("Procedure", fname, " not found");
     
-    size_t psize = parameters->nodes.size();
+    size_t psize = (parameters == nullptr) ? 0 : parameters->nodes.size();
     if (psize != f->arguments.size())
-        error("number of arguments mistmatch");
+        error("Number of arguments mistmatch");
 
     // for (int i = 0; i < psize; i++) {
     //     Expr* e = parameters->nodes[i];
@@ -243,7 +243,7 @@ void CallFunc::semantic() /* override */
 
         e->semantic();
         if ( !e->type->is_compatible_with(p->type) )
-            error("%s %s %s %s %s %s", "Parameters", p->names, "have type", p->type, "which is incompatible with", e->type);
+            error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
     }
 
     this->type = f->resultType;
@@ -255,11 +255,11 @@ void CallProc::semantic() /* override */
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
 
     if (f == nullptr)
-        error("procedure not found");
+        error("Procedure", fname, " not found");
     
-    size_t psize = parameters->nodes.size();
+    size_t psize = (parameters == nullptr) ? 0 : parameters->nodes.size();
     if (psize != f->arguments.size())
-        error("number of arguments mistmatch");
+        error("Number of arguments mistmatch");
 
     // for (int i = 0; i < psize; i++) {
     //     Expr* e = parameters->nodes[i];
@@ -273,7 +273,7 @@ void CallProc::semantic() /* override */
 
         e->semantic();
         if ( !p->type->is_compatible_with(e->type) )
-            error("%s %s %s %s %s %s", "Parameters", p->names, "have type", p->type, "which is incompatible with", e->type);
+            error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
     }
 }
 
@@ -288,9 +288,9 @@ void ArrayAccess::semantic() /* override */
     pos->semantic();
 
     if (lval->type->kind != TYPE_ARRAY && lval->type->kind != TYPE_IARRAY)
-        error("%s", "Accesing non array");
+        error("Accesing non array");
     if (!pos->type_verify(typeInteger))
-        error("%s", "Non integer access constant");
+        error("Non integer access constant");
     
     this->type = lval->type->refType;
 }
@@ -299,7 +299,7 @@ void Dereference::semantic() /* override */
 {
     e->semantic();
     if (e->type->kind != TYPE_POINTER)
-        error("%s", "Dereferencing non pointer");
+        error("Dereferencing non pointer");
     this->type = e->type->refType;
 }
 
@@ -359,15 +359,15 @@ void FunctionDef::semantic() /* override */
         case PARDEF_PENDING_CHECK:
             for (std::list<ParameterGroup*>::iterator defit = parameters.begin(), symbit = f->arguments.begin(); defit != parameters.end() && symbit != f->arguments.end(); ++defit, ++symbit) {
                 if (*defit != *symbit)
-                    error("%s %s %s", "Formal parameters for function", name, "do not match thos on forward declaration");
+                    error("Formal parameters for function ", name, " do not match those on forward declaration");
             }
 
             if (!f->resultType->equals(type))
-                error("%s %s %s %s %s %s %s", "Function", name, "was forward declared with type", f->resultType, "but now type", type, "was given");
+                error("Function ", name, " was forward declared with type ", f->resultType, " but now type ", type, " was given");
             
             break;
         case PARDEF_COMPLETE:
-            error("%s %s", "Cannot redefine function", name);
+            error("Cannot redefine function ", name);
             break;
     }
 
@@ -400,14 +400,14 @@ void Assignment::semantic() /* override */
     rval->semantic();
 
     if ( !lval->type->is_compatible_with(rval->type) )
-        error("%s %s %s %s", "Type", rval->type, "cannot be assigned to variable of type", lval->type);
+        error("Type ", rval->type, " cannot be assigned to variable of type ", lval->type);
 }
 
 void IfThenElse::semantic() /* override */
 {
     cond->semantic();
     if (!cond->type_verify(typeBoolean))
-        error("%s %s %s", "Invalid type", cond->type, "for if condition");
+        error("Invalid type ", cond->type, " for if condition");
 
     st_then->semantic();
     if (st_else != nullptr) st_else->semantic();
@@ -417,7 +417,7 @@ void While::semantic() /* override */
 {
     cond->semantic();
     if (!cond->type_verify(typeBoolean))
-        error("%s %s %s", "Invalid type", cond->type, "for while condition");
+        error("Invalid type ", cond->type, " for while condition");
     body->semantic();
 }
 
@@ -426,9 +426,9 @@ void Label::semantic() /* override */
     //check if label exists and set it in bind state
     LabelEntry *l = st.lookupLabel(label);
     if (l == nullptr)
-        error("%s %s %s", "Label", label, "not declared");
+        error("Label ", label, " not declared");
     if (l->isBound)
-        error("%s %s %s", "Label", label, "already assigned");
+        error("Label ", label, " already assigned");
     l->isBound = true;
 }
 
@@ -437,9 +437,9 @@ void GoTo::semantic() /* override */
     //check if label exists (and is bound ???) IN CURRENT SCOPE ONLYYYYY
     LabelEntry *l = st.lookupLabel(label);
     if (l == nullptr)
-     error("%s %s %s", "Label", label, "not declared");
+     error("Label ", label, " not declared");
     if (!l->isBound)
-     error("%s %s %s", "Label", label, "not bound to a target");
+     error("Label ", label, " not bound to a target");
 }
 
 void ReturnStmt::semantic() /* override */
@@ -454,7 +454,7 @@ void Init::semantic() /* override */
     bool cc = lval->type->kind == TYPE_POINTER && lval->type->refType->is_concrete();
 
     if (!cc)
-        error("%s %s", "Invalid initialization on type", lval->type);
+        error("Invalid initialization on type ", lval->type);
 }
 
 void InitArray::semantic() /* override */
@@ -465,7 +465,7 @@ void InitArray::semantic() /* override */
     bool cc = size->type_verify(typeInteger) && ( lval->type->kind == TYPE_POINTER && (lval->type->refType->kind == TYPE_ARRAY || lval->type->refType->kind == TYPE_IARRAY) );
 
     if (!cc)
-        error("%s %s", "Invalid initialization on type", lval->type);
+        error("Invalid initialization on type ", lval->type);
 }
 
 void Dispose::semantic() /* override */
@@ -475,7 +475,7 @@ void Dispose::semantic() /* override */
     bool cc = lval->type->kind == TYPE_POINTER && lval->type->refType->is_concrete();
 
     if (!cc)
-        error("%s %s", "Invalid disposal of type", lval->type);
+        error("Invalid disposal of type ", lval->type);
 }
 
 void DisposeArray::semantic() /* override */
@@ -485,5 +485,5 @@ void DisposeArray::semantic() /* override */
     bool cc = lval->type->kind == TYPE_POINTER && (lval->type->refType->kind == TYPE_ARRAY || lval->type->refType->kind == TYPE_IARRAY);
 
     if (!cc)
-        error("%s %s", "Invalid disposal of type", lval->type);
+        error("Invalid disposal of type ", lval->type);
 }
