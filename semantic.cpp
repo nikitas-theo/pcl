@@ -227,25 +227,28 @@ void CallFunc::semantic() /* override */
     if (f == nullptr)
         error("Procedure", fname, " not found");
     
-    size_t psize = (parameters == nullptr) ? 0 : parameters->nodes.size();
-    if (psize != f->arguments.size())
-        error("Number of arguments mistmatch");
-
-    // for (int i = 0; i < psize; i++) {
-    //     Expr* e = parameters->nodes[i];
-    //     ParameterGroup* p = f->arguments[i];
-    std::list<AST*>::iterator ie;
-    std::list<ParameterGroup*>::iterator ip;
-
-    for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
-        Expr* e = (Expr*) *ie;
-        ParameterGroup* p = *ip;
-
-        e->semantic();
-        if ( !e->type->is_compatible_with(p->type) )
-            error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
+    if (parameters == nullptr) {
+        if (0 != f->arguments.size())
+            error("Number of arguments mistmatch");
     }
+    else {
+        size_t psize = parameters->nodes.size();
+        if (psize != f->arguments.size())
+            error("Number of arguments mistmatch");
+        
+        std::list<AST*>::iterator ie;
+        std::list<ParameterGroup*>::iterator ip;
 
+        for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
+            Expr* e = (Expr*) *ie;
+            ParameterGroup* p = *ip;
+
+            e->semantic();
+            if ( !e->type->is_compatible_with(p->type) )
+                error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
+        }
+    }
+    
     this->type = f->resultType;
     
 }
@@ -257,23 +260,26 @@ void CallProc::semantic() /* override */
     if (f == nullptr)
         error("Procedure", fname, " not found");
     
-    size_t psize = (parameters == nullptr) ? 0 : parameters->nodes.size();
-    if (psize != f->arguments.size())
-        error("Number of arguments mistmatch");
+    if (parameters == nullptr) {
+        if (0 != f->arguments.size())
+            error("Number of arguments mistmatch");
+    }
+    else {
+        size_t psize = parameters->nodes.size();
+        if (psize != f->arguments.size())
+            error("Number of arguments mistmatch");
+        
+        std::list<AST*>::iterator ie;
+        std::list<ParameterGroup*>::iterator ip;
 
-    // for (int i = 0; i < psize; i++) {
-    //     Expr* e = parameters->nodes[i];
-    //     ParameterGroup* p = f->arguments[i];
-    std::list<AST*>::iterator ie;
-    std::list<ParameterGroup*>::iterator ip;
+        for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
+            Expr* e = (Expr*) *ie;
+            ParameterGroup* p = *ip;
 
-    for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
-        Expr* e = (Expr*) *ie;
-        ParameterGroup* p = *ip;
-
-        e->semantic();
-        if ( !p->type->is_compatible_with(e->type) )
-            error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
+            e->semantic();
+            if ( !e->type->is_compatible_with(p->type) )
+                error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
+        }
     }
 }
 
