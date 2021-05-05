@@ -53,6 +53,8 @@ class SemanticType
           case TYPE_POINTER:
             return t->kind == TYPE_POINTER && refType->is_compatible_with(t->refType);
           case TYPE_ARRAY:
+              return t->kind == TYPE_ARRAY && refType->equals(t->refType)
+                && size == t->size;
           case TYPE_IARRAY:
             return t->kind == TYPE_ARRAY && refType->equals(t->refType);
           default:

@@ -62,7 +62,7 @@ void Program::add_libs_llvm()
 
     // WRITE UTILS 
 
-    add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger");
+ add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger");
     add_func_llvm(FunctionType::get(voidTy,{i1},false), "writeBoolean");
     add_func_llvm(FunctionType::get(voidTy,{i8},false), "writeChar");
     add_func_llvm(FunctionType::get(voidTy,{r64},false), "writeReal");
@@ -70,7 +70,7 @@ void Program::add_libs_llvm()
 
     // READ UTILS
 
-    add_func_llvm(FunctionType::get(r64,{},false),"readInteger");
+    add_func_llvm(FunctionType::get(i32,{},false),"readInteger");
     add_func_llvm(FunctionType::get(i1,{},false), "readBoolean");
     add_func_llvm(FunctionType::get(i8,{},false), "readChar");
     add_func_llvm(FunctionType::get(r64,{},false), "readReal");
@@ -225,14 +225,22 @@ Value* BinOp::compile() /* override */
 {
     Value *l = left->compile();
     Value *r = nullptr; 
+    Value * res ;
     // need to implement short-circuit
     if (op != "and" && op != "or") r = right->compile();
     bool real_ops = false; 
+
+    if (left->lvalue) l = Builder.CreateLoad(l);
+    if (right->lvalue) r = Builder.CreateLoad(r);
+    
+
     // sign exted to real if necessary
     if (check_type(left->type,typeReal) || check_type(right->type,typeReal)) {
         // can also use Value type here for cmp 
-        if (! check_type(left->type, typeReal))  Builder.CreateSExt(l,r64);
-        if (! check_type(right->type, typeReal)) Builder.CreateSExt(r,r64);
+        if (! check_type(left->type, typeReal))   
+            l = Builder.CreateCast(Instruction::SIToFP, l, r64);
+        if (! check_type(right->type, typeReal))  
+            r = Builder.CreateCast(Instruction::SIToFP, r, r64);
         real_ops = true ;
     }
     switch( hashf(op.c_str()) ){
@@ -282,7 +290,7 @@ Value* BinOp::compile() /* override */
 
             Builder.SetInsertPoint(endBB);
             // combine the 2 branches 
-            PHINode *phi = Builder.CreatePHI(i32, 2, "phi_and");
+            PHINode *phi = Builder.CreatePHI(i1, 2, "phi_and");
             phi->addIncoming(c_i1(0),shortBB);
             phi->addIncoming(OP,CurrBB);
 
@@ -313,18 +321,23 @@ Value* BinOp::compile() /* override */
 
             Builder.SetInsertPoint(endBB);
             // combine the 2 branches 
-            PHINode *phi = Builder.CreatePHI(i32, 2, "phi_or");
+            PHINode *phi = Builder.CreatePHI(i1, 2, "phi_or");
             phi->addIncoming(c_i1(1),shortBB);
             phi->addIncoming(OP,CurrBB);
 
             return phi;
             }
         case "="_ : 
-            if (real_ops)   return Builder.CreateFCmpOEQ(l,r,"eqtmp");
-            else            return Builder.CreateICmpEQ(l,r,"eqtmp");
+            if (real_ops)   res = Builder.CreateFCmpOEQ(l,r,"eqtmp");
+            else            res =  Builder.CreateICmpEQ(l,r,"eqtmp");
+            return res;
+
         case "<>"_ : 
-            if (real_ops)   return Builder.CreateFCmpONE(l,r,"neqtmp");
-            else            return Builder.CreateICmpNE(l,r,"neqtmp");
+            if (real_ops)   res = Builder.CreateFCmpONE(l,r,"neqtmp");
+            else            res =  Builder.CreateICmpNE(l,r,"neqtmp");
+            return res;
+
+            
         /* "=,<>" :  results are boolean, 
             * if operants are both arithmetic then we compare values, 
                 we have taken care of type casting
@@ -332,17 +345,26 @@ Value* BinOp::compile() /* override */
                 type checking takes care of type matching
         */
         case ">"_ :                     
-            if (real_ops)   return Builder.CreateFCmpOGT(l,r);
-            else            return Builder.CreateICmpSGT(l,r);
+            if (real_ops)   res =  Builder.CreateFCmpOGT(l,r);
+            else            res =  Builder.CreateICmpSGT(l,r);
+            return res;
+
         case "<"_ :
-            if (real_ops)   return Builder.CreateFCmpOLT(l,r);
-            else            return Builder.CreateICmpSLT(l,r);
+            if (real_ops)   res =  Builder.CreateFCmpOLT(l,r);
+            else            res =  Builder.CreateICmpSLT(l,r);
+            return res;
+
         case "<="_ : 
-            if (real_ops)   return Builder.CreateFCmpOLE(l,r);
-            else            return Builder.CreateICmpSLE(l,r);
+            if (real_ops)   res =  Builder.CreateFCmpOLE(l,r);
+            else            res = Builder.CreateICmpSLE(l,r);
+            return res;
+
         case ">="_ : 
-            if (real_ops)   return Builder.CreateFCmpOGT(l,r);
-            else            return Builder.CreateICmpSGT(l,r);
+            if (real_ops)   res = Builder.CreateFCmpOGE(l,r);
+            else            res =  Builder.CreateICmpSGE(l,r);
+            return res;
+
+
         // results must be arithmetic, some typecasting req
     }
     return nullptr; 
@@ -390,22 +412,30 @@ Value* CallFunc::compile() /* override */
 {
     Value* func = ct.lookup(fname)->value;
     std::vector<Value*> param_values;
-    for (auto p : parameters->nodes){
-        param_values.push_back(p->compile());
+    if (parameters != nullptr) {
+        for (auto p : parameters->nodes){
+            Value* par_val  = p->compile();
+            if (((Expr*)p)->lvalue) par_val = Builder.CreateLoad(par_val);
+            param_values.push_back(par_val);
+        }
     }
-    Value* ret = Builder.CreateCall(func,param_values);
-    return ret;
+    return  Builder.CreateCall(func,param_values);
 }
+
 
 Value* CallProc::compile() /* override */
 {
     Value* func = ct.lookup(fname)->value;
     std::vector<Value*> param_values;
-    for (auto p : parameters->nodes){
-        param_values.push_back(p->compile());
+    if (parameters != nullptr) {
+        for (auto p : parameters->nodes){
+            Value* par_val  = p->compile();
+            if (((Expr*)p)->lvalue) par_val = Builder.CreateLoad(par_val);
+            param_values.push_back(par_val);
+        }
     }
     Builder.CreateCall(func,param_values);
-    return nullptr; 
+    return  nullptr;
 }
 
 Value* StringValue::compile() /* override */
@@ -520,7 +550,7 @@ Value* Assignment::compile() /* override */
     //Builder.CreateLoad(r);
     Value* source; 
     if (lval->type_verify(typeReal) && rval->type_verify(typeInteger)){
-        source = Builder.CreateSExt(r,r64);
+        source = Builder.CreateCast(Instruction::SIToFP, r, r64);
     }
     else source = r; 
     Builder.CreateStore(source,l);
@@ -530,7 +560,7 @@ Value* Assignment::compile() /* override */
 Value* IfThenElse::compile() /* override */
 {
     Value *v = cond->compile();
-    Value *cond = Builder.CreateICmpNE(v,c_i32(0), "if_cond");
+    Value *cond = Builder.CreateICmpNE(v,c_i1(0), "if_cond");
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
     BasicBlock *ThenBB = BasicBlock::Create(TheContext,"then", TheFunction);
     BasicBlock *AfterBB = BasicBlock::Create(TheContext,"endif", TheFunction);

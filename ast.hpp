@@ -321,7 +321,7 @@ class StringValue : public Expr {
             size_t len = strlen(s);
             type = typeArray(len, typeChar);
             strvalue = s ;
-            this->lvalue = true;
+            //this->lvalue = true;
         }
         void ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace);
         

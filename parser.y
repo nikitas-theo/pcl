@@ -2,6 +2,7 @@
 #include "lexer.hpp"
 #include "ast.hpp"
 #include "symbol.hpp"
+#include <filesystem>
 
 std::string filename; 
 
@@ -290,8 +291,8 @@ int main(int argc, char *argv[])
     }
 
     std::string file(argv[1]);
-    filename = file.substr(file.find_last_of("/\\") + 1, file.find_last_of('.'));
-
+    std::filesystem::path p(file);
+    std::string filename = p.stem();
     if (!TheProgram->is_console_interactive()) {
         TheProgram->set_name_if_blank(filename);
 
@@ -313,8 +314,9 @@ int main(int argc, char *argv[])
     TheProgram->semantic_initialize();
     TheProgram->semantic_run();
     TheProgram->semantic_finalize();
-
-    // TheProgram->compile_initalize();
-    // TheProgram->compile_run();
-    // TheProgram->compile_finalize();
+    
+    TheProgram->compile_initalize();
+    TheProgram->compile_run();
+    TheProgram->compile_finalize();
+    
 }

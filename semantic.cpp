@@ -202,25 +202,6 @@ void Const::semantic() /* override */
 
 void CallFunc::semantic() /* override */
 {
-    // SymbolEntry * e = st.lookup(fname);   
-
-    // // find corresponding function definition in symbol table 
-    // FunctionDef f = e->function;
-    // if (FunctionDef == nullptr) error("Function" + fname + " not defined");
-    // std::vector<Stype> defined_types = f->param_types;
-
-    // // check if parameters are correct
-    // if (defined_types->length() != parameters->length() )  
-    //     error("different type of parameters");
-
-    // for(int i ; i < vector.length() ; i++){
-    //     Expr* ex = parameters[i] 
-    //     Stype t = defined_types[i]; 
-    //     ex->semantic();
-    //     if (ex->type != t) error("function call parameters do not match")
-    // }            
-    // // return type 
-    // this->type = e->type;
 
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
 
@@ -244,7 +225,7 @@ void CallFunc::semantic() /* override */
             ParameterGroup* p = *ip;
 
             e->semantic();
-            if ( !e->type->is_compatible_with(p->type) )
+            if ( !p->type->is_compatible_with(e->type) )
                 error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
         }
     }
@@ -256,7 +237,7 @@ void CallFunc::semantic() /* override */
 void CallProc::semantic() /* override */
 {
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
-
+    
     if (f == nullptr)
         error("Procedure", fname, " not found");
     
@@ -277,7 +258,7 @@ void CallProc::semantic() /* override */
             ParameterGroup* p = *ip;
 
             e->semantic();
-            if ( !e->type->is_compatible_with(p->type) )
+            if ( !p->type->is_compatible_with(e->type) )
                 error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
         }
     }

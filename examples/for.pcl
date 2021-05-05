@@ -1,6 +1,0 @@
-program aa;
-
-    var n : real;
-    begin
-        n := 2;       
-    end.

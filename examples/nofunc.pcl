@@ -1,0 +1,9 @@
+program nofunc;
+    
+    var n : real ; x : integer ;
+    begin
+        n := 2;  
+        x := 10;
+        n := n + 2 ; 
+        n := x + 2 ; 
+    end.
