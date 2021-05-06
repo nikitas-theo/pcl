@@ -156,50 +156,6 @@ class ASTnodeCollection : public Stmt, public Expr
         void push(AST* node);
 };
 
-/* ------ legacy ---------
-
-template<class T>
-
-class ASTvector : public Stmt , public Expr
-{
-    public :
-        std::vector<T> list;
-
-        void printOn(std::ostream &out) const
-        {
-            out << "[";
-            for (std::size_t i = 0; i < list.size(); i++) {
-                out << *(list[list.size() - 1 - i]) << (i == list.size() - 1 ? "" : ",");
-            }
-            out << "]"; 
-        }
-
-        void semantic()
-        {
-
-        }
-        
-        Value* compile()
-        {
-            return nullptr;
-        }
-
-        void push(T t)
-        {
-            list.push_back(t);
-        }
-
-inline std::ostream& operator<<(std::ostream &out, const std::vector<std::string> &t)
-{
-        out << "[";
-        for (std::size_t i = 0; i < t.size(); i++) {
-            out << t[t.size() - 1 - i] << (i == t.size() - 1 ? "" : ",");
-        }
-        return out << "]" ;
-}
-
-};
-*/ 
 
 constexpr unsigned int hashf(const char *s, int off = 0)
 {                        

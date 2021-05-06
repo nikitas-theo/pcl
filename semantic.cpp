@@ -204,29 +204,39 @@ void CallFunc::semantic() /* override */
 {
 
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
+  std::list<AST *> params_flat;
 
+    for (auto x : f->arguments){
+        for (auto n : x->names){
+            Id* id = new Id(n,linecnt);
+            id->type = x->type;
+            params_flat.push_back(id);
+         }
+    } 
     if (f == nullptr)
-        error("Procedure", fname, " not found");
+        error("Function", fname, " not found");
     
     if (parameters == nullptr) {
-        if (0 != f->arguments.size())
+        if (0 != params_flat.size())
             error("Number of arguments mistmatch");
     }
     else {
         size_t psize = parameters->nodes.size();
-        if (psize != f->arguments.size())
+        if (psize != params_flat.size())
             error("Number of arguments mistmatch");
         
         std::list<AST*>::iterator ie;
-        std::list<ParameterGroup*>::iterator ip;
+        std::list<AST*>::iterator ip;
 
-        for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
+        for (ie = parameters->nodes.begin(), ip = params_flat.begin(); 
+            ie != parameters->nodes.end() && ip != params_flat.end(); ++ie, ++ip) {
+            
             Expr* e = (Expr*) *ie;
-            ParameterGroup* p = *ip;
+            Id* p = (Id*) *ip;
 
             e->semantic();
             if ( !p->type->is_compatible_with(e->type) )
-                error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
+                error("Parameter ", p->name, " have type ", p->type, " which is incompatible with ", e->type);
         }
     }
     
@@ -237,29 +247,45 @@ void CallFunc::semantic() /* override */
 void CallProc::semantic() /* override */
 {
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
-    
+    /*
+        need to do this because it Func in ST has list<ParamsGroup*> , meaning 
+        objects of {type , var_names}, while FuncCall has parameters meaning just var_names, 
+        so there is a difference in representation
+        if you can find a way to fix this more constistently please do  
+    */    
+    std::list<AST *> params_flat;
+
+    for (auto x : f->arguments){
+        for (auto n : x->names){
+            Id* id = new Id(n,linecnt);
+            id->type = x->type;
+            params_flat.push_back(id);
+         }
+    } 
     if (f == nullptr)
         error("Procedure", fname, " not found");
     
     if (parameters == nullptr) {
-        if (0 != f->arguments.size())
+        if (0 != params_flat.size())
             error("Number of arguments mistmatch");
     }
     else {
         size_t psize = parameters->nodes.size();
-        if (psize != f->arguments.size())
+        if (psize != params_flat.size())
             error("Number of arguments mistmatch");
         
         std::list<AST*>::iterator ie;
-        std::list<ParameterGroup*>::iterator ip;
+        std::list<AST*>::iterator ip;
 
-        for (ie = parameters->nodes.begin(), ip = f->arguments.begin(); ie != parameters->nodes.end() && ip != f->arguments.end(); ++ie, ++ip) {
+        for (ie = parameters->nodes.begin(), ip = params_flat.begin(); 
+            ie != parameters->nodes.end() && ip != params_flat.end(); ++ie, ++ip) {
+            
             Expr* e = (Expr*) *ie;
-            ParameterGroup* p = *ip;
+            Id* p = (Id*) *ip;
 
             e->semantic();
             if ( !p->type->is_compatible_with(e->type) )
-                error("Parameters ", p->names, " have type ", p->type, " which is incompatible with ", e->type);
+                error("Parameter ", p->name, " have type ", p->type, " which is incompatible with ", e->type);
         }
     }
 }
@@ -343,6 +369,7 @@ void FunctionDef::semantic() /* override */
             f->resultType = type;
             
             break;
+            
         case PARDEF_PENDING_CHECK:
             for (std::list<ParameterGroup*>::iterator defit = parameters.begin(), symbit = f->arguments.begin(); defit != parameters.end() && symbit != f->arguments.end(); ++defit, ++symbit) {
                 if (*defit != *symbit)

@@ -15,61 +15,44 @@
 #include "types.hpp"
 #include "ast.hpp"
 
-/* ---------------------------------------------------------------------
-   --------------- Ορισμός τύπων του πίνακα συμβόλων -------------------
-   --------------------------------------------------------------------- */
+typedef int           RepInteger;        
+typedef unsigned char RepBoolean;        
+typedef char          RepChar;           
+typedef long double   RepReal;           
+typedef const char *  RepString;        
 
-/* Τύποι δεδομένων για την υλοποίηση των σταθερών */
-
-typedef int           RepInteger;         /* Ακέραιες                  */
-typedef unsigned char RepBoolean;         /* Λογικές τιμές             */
-typedef char          RepChar;            /* Χαρακτήρες                */
-typedef long double   RepReal;            /* Πραγματικές               */
-typedef const char *  RepString;          /* Συμβολοσειρές             */
-
-typedef union {                    /* Τιμή                  */
-    RepInteger vInteger;              /*    ακέραια            */
-    RepBoolean vBoolean;              /*    λογική             */
-    RepChar    vChar;                 /*    χαρακτήρας         */
-    RepReal    vReal;                 /*    πραγματική         */
-    RepString  vString;               /*    συμβολοσειρά       */
+typedef union {                    
+    RepInteger vInteger;           
+    RepBoolean vBoolean;           
+    RepChar    vChar;              
+    RepReal    vReal;              
+    RepString  vString;            
 } ConstValueType;
 
-/* Τύποι εγγραφών του πίνακα συμβόλων */
 
 typedef enum {            
-   ENTRY_VARIABLE,                       /* Μεταβλητές                 */
-   ENTRY_CONSTANT,                       /* Σταθερές                   */
-   ENTRY_FUNCTION,                       /* Συναρτήσεις                */
-   ENTRY_PARAMETER,                      /* Παράμετροι συναρτήσεων     */
-   ENTRY_LABEL,                          /* Ετικέτες */
-   ENTRY_TEMPORARY                       /* Προσωρινές μεταβλητές      */
+   ENTRY_VARIABLE,                    
+   ENTRY_CONSTANT,                    
+   ENTRY_FUNCTION,                    
+   ENTRY_PARAMETER,                   
+   ENTRY_LABEL,                       
+   ENTRY_TEMPORARY                    
 } EntryType;
 
 
-/* Τύποι περάσματος παραμετρων */
-
-// typedef enum {            
-//    PASS_BY_VALUE,                        /* Κατ' αξία                  */
-//    PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
-// } PassMode;
-
-/* Κατάσταση Ορισμού Συνάρτησης */
-
-typedef enum {                        /* Κατάσταση παραμέτρων  */
-    PARDEF_DEFINE,                       /* Εν μέσω ορισμού    */
-    PARDEF_PENDING_CHECK,                /* Εν μέσω ελέγχου    */
-    PARDEF_COMPLETE                      /* Πλήρης ορισμός     */
+typedef enum {                       
+    PARDEF_DEFINE,                   
+    PARDEF_PENDING_CHECK,             
+    PARDEF_COMPLETE                   
 } PardefType;
 
-/* Τύπος αναζήτησης στον πίνακα συμβόλων */
+
 
 typedef enum {
     LOOKUP_CURRENT_SCOPE,
     LOOKUP_ALL_SCOPES
 } LookupType;
 
-/* Λοιποί ορισμοί τύπων */
 
 typedef size_t HashType;
 typedef std::string String;
@@ -77,7 +60,6 @@ typedef std::string String;
 template <class T>
 using Container = std::list<T>;
 
-/* Εγγραφές του πίνακα συμβόλων */
 
 class SymbolEntry
 {
@@ -123,6 +105,7 @@ class FunctionEntry : public SymbolEntry
     public:
         PardefType pardef;
         Container<ParameterGroup *> arguments;
+
         Stype resultType;
 
         FunctionEntry(String name) : SymbolEntry(name, ENTRY_FUNCTION) {}

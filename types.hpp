@@ -56,7 +56,7 @@ class SemanticType
               return t->kind == TYPE_ARRAY && refType->equals(t->refType)
                 && size == t->size;
           case TYPE_IARRAY:
-            return t->kind == TYPE_ARRAY && refType->equals(t->refType);
+            return (t->kind == TYPE_ARRAY || t->kind == TYPE_IARRAY) && refType->equals(t->refType);
           default:
             return false;
         }
@@ -66,8 +66,8 @@ class SemanticType
 typedef  SemanticType* Stype;
 
 typedef enum {            
-   PASS_BY_VALUE,                        /* Κατ' αξία                  */
-   PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
+   PASS_BY_VALUE,
+   PASS_BY_REFERENCE
 } PassMode;
 
 typedef struct
