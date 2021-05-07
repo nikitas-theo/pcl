@@ -204,7 +204,9 @@ void CallFunc::semantic() /* override */
 {
 
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
-  std::list<AST *> params_flat;
+    if (f == nullptr) error("Function ",fname, " does not exist in current scope.");
+
+    std::list<AST *> params_flat;
 
     for (auto x : f->arguments){
         for (auto n : x->names){
@@ -247,6 +249,7 @@ void CallFunc::semantic() /* override */
 void CallProc::semantic() /* override */
 {
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
+    if (f == nullptr) error("Function ",fname, " does not exist in current scope.");
     /*
         need to do this because it Func in ST has list<ParamsGroup*> , meaning 
         objects of {type , var_names}, while FuncCall has parameters meaning just var_names, 

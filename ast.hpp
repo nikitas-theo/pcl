@@ -61,7 +61,6 @@ class AST
         virtual void semantic() = 0;
         virtual void printOn(std::ostream &out) const = 0;
         virtual Value* compile() = 0;
-
         friend inline std::ostream& operator<<(std::ostream &out, const AST &t)
         {
             t.printOn(out);
@@ -72,7 +71,6 @@ class AST
         bool check_type(Stype t1,Stype t2,bool check_size = true);
         
         int linecnt;
-
         // template<typename ...Ts>
         // void error(Ts&&... args);
         template<typename ...Ts>
@@ -82,6 +80,7 @@ class AST
             _error(std::cerr, args...) << "\n";
             std::exit(1);
         }
+    
 
 };
 

@@ -31,6 +31,9 @@ Function* GC_Free;
 
 CodeGenTable ct = CodeGenTable();
 
+bool BBended;
+
+
 ConstantInt* c_i32(int n)
 {
     return ConstantInt::get(TheContext,APInt(32,n,true));
@@ -138,7 +141,7 @@ void Program::compile_initalize()
         Function::ExternalLinkage,"GC_free",TheModule
         );
     
-    
+    BBended = false; 
     // open global scope 
     ct.openScope();
 
@@ -211,8 +214,10 @@ void Program::compile_finalize()
 
 Value* ASTnodeCollection :: compile()
 {
-    for (AST* n : nodes)
+    for (AST* n : nodes){
         n->compile();
+        if (BBended) break; 
+    }
     return nullptr;
 }
 
@@ -248,7 +253,7 @@ Value* BinOp::compile() /* override */
             if (real_ops)   return Builder.CreateFAdd(l,r,"addtmp");
             else            return Builder.CreateAdd(l,r,"addtmp");
         case "-"_ : 
-            if (real_ops)   return Builder.CreateFSub(l,r,"addtmp");
+            if (real_ops)   return Builder.CreateSub(l,r,"addtmp");
             else            return Builder.CreateSub(l,r,"addtmp");
         case "*"_ : 
             if (real_ops)   return Builder.CreateFMul(l,r,"addtmp");
@@ -375,7 +380,14 @@ Value* UnOp::compile() /* override */
     Value* val = e->compile();
     switch( hashf(op.c_str()) ){
         case "+"_ : return val;
-        case "-"_ : return Builder.CreateNeg(val,"negtmp");
+        case "-"_ : {
+            if (e->lvalue) val = Builder.CreateLoad(val);
+            if (check_type(e->type, typeReal))
+                return Builder.CreateFSub(c_r64(0),val);
+            else 
+                return Builder.CreateSub(c_i32(0),val);
+
+        }
         case "not"_ : return Builder.CreateNot(val,"nottmp");
         case "@"_ : 
             // not sure how to implement this 
@@ -392,7 +404,7 @@ Value* Id::compile() /* override */
 
 Value* Result::compile()
 {
-    return nullptr;
+    return ct.lookup("result")->value;
 }
 
 Value* Const::compile() /* override */
@@ -509,6 +521,7 @@ Value* FunctionDef::compile() /* override */
 {
         
     Function *routine;
+    BasicBlock* parentBB = Builder.GetInsertBlock();
     std::vector<Type*> param_types; 
     for (ParameterGroup* param : parameters){
         Stype t = param->type;
@@ -533,13 +546,31 @@ Value* FunctionDef::compile() /* override */
     ct.openScope();
     auto param_iter = routine->arg_begin(); 
     for (ParameterGroup* param : parameters){
+        // need to create aloca here 
         for (std::string name : param->names ){
-            ct.insert(name,param_iter);
+            Value* value = Builder.CreateAlloca(TypeConvert(param->type), 0, name.c_str());
+            Builder.CreateStore(param_iter,value);
+            ct.insert(name,value);
             param_iter++;
         }
     }
+    // type void means its a procedure 
+    if (! type->equals(typeVoid)) {
+        Value* value = Builder.CreateAlloca(TypeConvert(type), 0, "result");
+        ct.insert("result",value);
+    }
     body->compile(); 
+    if (! BBended){   
+        if (! type->equals(typeVoid)){
+            Value* ret = ct.lookup("result")->value;
+            Value* l = Builder.CreateLoad(ret);
+            Builder.CreateRet(l);    
+        }
+        else Builder.CreateRetVoid();
+    }
+    else BBended = false; 
     ct.closeScope();
+    Builder.SetInsertPoint(parentBB);
     return nullptr; 
 }
 
@@ -568,11 +599,20 @@ Value* IfThenElse::compile() /* override */
     Builder.CreateCondBr(cond,ThenBB,ElseBB);
     Builder.SetInsertPoint(ThenBB);
     st_then->compile();
-    Builder.CreateBr(AfterBB);
+    if (! BBended){   
+        Builder.CreateBr(AfterBB);
+    }
+    else BBended = false; 
     Builder.SetInsertPoint(ElseBB);
     if (hasElse) st_else->compile();
-    Builder.CreateBr(AfterBB);
+    if (! BBended){   
+        Builder.CreateBr(AfterBB);
+    }
+    else BBended = false; 
+
     Builder.SetInsertPoint(AfterBB);
+
+
     return nullptr; 
 }
 
@@ -593,8 +633,11 @@ Value* While::compile() /* override */
 
     Builder.SetInsertPoint(BodyBB);
     body->compile();
-    Builder.CreateBr(LoopBB);
-
+    if (! BBended){
+        Builder.CreateBr(LoopBB);
+        BBended = false; 
+    }
+    else BBended = false; 
     Builder.SetInsertPoint(AfterBB);
     return nullptr; 
 }
@@ -618,8 +661,10 @@ Value* GoTo::compile() /* override */
 
 Value* ReturnStmt::compile() /* override */
 {
-    Value* ret = ct.lookup("return")->value;
-    Builder.CreateRet(ret);
+    Value* ret = ct.lookup("result")->value;
+    Value* l = Builder.CreateLoad(ret);
+    Builder.CreateRet(l);    
+    BBended = true; 
     return nullptr;
 }
 

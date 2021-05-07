@@ -2,8 +2,9 @@ program nofunc;
     
     var n : real ; x : integer ;
     begin
-        n := 2;  
-        x := 10;
-        n := n + 2 ; 
-        n := x + 2 ; 
+        n := 400;
+        if n > 10 then 
+        begin 
+            writeString("ant gam");
+        end 
     end.

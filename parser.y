@@ -314,9 +314,9 @@ int main(int argc, char *argv[])
     TheProgram->semantic_initialize();
     TheProgram->semantic_run();
     TheProgram->semantic_finalize();
-    
-    //TheProgram->compile_initalize();
-    //TheProgram->compile_run();
-    //TheProgram->compile_finalize();
+    printf("SEMANTIC CORRECT\n");
+    TheProgram->compile_initalize();
+    TheProgram->compile_run();
+    TheProgram->compile_finalize();
     
 }
