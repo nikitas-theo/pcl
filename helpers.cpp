@@ -1,12 +1,4 @@
 #include "ast.hpp"
-// #include "error.hpp"
-
-// template<typename ...Ts>
-// extern void error(Ts&&... args)
-// {
-//     _error(std::cerr, args...) << "\n";
-//     std::exit(1);
-// }
 
 Type* AST::TypeConvert(Stype t) 
 {
@@ -27,13 +19,7 @@ Type* AST::TypeConvert(Stype t)
     return voidTy;
 }
 
-// template<typename ...Ts>
-// void AST::error(Ts&&... args)
-// {
-//     std::cerr << "ERROR in line " << linecnt << ":\n";
-//     _error(std::cerr, args...) << "\n";
-//     std::exit(1);
-// }
+
 
 bool AST::check_type(Stype t1,Stype t2,bool check_size)
 {

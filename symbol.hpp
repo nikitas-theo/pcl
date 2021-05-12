@@ -57,9 +57,6 @@ typedef enum {
 typedef size_t HashType;
 typedef std::string String;
 
-template <class T>
-using Container = std::list<T>;
-
 
 class SymbolEntry
 {
@@ -104,7 +101,7 @@ class FunctionEntry : public SymbolEntry
 {
     public:
         PardefType pardef;
-        Container<ParameterGroup *> arguments;
+        std::list<ParameterGroup *> arguments;
 
         Stype resultType;
 
@@ -135,7 +132,7 @@ class Scope
 class SymbolTable
 {
     private:
-        Container<Scope*> scopeStack;
+        std::list<Scope*> scopeStack;
 
     public:
         Scope* currentScope;
@@ -166,63 +163,92 @@ class SymbolTable
 
 /* ---------------------------- CODE GENERATION TABLE ------------------------ */
 
-struct CodeGenEntry {
+class CodeGenEntry {
+public:
   int offset;
   llvm::Value* value; 
+  PassMode pass_by;
+  std::vector<PassMode> arguments; 
   CodeGenEntry() {}
-  CodeGenEntry(llvm::Value* v, int ofs) : value(v), offset(ofs) {}
+  CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
+
 };
 
 class CodeGenScope {
+
 public:
+
   CodeGenScope() : locals(), offset(-1), size(0) {}
   CodeGenScope(int ofs) : locals(), offset(ofs), size(0) {}
+
   int getOffset() const { return offset; }
   int getSize() const { return size; }
+
   CodeGenEntry *lookup(std::string name) {
+
     if (locals.find(name) == locals.end()) return nullptr;
     return &(locals[name]);
+
   }
-  int insert(std::string name, llvm::Value* v) {
+  int insert(std::string name, llvm::Value* v, PassMode pb) {
+
     if (locals.find(name) != locals.end()) {
       return 1;
     }
-    locals[name] = CodeGenEntry(v, offset++);
+    locals[name] = CodeGenEntry(v, offset++,pb);
     ++size;
+
     return 0; 
   }
+
+
 private:
+
   std::map<std::string, CodeGenEntry> locals;
   int offset;
   int size;
+
 };
 
 
 class CodeGenTable {
-/*  - lookup(name::string) : search for a name in SymbolTable
-    return nullptr upon not founding 
-    - insert(name::string, v::llvm::Value*)
-    return 0 on correct insertion
-    return 1 on duplicate entry 
+/*  
+  
+  - lookup(name::string) : search for a name in SymbolTable
+      return nullptr upon not founding 
+  
+  - insert(name::string, v::llvm::Value*)
+      return 0 on correct insertion
+      return 1 on duplicate entry 
 */ 
 public:
   void openScope() {
+
     int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
+
     scopes.push_back(CodeGenScope(ofs));
+
   }
+
   void closeScope() { scopes.pop_back(); };
+
   CodeGenEntry *lookup(std::string name) {
+
     CodeGenEntry *e;
+
     for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
       e = i->lookup(name);
       if (e != nullptr) return e;
     }    
+
     return e; 
   }
+
   int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
-  int insert(std::string name, llvm::Value* v) { return scopes.back().insert(name, v); }
+  int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE) { return scopes.back().insert(name, v, pb); }
 private:
-  std::vector<CodeGenScope> scopes;
+
+  std::list<CodeGenScope> scopes;
 };
 
 // #endif

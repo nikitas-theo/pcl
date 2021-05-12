@@ -54,9 +54,11 @@ ConstantFP* c_r64(double d)
     return ConstantFP::get(TheContext,APFloat(d));
 }
 
-inline void Program::add_func_llvm(FunctionType *type, std::string name)
+inline void Program::add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args)
 {
     ct.insert(name, Function::Create(type, Function::ExternalLinkage, name, TheModule));
+    CodeGenEntry* e = ct.lookup(name);
+    e->arguments = args;
 };
 
 void Program::add_libs_llvm()
@@ -65,37 +67,37 @@ void Program::add_libs_llvm()
 
     // WRITE UTILS 
 
- add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger");
-    add_func_llvm(FunctionType::get(voidTy,{i1},false), "writeBoolean");
-    add_func_llvm(FunctionType::get(voidTy,{i8},false), "writeChar");
-    add_func_llvm(FunctionType::get(voidTy,{r64},false), "writeReal");
-    add_func_llvm(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString");
+    add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(voidTy,{i1},false), "writeBoolean",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(voidTy,{i8},false), "writeChar",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(voidTy,{r64},false), "writeReal",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString",{PASS_BY_VALUE});
 
     // READ UTILS
 
-    add_func_llvm(FunctionType::get(i32,{},false),"readInteger");
-    add_func_llvm(FunctionType::get(i1,{},false), "readBoolean");
-    add_func_llvm(FunctionType::get(i8,{},false), "readChar");
-    add_func_llvm(FunctionType::get(r64,{},false), "readReal");
-    add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString");
+    add_func_llvm(FunctionType::get(i32,{},false),"readInteger",{});
+    add_func_llvm(FunctionType::get(i1,{},false), "readBoolean",{});
+    add_func_llvm(FunctionType::get(i8,{},false), "readChar",{});
+    add_func_llvm(FunctionType::get(r64,{},false), "readReal",{});
+    add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString",{});
 
 
     // MATH UTILS 
 
-    add_func_llvm(FunctionType::get(i32,{i32},false),"abs");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"fabs");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"sqrt");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"sin");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"cos");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"tan");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"arctan");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"exp");
-    add_func_llvm(FunctionType::get(r64,{r64},false),"ln");
-    add_func_llvm(FunctionType::get(r64,{},false),"pi");
+    add_func_llvm(FunctionType::get(i32,{i32},false),"abs",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"fabs",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"sqrt",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"sin",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"cos",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"tan",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"arctan",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"exp",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"ln",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(r64,{},false),"pi",{PASS_BY_VALUE});
 
     // CHAR UTILS
-    add_func_llvm(FunctionType::get(i8,{i32},false),"ord");
-    add_func_llvm(FunctionType::get(i32,{i8},false),"chr");
+    add_func_llvm(FunctionType::get(i8,{i32},false),"ord",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(i32,{i8},false),"chr",{PASS_BY_VALUE});
 
     // ROUND UTILS
 
@@ -399,7 +401,11 @@ Value* UnOp::compile() /* override */
 
 Value* Id::compile() /* override */
 {
-    return ct.lookup(name)->value;
+    CodeGenEntry* entry = ct.lookup(name);
+    Value * val = entry->value;
+    if (entry->pass_by == PASS_BY_REFERENCE)
+        val = Builder.CreateLoad(val);
+    return val; 
 }
 
 Value* Result::compile()
@@ -422,13 +428,21 @@ Value* Const::compile() /* override */
 
 Value* CallFunc::compile() /* override */
 {
-    Value* func = ct.lookup(fname)->value;
+    CodeGenEntry* f = (CodeGenEntry *) ct.lookup(fname); 
+    Value* func = f->value;
+    std::vector<PassMode> arguments = f->arguments;
     std::vector<Value*> param_values;
     if (parameters != nullptr) {
-        for (auto p : parameters->nodes){
+        auto param_iter = (parameters->nodes).begin();     
+        for (size_t i = 0 ; i < arguments.size() ; i++){
+            Expr* p = (Expr*) *param_iter;
             Value* par_val  = p->compile();
-            if (((Expr*)p)->lvalue) par_val = Builder.CreateLoad(par_val);
+
+            bool lval = p->lvalue;
+            PassMode pass_by = arguments[i];
+            if (lval && pass_by == PASS_BY_VALUE) par_val = Builder.CreateLoad(par_val);
             param_values.push_back(par_val);
+            param_iter++; 
         }
     }
     return  Builder.CreateCall(func,param_values);
@@ -437,13 +451,21 @@ Value* CallFunc::compile() /* override */
 
 Value* CallProc::compile() /* override */
 {
-    Value* func = ct.lookup(fname)->value;
+    CodeGenEntry* f = (CodeGenEntry *) ct.lookup(fname); 
+    Value* func = f->value;
+    std::vector<PassMode> arguments = f->arguments;
     std::vector<Value*> param_values;
     if (parameters != nullptr) {
-        for (auto p : parameters->nodes){
+        auto param_iter = (parameters->nodes).begin();     
+        for (size_t i = 0 ; i < parameters->nodes.size() ; i++){
+            Expr* p = (Expr*) *param_iter;
             Value* par_val  = p->compile();
-            if (((Expr*)p)->lvalue) par_val = Builder.CreateLoad(par_val);
+
+            bool lval = p->lvalue;
+            PassMode pass_by = arguments[i];
+            if (lval && pass_by == PASS_BY_VALUE) par_val = Builder.CreateLoad(par_val);
             param_values.push_back(par_val);
+            param_iter++; 
         }
     }
     Builder.CreateCall(func,param_values);
@@ -453,7 +475,7 @@ Value* CallProc::compile() /* override */
 Value* StringValue::compile() /* override */
 {
     std::string pstr(strvalue);
-    std::vector<std::pair<std::string,std::string>> rep = {
+    std::list<std::pair<std::string,std::string>> rep = {
         {"\\n" , "\n"} , {"\\t", "\t"}, {"\\r", "\r"} , {"\\\\", "\\"} , {"\\0", "\0"}, 
         {"\\'","'"}, {"\\\"", "\""}  };
     for (auto p : rep){
@@ -464,17 +486,21 @@ Value* StringValue::compile() /* override */
 
 }
 
+
 Value* ArrayAccess::compile() /* override */
 {
     Value *index = pos->compile();
     Value *ptr = lval->compile();
-    return Builder.CreateGEP(ptr, {0, index});
+    index = Builder.CreateLoad(index);
+    Value *idx = Builder.CreateGEP(ptr, {index},"arrayIdx");
+    Value  *ret = Builder.CreateLoad(idx);
+    return ret;
 }
 
 Value* Dereference::compile() /* override */
 {
     Value *ptr = e->compile();
-    return Builder.CreateGEP(ptr, {0});
+    return Builder.CreateLoad(ptr);
 }
 
 Value* Block::compile() /* override */
@@ -523,13 +549,15 @@ Value* FunctionDef::compile() /* override */
     Function *routine;
     BasicBlock* parentBB = Builder.GetInsertBlock();
     std::vector<Type*> param_types; 
+    std::vector<PassMode> param_pass;
     for (ParameterGroup* param : parameters){
-        Stype t = param->type;
         // by reference passing is just adding a pointer
+        Stype t = param->type;
         if (param->pmode == PASS_BY_REFERENCE) 
             t = typePointer(t);            
         for (std::string name : param->names){
-             param_types.push_back(TypeConvert(param->type)) ;
+             param_types.push_back(TypeConvert(t)) ;
+             param_pass.push_back(param->pmode);
         }
     }
     FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
@@ -538,7 +566,8 @@ Value* FunctionDef::compile() /* override */
     );
     // insert function in current scope 
     ct.insert(name,routine);
-
+    CodeGenEntry* f = ct.lookup(name);
+    f->arguments = param_pass;
     //create a new basic block 
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
@@ -548,9 +577,12 @@ Value* FunctionDef::compile() /* override */
     for (ParameterGroup* param : parameters){
         // need to create aloca here 
         for (std::string name : param->names ){
-            Value* value = Builder.CreateAlloca(TypeConvert(param->type), 0, name.c_str());
+            Stype t = param->type;
+            if (param->pmode == PASS_BY_REFERENCE) 
+                t = typePointer(t);           
+            Value* value = Builder.CreateAlloca(TypeConvert(t), 0, name.c_str());
             Builder.CreateStore(param_iter,value);
-            ct.insert(name,value);
+            ct.insert(name,value,param->pmode);
             param_iter++;
         }
     }
@@ -609,7 +641,6 @@ Value* IfThenElse::compile() /* override */
         Builder.CreateBr(AfterBB);
     }
     else BBended = false; 
-
     Builder.SetInsertPoint(AfterBB);
 
 

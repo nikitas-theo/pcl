@@ -4,7 +4,6 @@
 #include <vector>
 #include <iostream>
 #include <variant>
-#include <list>
 
 // #include "symbol.hpp"
 // #include "external.hpp"
@@ -33,7 +32,7 @@ extern Type* i64;
 extern Type* r64;
 extern Type* voidTy;
 
-typedef std::vector<std::string> IdCollection;
+typedef std::list<std::string> IdCollection;
 
 typedef std::variant<int,double,char,bool> data_const ;
 // https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
@@ -51,9 +50,7 @@ void error(Ts&&... args)
 
 class AST
 {
-    private:
-        // inline void add_func(FunctionType *type, std::string name);
-        // inline void add_libs();
+
         
     public:
         virtual ~AST() {}
@@ -96,7 +93,7 @@ class Program
 
         Function* main;
 
-        inline void add_func_llvm(FunctionType *type, std::string name);
+        inline void add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args);
         void add_libs_llvm();
 
         inline std::list<ParameterGroup*>* make_single_parameter(Stype type, PassMode pm);

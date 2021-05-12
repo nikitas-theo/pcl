@@ -23,7 +23,7 @@ Program* TheProgram;
     FunctionDef* rtn;
     /* FormalsGroup* flg; */
     ParameterGroup* flg;
-    /* std::vector<std::string>* ids; */
+    /* std::list<std::string>* ids; */
     std::list<std::string>* ids;
     /* ASTvector<FormalsGroup*>* fgs; */
     std::list<ParameterGroup*>* fgs;
