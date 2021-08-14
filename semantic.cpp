@@ -200,69 +200,20 @@ void Const::semantic() /* override */
     /* empty */
 }
 
-void CallFunc::semantic() /* override */
-{
+
+Stype create_call(std::string fname, ASTnodeCollection *parameters, int linecnt, std::string caller){
 
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
     if (f == nullptr) error("Function ",fname, " does not exist in current scope.");
-
-    std::list<AST *> params_flat;
+    std::list<std::tuple<AST *, PassMode>> params_flat;
 
     for (auto x : f->arguments){
         for (auto n : x->names){
             Id* id = new Id(n,linecnt);
             id->type = x->type;
-            params_flat.push_back(id);
-         }
-    } 
-    if (f == nullptr)
-        error("Function", fname, " not found");
-    
-    if (parameters == nullptr) {
-        if (0 != params_flat.size())
-            error("Number of arguments mistmatch");
-    }
-    else {
-        size_t psize = parameters->nodes.size();
-        if (psize != params_flat.size())
-            error("Number of arguments mistmatch");
-        
-        std::list<AST*>::iterator ie;
-        std::list<AST*>::iterator ip;
+            params_flat.push_back(
+                std::make_tuple(id,x->pmode));
 
-        for (ie = parameters->nodes.begin(), ip = params_flat.begin(); 
-            ie != parameters->nodes.end() && ip != params_flat.end(); ++ie, ++ip) {
-            
-            Expr* e = (Expr*) *ie;
-            Id* p = (Id*) *ip;
-
-            e->semantic();
-            if ( !p->type->is_compatible_with(e->type) )
-                error("Parameter ", p->name, " have type ", p->type, " which is incompatible with ", e->type);
-        }
-    }
-    
-    this->type = f->resultType;
-    
-}
-
-void CallProc::semantic() /* override */
-{
-    FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
-    if (f == nullptr) error("Function ",fname, " does not exist in current scope.");
-    /*
-        need to do this because it Func in ST has list<ParamsGroup*> , meaning 
-        objects of {type , var_names}, while FuncCall has parameters meaning just var_names, 
-        so there is a difference in representation
-        if you can find a way to fix this more constistently please do  
-    */    
-    std::list<AST *> params_flat;
-
-    for (auto x : f->arguments){
-        for (auto n : x->names){
-            Id* id = new Id(n,linecnt);
-            id->type = x->type;
-            params_flat.push_back(id);
          }
     } 
     if (f == nullptr)
@@ -278,20 +229,40 @@ void CallProc::semantic() /* override */
             error("Number of arguments mistmatch");
         
         std::list<AST*>::iterator ie;
-        std::list<AST*>::iterator ip;
+        std::list<std::tuple<AST*, PassMode>>::iterator ip;
 
         for (ie = parameters->nodes.begin(), ip = params_flat.begin(); 
             ie != parameters->nodes.end() && ip != params_flat.end(); ++ie, ++ip) {
             
             Expr* e = (Expr*) *ie;
-            Id* p = (Id*) *ip;
-
+            Id* p = (Id*)  std::get<0>(*ip);
+            PassMode pm = std::get<1>(*ip);
             e->semantic();
-            if ( !p->type->is_compatible_with(e->type) )
+
+            bool condition;
+
+            if (pm == PASS_BY_VALUE) 
+                condition = p->type->is_compatible_with(e->type);
+            else 
+                condition = typePointer(p->type)->is_compatible_with(typePointer(e->type)); 
+
+            if ( !condition)
                 error("Parameter ", p->name, " have type ", p->type, " which is incompatible with ", e->type);
         }
     }
+    return f->resultType;
 }
+
+void CallProc::semantic() /* override */
+{
+    create_call(fname, parameters, linecnt , "Procedure");    
+}
+
+void CallFunc::semantic() /* override */
+{
+    this->type = create_call(fname, parameters, linecnt, "Function");    
+}
+
 
 void StringValue::semantic() /* override */
 {

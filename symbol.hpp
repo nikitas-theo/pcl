@@ -169,6 +169,7 @@ public:
   llvm::Value* value; 
   PassMode pass_by;
   std::vector<PassMode> arguments; 
+  std::vector<Stype> types; 
   CodeGenEntry() {}
   CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
 

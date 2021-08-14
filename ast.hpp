@@ -93,7 +93,7 @@ class Program
 
         Function* main;
 
-        inline void add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args);
+        inline void add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args, std::vector<Stype> types);
         void add_libs_llvm();
 
         inline std::list<ParameterGroup*>* make_single_parameter(Stype type, PassMode pm);
@@ -127,9 +127,10 @@ class Expr : public AST
 {
     public:
         Stype type;
-        bool lvalue = false;
-        Expr(Stype t) : type(t) {};
-        Expr() {};
+        bool lvalue;
+        Expr(Stype t) : type(t), lvalue(false) {};
+        Expr() : lvalue(false) {};
+        Expr(bool lvalue) : lvalue(lvalue) {};
         bool is_arithmetic();
         bool is_concrete();
         bool type_verify(Stype t);
@@ -203,9 +204,8 @@ class Id : public Expr {
     /* Id as an l-value */
     public:
         std::string name ;
-        Id(std::string n, int cnt) : name(n) 
+        Id(std::string n, int cnt) : name(n) , Expr(true)
         {   linecnt = cnt;
-            this->lvalue = true; 
         }
         
         void printOn(std::ostream &out) const;
@@ -267,13 +267,12 @@ class StringValue : public Expr {
     private:
         std::string strvalue; 
     public:
-        StringValue(const char* s, int cnt) 
+        StringValue(const char* s, int cnt) : Expr(true)
         {
             linecnt = cnt;
             size_t len = strlen(s);
             type = typeArray(len, typeChar);
             strvalue = s ;
-            //this->lvalue = true;
         }
         void ReplaceStringInPlace(std::string& subject, const std::string& search, const std::string& replace);
         

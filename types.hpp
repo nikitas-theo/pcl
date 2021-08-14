@@ -38,7 +38,11 @@ class SemanticType
       {
         return kind != TYPE_IARRAY;
       }
-
+      bool pointer_special_case(SemanticType* t){
+          return kind == TYPE_POINTER && t->kind == TYPE_POINTER &&
+          refType->kind == TYPE_IARRAY && t->refType->kind == TYPE_ARRAY
+          &&  refType->refType->equals(t->refType->refType) ;
+      }
       /* One way function: parameter type IS ASSIGNMENT COMPATIBLE with the caller. */
       bool is_compatible_with(SemanticType* t)
       {
@@ -47,16 +51,14 @@ class SemanticType
           case TYPE_BOOLEAN:
           case TYPE_CHAR:
           case TYPE_INTEGER:
-            return t->kind == kind;
+            return this->equals(t);
           case TYPE_REAL:
             return t->kind == TYPE_REAL || t->kind == TYPE_INTEGER;
           case TYPE_POINTER:
-            return t->kind == TYPE_POINTER && refType->is_compatible_with(t->refType);
+            return this->equals(t) || this->pointer_special_case(t);            
           case TYPE_ARRAY:
-              return t->kind == TYPE_ARRAY && refType->equals(t->refType)
-                && size == t->size;
           case TYPE_IARRAY:
-            return (t->kind == TYPE_ARRAY || t->kind == TYPE_IARRAY) && refType->equals(t->refType);
+            return this->equals(t);
           default:
             return false;
         }

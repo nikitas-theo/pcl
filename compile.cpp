@@ -54,11 +54,13 @@ ConstantFP* c_r64(double d)
     return ConstantFP::get(TheContext,APFloat(d));
 }
 
-inline void Program::add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args)
+inline void Program::add_func_llvm(FunctionType *type, std::string name, 
+    std::vector<PassMode> args, std::vector<Stype> types)
 {
     ct.insert(name, Function::Create(type, Function::ExternalLinkage, name, TheModule));
     CodeGenEntry* e = ct.lookup(name);
     e->arguments = args;
+    e->types = types; 
 };
 
 void Program::add_libs_llvm()
@@ -67,50 +69,55 @@ void Program::add_libs_llvm()
 
     // WRITE UTILS 
 
-    add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(voidTy,{i1},false), "writeBoolean",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(voidTy,{i8},false), "writeChar",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(voidTy,{r64},false), "writeReal",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(voidTy,{i32},false),"writeInteger",{PASS_BY_VALUE}, {typeInteger});
+    add_func_llvm(FunctionType::get(voidTy,{i1},false), "writeBoolean",{PASS_BY_VALUE}, {typeBoolean});
+    add_func_llvm(FunctionType::get(voidTy,{i8},false), "writeChar",{PASS_BY_VALUE}, {typeChar});
+    add_func_llvm(FunctionType::get(voidTy,{r64},false), "writeReal",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(voidTy,{PointerType::get(i8, 0)},false),"writeString",{PASS_BY_REFERENCE}, {typeChar});
 
     // READ UTILS
 
-    add_func_llvm(FunctionType::get(i32,{},false),"readInteger",{});
-    add_func_llvm(FunctionType::get(i1,{},false), "readBoolean",{});
-    add_func_llvm(FunctionType::get(i8,{},false), "readChar",{});
-    add_func_llvm(FunctionType::get(r64,{},false), "readReal",{});
-    add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString",{});
+    add_func_llvm(FunctionType::get(i32,{},false),"readInteger",{}, {});
+    add_func_llvm(FunctionType::get(i1,{},false), "readBoolean",{}, {});
+    add_func_llvm(FunctionType::get(i8,{},false), "readChar",{}, {});
+    add_func_llvm(FunctionType::get(r64,{},false), "readReal",{}, {});
+    add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString",{}, {});
 
 
     // MATH UTILS 
 
-    add_func_llvm(FunctionType::get(i32,{i32},false),"abs",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"fabs",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"sqrt",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"sin",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"cos",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"tan",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"arctan",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"exp",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{r64},false),"ln",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(r64,{},false),"pi",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(i32,{i32},false),"abs",{PASS_BY_VALUE}, {typeInteger});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"fabs",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"sqrt",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"sin",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"cos",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"tan",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"arctan",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"exp",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{r64},false),"ln",{PASS_BY_VALUE}, {typeReal});
+    add_func_llvm(FunctionType::get(r64,{},false),"pi",{PASS_BY_VALUE}, {typeReal});
 
     // CHAR UTILS
-    add_func_llvm(FunctionType::get(i8,{i32},false),"ord",{PASS_BY_VALUE});
-    add_func_llvm(FunctionType::get(i32,{i8},false),"chr",{PASS_BY_VALUE});
+    add_func_llvm(FunctionType::get(i8,{i32},false),"ord",{PASS_BY_VALUE}, {typeInteger});
+    add_func_llvm(FunctionType::get(i32,{i8},false),"chr",{PASS_BY_VALUE}, {typeChar});
 
     // ROUND UTILS
 
     Function *trunc = Function::Create(
-        FunctionType::get(r64,{i32},false), 
+        FunctionType::get(i32,{r64},false), 
         Function::ExternalLinkage, "truncFunc", TheModule);
     ct.insert("trunc",trunc);
+    CodeGenEntry* e = ct.lookup("trunc");
+    e->arguments = {PASS_BY_VALUE};
+    e->types = {typeReal};     
 
     Function *round = Function::Create(
-        FunctionType::get(r64,{i32},false), 
+        FunctionType::get(i32,{r64},false), 
         Function::ExternalLinkage, "roundFunc", TheModule);
     ct.insert("round",round);
-
+    e = ct.lookup("round");
+    e->arguments = {PASS_BY_VALUE};
+    e->types = {typeReal}; 
 
 };
 
@@ -393,8 +400,8 @@ Value* UnOp::compile() /* override */
         case "not"_ : return Builder.CreateNot(val,"nottmp");
         case "@"_ : 
             // not sure how to implement this 
-            std::cerr << "NOT_IMPLEMENTED";
-            return nullptr; 
+            return Builder.CreateGEP(val, {0},"@");
+             
     }
     return nullptr;
 }
@@ -426,49 +433,60 @@ Value* Const::compile() /* override */
     return nullptr;  
 }
 
-Value* CallFunc::compile() /* override */
-{
+
+
+Value* create_call(std::string fname, ASTnodeCollection *parameters){
+
     CodeGenEntry* f = (CodeGenEntry *) ct.lookup(fname); 
     Value* func = f->value;
+    
     std::vector<PassMode> arguments = f->arguments;
+    std::vector<Stype> sem_types = f->types;
     std::vector<Value*> param_values;
+    
     if (parameters != nullptr) {
+
         auto param_iter = (parameters->nodes).begin();     
+
         for (size_t i = 0 ; i < arguments.size() ; i++){
+
+            // cast to an Expr 
             Expr* p = (Expr*) *param_iter;
             Value* par_val  = p->compile();
 
             bool lval = p->lvalue;
+            
             PassMode pass_by = arguments[i];
-            if (lval && pass_by == PASS_BY_VALUE) par_val = Builder.CreateLoad(par_val);
+            Stype arg_type = sem_types[i];
+
+            if (lval) par_val = Builder.CreateLoad(par_val);
+            if (pass_by == PASS_BY_VALUE){
+                if (arg_type->pointer_special_case(p->type))
+                    par_val = Builder.CreatePointerCast(par_val, p->TypeConvert(arg_type), "bitcast");  
+                else if (arg_type->kind == TYPE_REAL && p->type->kind == TYPE_INTEGER)
+                    par_val = Builder.CreateCast(Instruction::SIToFP, par_val, r64);
+            }
+            else {
+                if (typePointer(arg_type)->pointer_special_case(typePointer(p->type)))
+                     par_val = Builder.CreatePointerCast(par_val, p->TypeConvert(arg_type), "bitcast");  
+            }
             param_values.push_back(par_val);
             param_iter++; 
         }
-    }
-    return  Builder.CreateCall(func,param_values);
+    }    
+    return Builder.CreateCall(func,param_values);
+}
+
+Value* CallFunc::compile() /* override */
+{
+    Value* ret = create_call(fname, parameters);
+    return  ret;
 }
 
 
 Value* CallProc::compile() /* override */
 {
-    CodeGenEntry* f = (CodeGenEntry *) ct.lookup(fname); 
-    Value* func = f->value;
-    std::vector<PassMode> arguments = f->arguments;
-    std::vector<Value*> param_values;
-    if (parameters != nullptr) {
-        auto param_iter = (parameters->nodes).begin();     
-        for (size_t i = 0 ; i < parameters->nodes.size() ; i++){
-            Expr* p = (Expr*) *param_iter;
-            Value* par_val  = p->compile();
-
-            bool lval = p->lvalue;
-            PassMode pass_by = arguments[i];
-            if (lval && pass_by == PASS_BY_VALUE) par_val = Builder.CreateLoad(par_val);
-            param_values.push_back(par_val);
-            param_iter++; 
-        }
-    }
-    Builder.CreateCall(func,param_values);
+    create_call(fname, parameters);
     return  nullptr;
 }
 
@@ -486,14 +504,20 @@ Value* StringValue::compile() /* override */
 
 }
 
+void pp(Value *a){
+    a->getType()->print(llvm::errs(),true);
+}
 
 Value* ArrayAccess::compile() /* override */
 {
     Value *index = pos->compile();
     Value *ptr = lval->compile();
-    index = Builder.CreateLoad(index);
+    if (pos->lvalue)
+        index = Builder.CreateLoad(index);
+    index = Builder.CreateSExt(index,i64);
     Value *idx = Builder.CreateGEP(ptr, {index},"arrayIdx");
-    Value  *ret = Builder.CreateLoad(idx);
+    Value *ret = Builder.CreateLoad(idx);
+    
     return ret;
 }
 
@@ -549,15 +573,23 @@ Value* FunctionDef::compile() /* override */
     Function *routine;
     BasicBlock* parentBB = Builder.GetInsertBlock();
     std::vector<Type*> param_types; 
+    std::vector<Stype> sem_types; 
     std::vector<PassMode> param_pass;
+    
     for (ParameterGroup* param : parameters){
         // by reference passing is just adding a pointer
         Stype t = param->type;
-        if (param->pmode == PASS_BY_REFERENCE) 
-            t = typePointer(t);            
+        if (param->pmode == PASS_BY_REFERENCE)
+            if (param->type->kind == TYPE_ARRAY || param->type->kind == TYPE_IARRAY)
+                param->pmode = PASS_BY_VALUE;
+
+        if (param->pmode == PASS_BY_REFERENCE)
+                t = typePointer(t);            
         for (std::string name : param->names){
              param_types.push_back(TypeConvert(t)) ;
              param_pass.push_back(param->pmode);
+             sem_types.push_back(t);
+             std::cout << "AA";
         }
     }
     FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
@@ -568,6 +600,7 @@ Value* FunctionDef::compile() /* override */
     ct.insert(name,routine);
     CodeGenEntry* f = ct.lookup(name);
     f->arguments = param_pass;
+    f->types = sem_types; 
     //create a new basic block 
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
@@ -606,16 +639,21 @@ Value* FunctionDef::compile() /* override */
     return nullptr; 
 }
 
+
 Value* Assignment::compile() /* override */
 {   // := 
     Value* l = lval->compile();
     Value* r = rval->compile();
-    //Builder.CreateLoad(r);
+    if (rval->lvalue)
+        r = Builder.CreateLoad(r);
     Value* source; 
     if (lval->type_verify(typeReal) && rval->type_verify(typeInteger)){
         source = Builder.CreateCast(Instruction::SIToFP, r, r64);
     }
     else source = r; 
+    if (lval->type->pointer_special_case(rval->type))
+        source = Builder.CreatePointerCast(r, TypeConvert(lval->type), "bitcast");         
+
     Builder.CreateStore(source,l);
     return nullptr;
 }
@@ -708,7 +746,6 @@ Value* Init::compile() /* override */
 
 Value* InitArray::compile() /* override */
 {
-    /* add a conrete type array [n] of t, to an l-value of ^array of t */
     Value* ptr = lval->compile();
     Builder.CreateCall(GC_Malloc,{ptr});
     return nullptr; 
@@ -716,7 +753,6 @@ Value* InitArray::compile() /* override */
 
 Value* Dispose::compile() /* override */
 {
-    /* Dispose should be some function call from gc library */ 
     Value* ptr = lval->compile();
     Builder.CreateCall(GC_Free,ptr);
     return nullptr;
