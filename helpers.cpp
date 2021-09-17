@@ -1,6 +1,6 @@
 #include "ast.hpp"
 
-Type* AST::TypeConvert(Stype t) 
+Type* AST::TypeConvert(Stype t, bool FunctionParam) 
 {
     switch(t->kind) {
         case TYPE_VOID      : return voidTy;
@@ -9,12 +9,14 @@ Type* AST::TypeConvert(Stype t)
         case TYPE_CHAR      : return i8; 
         case TYPE_REAL      : return r64;
         case TYPE_ARRAY : 
-            return ArrayType::get(TypeConvert(t->refType), t->size);
+            if (FunctionParam) 
+                return PointerType::get(TypeConvert(t->refType, FunctionParam),0); 
+            return ArrayType::get(TypeConvert(t->refType, FunctionParam), t->size);
         case TYPE_IARRAY :
             // seems like for llvm semantics this is the same 
-            return PointerType::get(TypeConvert(t->refType),0);
+            return PointerType::get(TypeConvert(t->refType, FunctionParam),0);
         case TYPE_POINTER : 
-            return PointerType::get(TypeConvert(t->refType),0);
+            return PointerType::get(TypeConvert(t->refType, FunctionParam),0);
     }
     return voidTy;
 }

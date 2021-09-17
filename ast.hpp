@@ -35,12 +35,8 @@ extern Type* voidTy;
 typedef std::list<std::string> IdCollection;
 
 typedef std::variant<int,double,char,bool> data_const ;
-// https://en.cppreference.com/w/cpp/utility/variant/holds_alternative
-// https://en.cppreference.com/w/cpp/utility/variant
 
-// template<typename ...Ts>
-// extern void error(Ts&&... args);
-
+// access this if outside of AST
 template<typename ...Ts>
 void error(Ts&&... args)
 {
@@ -64,7 +60,7 @@ class AST
             return out;
         }
 
-        Type* TypeConvert(Stype t);
+        Type* TypeConvert(Stype t, bool FunctionParam = false);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
         
         int linecnt;
@@ -127,10 +123,9 @@ class Expr : public AST
 {
     public:
         Stype type;
-        bool lvalue;
-        Expr(Stype t) : type(t), lvalue(false) {};
-        Expr() : lvalue(false) {};
-        Expr(bool lvalue) : lvalue(lvalue) {};
+        bool lvalue = false;
+        Expr(Stype t) : type(t) {};
+        Expr() {};
         bool is_arithmetic();
         bool is_concrete();
         bool type_verify(Stype t);
@@ -204,18 +199,20 @@ class Id : public Expr {
     /* Id as an l-value */
     public:
         std::string name ;
-        Id(std::string n, int cnt) : name(n) , Expr(true)
+        Id(std::string n, int cnt) : name(n)
         {   linecnt = cnt;
+            this->lvalue = true;
         }
         
         void printOn(std::ostream &out) const;
         void semantic();
+        bool is_parameter = false; 
         Value* compile(); 
 };
 
 class Result : public Expr {
     public:
-        Result(int cnt) {linecnt = cnt;};
+        Result(int cnt) {linecnt = cnt; lvalue = true;};
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile();
@@ -267,10 +264,11 @@ class StringValue : public Expr {
     private:
         std::string strvalue; 
     public:
-        StringValue(const char* s, int cnt) : Expr(true)
+        StringValue(const char* s, int cnt)
         {
+            //this->lvalue = true; 
             linecnt = cnt;
-            size_t len = strlen(s);
+            size_t len = strlen(s) + 1;
             type = typeArray(len, typeChar);
             strvalue = s ;
         }
@@ -286,7 +284,10 @@ class ArrayAccess : public Expr {
         Expr* lval; 
         Expr* pos; 
     public:
-        ArrayAccess(Expr* lval, Expr* pos, int cnt) : lval(lval) , pos(pos){linecnt = cnt;}
+        ArrayAccess(Expr* lval, Expr* pos, int cnt) :  lval(lval) , pos(pos){
+            linecnt = cnt;
+            this->lvalue = true; 
+            }
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -297,7 +298,9 @@ class Dereference : public Expr {
     private:
         Expr* e;
     public:
-        Dereference(Expr* e, int cnt) : e(e) {linecnt = cnt;}
+        Dereference(Expr* e, int cnt) : e(e) {
+            linecnt = cnt;
+            this->lvalue = true;}
         
         void printOn(std::ostream &out) const;
         void semantic();

@@ -46,9 +46,10 @@ program bsort;
             end;
             writeString("\n")
         end;
-        var i : integer;
-            x : array [16] of integer;
-            seed : integer;
+
+    var i : integer;
+        x : array [16] of integer;
+        seed : integer;
 
     begin
         i := 0;

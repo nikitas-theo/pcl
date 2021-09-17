@@ -201,7 +201,9 @@ void Const::semantic() /* override */
 }
 
 
-Stype create_call(std::string fname, ASTnodeCollection *parameters, int linecnt, std::string caller){
+
+void CallProc::semantic() /* override */
+{
 
     FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
     if (f == nullptr) error("Function ",fname, " does not exist in current scope.");
@@ -247,21 +249,63 @@ Stype create_call(std::string fname, ASTnodeCollection *parameters, int linecnt,
                 condition = typePointer(p->type)->is_compatible_with(typePointer(e->type)); 
 
             if ( !condition)
-                error("Parameter ", p->name, " have type ", p->type, " which is incompatible with ", e->type);
+                error("Parameter ", p->name, " has type ", p->type, " which is incompatible with ", e->type);
         }
     }
-    return f->resultType;
-}
-
-void CallProc::semantic() /* override */
-{
-    create_call(fname, parameters, linecnt , "Procedure");    
 }
 
 void CallFunc::semantic() /* override */
 {
-    this->type = create_call(fname, parameters, linecnt, "Function");    
-}
+
+    FunctionEntry *f = st.lookupFunction(fname, LOOKUP_ALL_SCOPES);
+    if (f == nullptr) error("Function ",fname, " does not exist in current scope.");
+    std::list<std::tuple<AST *, PassMode>> params_flat;
+
+    for (auto x : f->arguments){
+        for (auto n : x->names){
+            Id* id = new Id(n,linecnt);
+            id->type = x->type;
+            params_flat.push_back(
+                std::make_tuple(id,x->pmode));
+
+         }
+    } 
+    if (f == nullptr)
+        error("Procedure", fname, " not found");
+    
+    if (parameters == nullptr) {
+        if (0 != params_flat.size())
+            error("Number of arguments mistmatch");
+    }
+    else {
+        size_t psize = parameters->nodes.size();
+        if (psize != params_flat.size())
+            error("Number of arguments mistmatch");
+        
+        std::list<AST*>::iterator ie;
+        std::list<std::tuple<AST*, PassMode>>::iterator ip;
+
+        for (ie = parameters->nodes.begin(), ip = params_flat.begin(); 
+            ie != parameters->nodes.end() && ip != params_flat.end(); ++ie, ++ip) {
+            
+            Expr* e = (Expr*) *ie;
+            Id* p = (Id*)  std::get<0>(*ip);
+            PassMode pm = std::get<1>(*ip);
+            e->semantic();
+
+            bool condition;
+
+            if (pm == PASS_BY_VALUE) 
+                condition = p->type->is_compatible_with(e->type);
+            else 
+                condition = typePointer(p->type)->is_compatible_with(typePointer(e->type)); 
+
+            if ( !condition)
+                error("Parameter ", p->name, " has type ", p->type, " which is incompatible with ", e->type);
+        }
+    }
+    this->type = f->resultType;
+    }
 
 
 void StringValue::semantic() /* override */
@@ -285,6 +329,8 @@ void ArrayAccess::semantic() /* override */
 void Dereference::semantic() /* override */
 {
     e->semantic();
+    if (e->type->equals(typeVoid))
+        error("Cannot dereference \"nil\" pointer");
     if (e->type->kind != TYPE_POINTER)
         error("Dereferencing non pointer");
     this->type = e->type->refType;
@@ -367,7 +413,7 @@ void FunctionDef::semantic() /* override */
 
         if (!type->equals(typeVoid))
             st.addEntry(new VariableEntry("result", type));
-
+        
         for (ParameterGroup* p : parameters) {
             for (std::string v : p->names) {
                 st.addEntry(new VariableEntry(v, p->type));

@@ -32,11 +32,8 @@ typedef union {
 
 typedef enum {            
    ENTRY_VARIABLE,                    
-   ENTRY_CONSTANT,                    
    ENTRY_FUNCTION,                    
-   ENTRY_PARAMETER,                   
    ENTRY_LABEL,                       
-   ENTRY_TEMPORARY                    
 } EntryType;
 
 
@@ -86,16 +83,6 @@ class LabelEntry : public SymbolEntry
         LabelEntry(String name) : SymbolEntry(name, ENTRY_LABEL), isBound(false) {}
 };
 
-class ParameterEntry : public VariableEntry
-{
-    public:
-        PassMode mode;
-        SymbolEntry *function;
-
-        ParameterEntry(String name, Stype t, PassMode m) : VariableEntry(name, t), mode(m) {}
-
-        bool equals(ParameterEntry* p);
-};
 
 class FunctionEntry : public SymbolEntry
 {

@@ -1,0 +1,12 @@
+program solve;
+    var z : char ;
+    function zz(var y : char) : array [10] of integer ;
+    begin 
+        y := '3';
+    end; 
+
+    begin
+        z := '2'; 
+        writeChar(z);
+        zz(z) ;  
+    end.

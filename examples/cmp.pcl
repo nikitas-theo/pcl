@@ -3,7 +3,7 @@ program aa;
     var n : real;
     var i : integer;
     begin
-        if 20 < 3 then 
+        if 20 > 3 then 
         begin
             writeString("sdfsd");
         end;

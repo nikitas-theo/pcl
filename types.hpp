@@ -57,8 +57,9 @@ class SemanticType
           case TYPE_POINTER:
             return this->equals(t) || this->pointer_special_case(t);            
           case TYPE_ARRAY:
-          case TYPE_IARRAY:
             return this->equals(t);
+          case TYPE_IARRAY:
+            return false;  
           default:
             return false;
         }

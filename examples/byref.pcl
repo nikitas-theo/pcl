@@ -1,13 +1,16 @@
 program solve;
-    var z : array [40] of char; 
-    procedure zz(var y : array [40] of char);
+    var x : array [2] of char;
+    var y : array  of char; 
+    var z : ^^array [2] of char; 
+    procedure zz(var y : array  of char);
     begin 
-        writeString(y);            
-        y[0] := 'O';
+
+        writeString(y);
     end; 
 
     begin
-        z[0] := 'h';
-        z[1] := 'a';
-        zz(z) ;  
+        x[0] := '1';
+        x[1] := '\0';
+        z^ := @x;
+        zz(z^^)
     end.

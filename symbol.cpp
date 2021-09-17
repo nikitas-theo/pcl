@@ -11,10 +11,6 @@ Stype typeIArray(Stype refType) { return new SemanticType(TYPE_IARRAY,refType,0)
 Stype typeArray(int size,Stype refType) { return new SemanticType(TYPE_ARRAY,refType,size);}
 Stype typePointer(Stype refType) { return new SemanticType(TYPE_POINTER,refType,0);}
 
-bool ParameterEntry::equals(ParameterEntry* p)
-{
-    return id == p->id && type->equals(p->type) && mode == p->mode;
-}
 
 FunctionEntry::~FunctionEntry()
 {
@@ -127,7 +123,7 @@ VariableEntry* SymbolTable::lookupVariable(String id, LookupType lookup)
 {
     SymbolEntry *e = lookupEntry(id, lookup);
 
-    if (e != nullptr && (e->entryType == ENTRY_VARIABLE || e->entryType == ENTRY_PARAMETER)) {
+    if (e != nullptr && e->entryType == ENTRY_VARIABLE) {
         return (VariableEntry *)e;
     }
     else {

@@ -11,7 +11,7 @@ void writeBoolean(int b){
 }
 
 void writeChar(int c){
-    printf("%c",c);
+  printf("%c",(char)c);
 }
 
 void writeReal(double r){

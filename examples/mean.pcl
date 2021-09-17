@@ -16,9 +16,9 @@ program mean;
         begin 
             seed := (seed * 137 + 221 + i) mod n ; 
             sum := sum + seed ; 
-            i := i + 1
-        end; 
+            i := i + 1 ;
 
+        end; 
         if k > 0 then 
         begin 
             writeString("Mean: "); 
