@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iostream>
 #include <list>
 #include <string>
@@ -63,12 +64,6 @@ inline std::ostream& operator<<(std::ostream& os, const Stype t) {
     return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, ParameterGroup& p) {
-    if (p.pmode == PASS_BY_REFERENCE)
-        os << "var:";
-    os << p.names << " : " << p.type;
-    return os;
-}
 
 template<typename T>
 std::ostream & _error(std::ostream & o, T&& arg) { 

@@ -10,6 +10,9 @@
 
 #include <string.h>
 
+
+
+
 static void update_global_location()
 {
     yylloc.first_line = yylloc.last_line;
@@ -24,6 +27,22 @@ static void update_global_location()
         else {
             yylloc.last_column++;
         }
+    }
+}
+
+char map_escape(char token)
+{
+    switch(token){
+        case 'n' :
+            return '\n';
+        case 'r' : 
+            return '\r';
+        case 't' : 
+            return '\t';
+        case '0' : 
+            return '\0';
+        default : 
+            return token; 
     }
 }
 
@@ -88,7 +107,7 @@ W [ \t\r\n]
 {L}([[:alnum:]]|_)*         { yylval.str = strdup(yytext); return T_id;		/* Identifiers */ }
 {D}+                        { yylval.num = atoi(yytext); return T_const_int;	/* Integers */ }
 {D}+\.{D}+([eE][+-]?{D}+)?  { yylval.real = atof(yytext); return T_const_real;	/* Reals */ }
-\'({C}|{E})\'               { yylval.ch = yytext[1]; return T_const_char;	/* Chars */ }
+\'({C}|{E})\'               { if (yytext[1] == '\\') yylval.ch = map_escape(yytext[2]); else yylval.ch = yytext[1]; return T_const_char;	/* Chars */ }
 
 
 [+\-*//^@><=]   |   /* same as the action of next rule */
@@ -101,7 +120,7 @@ W [ \t\r\n]
 \"                      { BEGIN(STRING); }
 <STRING>({C}|{E})+      { yylval.str = strdup(yytext); }
 <STRING>\"              { BEGIN(INITIAL); return T_string; }
-<STRING>\n              { yyerror("Unfinished string literal"); }
+<STRING>\n              { yyerror("Unfinished string literal"); yyterminate();  }
 <STRING><<EOF>>         { yyerror("Unfinished string literal"); yyterminate(); }
 
 

@@ -1,5 +1,7 @@
 #include "symbol.hpp"
+#include "helpers.hpp"
 
+// why are types here? for some include reason
 Stype typeInteger = new SemanticType(TYPE_INTEGER,nullptr,0);
 Stype typeReal = new SemanticType(TYPE_REAL,nullptr,0);
 Stype typeBoolean = new SemanticType(TYPE_BOOLEAN,nullptr,0);
@@ -7,11 +9,13 @@ Stype typeChar = new SemanticType(TYPE_CHAR,nullptr,0);
 Stype typeVoid = new SemanticType(TYPE_VOID,nullptr,0);
 
 
-Stype typeIArray(Stype refType) { return new SemanticType(TYPE_IARRAY,refType,0);}
-Stype typeArray(int size,Stype refType) { return new SemanticType(TYPE_ARRAY,refType,size);}
+Stype typeIArray(Stype refType) { 
+    return new SemanticType(TYPE_IARRAY,refType,0);}
+Stype typeArray(int size,Stype refType) { 
+    return new SemanticType(TYPE_ARRAY,refType,size);}
 Stype typePointer(Stype refType) { return new SemanticType(TYPE_POINTER,refType,0);}
 
-
+/* hidden to external functions? */
 FunctionEntry::~FunctionEntry()
 {
     arguments.clear();
@@ -52,21 +56,9 @@ SymbolEntry* Scope::lookupEntry(String id)
     
 }
 
-SymbolTable::SymbolTable()
-{
-    // Scope *s = new Scope();
-    // s->nestingLevel = 0;
-    // scopeStack.push_back(s);
-    // currentScope = s;
-}
+/* symbol table */
 
-// void SymbolTable::Initialize()
-// {
-//     Scope *s = new Scope();
-//     s->nestingLevel = 0;
-//     scopeStack.push_back(s);
-//     currentScope = s;
-// }
+SymbolTable::SymbolTable(){}
 
 SymbolTable::~SymbolTable()
 {

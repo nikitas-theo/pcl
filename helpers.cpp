@@ -1,6 +1,6 @@
 #include "ast.hpp"
 
-Type* AST::TypeConvert(Stype t, bool FunctionParam) 
+Type* AST::TypeConvert(Stype t, bool is_var_def) 
 {
     switch(t->kind) {
         case TYPE_VOID      : return voidTy;
@@ -9,14 +9,21 @@ Type* AST::TypeConvert(Stype t, bool FunctionParam)
         case TYPE_CHAR      : return i8; 
         case TYPE_REAL      : return r64;
         case TYPE_ARRAY : 
-            if (FunctionParam) 
-                return PointerType::get(TypeConvert(t->refType, FunctionParam),0); 
-            return ArrayType::get(TypeConvert(t->refType, FunctionParam), t->size);
+            return ArrayType::get(TypeConvert(t->refType, is_var_def), t->size);
         case TYPE_IARRAY :
-            // seems like for llvm semantics this is the same 
-            return PointerType::get(TypeConvert(t->refType, FunctionParam),0);
+            /* decided on IARRAY to have type refType* 
+               where the * comes from alloca 
+               the only way to have this is ^ array of integer 
+               so it works because ^ array of integer --> int** with alloca
+               and we remember to not extra load whenever we have IARRAY 
+               e.g. not like int** where we need to load to int*
+
+               this is all confusing but it is because array of Ty is always
+               tied with pointer  
+            */ 
+            return TypeConvert(t->refType, is_var_def);
         case TYPE_POINTER : 
-            return PointerType::get(TypeConvert(t->refType, FunctionParam),0);
+            return PointerType::get(TypeConvert(t->refType, is_var_def),0);
     }
     return voidTy;
 }
@@ -93,10 +100,10 @@ void Block::push_local(Stmt *l)
     locals->push(l);
 }
 
-void VarDef::push(std::list<std::string>* var_ids, Stype t)
+void VarDef::push(std::list<std::string>* var_ids, Stype t, int cnt)
 {
     for (std::string s : *var_ids ) {
-        vars.push_back(new Variable(s, t));
+        vars.push_back(new Variable(s, t, cnt));
     }
 }
 

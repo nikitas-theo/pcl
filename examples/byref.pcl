@@ -1,16 +1,6 @@
 program solve;
-    var x : array [2] of char;
-    var y : array  of char; 
-    var z : ^^array [2] of char; 
-    procedure zz(var y : array  of char);
+    var b : ^array of array [10] of ^ array  of char; 
     begin 
-
-        writeString(y);
-    end; 
-
-    begin
-        x[0] := '1';
-        x[1] := '\0';
-        z^ := @x;
-        zz(z^^)
+        b^[0][0]^[0] := '1';
+    ;
     end.

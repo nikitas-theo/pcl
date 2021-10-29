@@ -3,8 +3,16 @@
 #include "helpers.hpp"
 
 
+void ParameterGroup :: printOn(std::ostream &out) const /* override */
+{ 
+    if (pmode == PASS_BY_REFERENCE)
+        out << "var:";
+    out << names << " : " << type;
+}
 
-void ASTnodeCollection :: printOn(std::ostream &out) const{
+
+void ASTnodeCollection :: printOn(std::ostream &out) const
+{
     out << nodes;
 }
 
@@ -98,17 +106,13 @@ void LabelDef::printOn(std::ostream &out) const /* override */
     out << "LabelDef(" << labels << ")";
 }
 
-void FormalsGroup::printOn(std::ostream &out) const /* override */
-{ 
-    if (pass_by == PASS_BY_REFERENCE) out << "var: "; 
-    out << formals;
-    out <<  " : " ; out << type; 
-}
 
 void FunctionDef::printOn(std::ostream &out) const /* override */
 { 
     out << name << "(" << parameters << ") : " << type << std::endl ;
-    body->printOn(out);
+    // special case only forward defined 
+    if (body != nullptr)
+        body->printOn(out);
 }
 
 void Assignment::printOn(std::ostream &out) const /* override */

@@ -16,11 +16,11 @@ void Program::add_lib_func_semantic(std::string name, Stype resultType, std::lis
 inline std::list<ParameterGroup*>* Program::make_single_parameter(Stype type, PassMode pm)
 {
     return new std::list<ParameterGroup*> {
-        new ParameterGroup {
-            { "dummy" },
+        new ParameterGroup (
+            { "" },
             type,
-            pm
-        }
+            pm,
+            0)
     };
 }
 
@@ -72,6 +72,8 @@ void Program::semantic_initialize()
     /* Prepare global program scope */
     st.openScope();
 }
+
+
 
 void Program::semantic_run()
 {
@@ -141,7 +143,9 @@ void BinOp::semantic() /* override */
             bool same_type = left->type_verify(right->type);
             // type must be same but not of type array 
             same_type = same_type && !(left->type->kind == TYPE_IARRAY || left->type->kind == TYPE_ARRAY);
-            if (numeric || same_type)
+            bool check_void =  (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_VOID)
+                ||  (right->type->kind == TYPE_POINTER && left->type->kind == TYPE_VOID);
+            if (numeric || same_type || check_void)
                 this->type = typeBoolean;
             else
                 error("Operator '", op, "' requires same non array operands but was given ", left->type, " and ", right->type);
@@ -344,6 +348,23 @@ void Block::semantic() /* override */
 
 void Variable::semantic() /* override */
 {
+    // variable name must not already be defined 
+    SymbolEntry* entry = st.lookupEntry(name, LOOKUP_CURRENT_SCOPE);
+    if (entry != nullptr) error("name \"",name,"\" already exists in scope");
+
+    // check for array reftype must have concrete type 
+    if (!type->is_concrete()) 
+        error("Variable ", name, " is defined with non-concrete type");
+    Stype t = type; 
+    while (t->kind == TYPE_IARRAY || t->kind == TYPE_ARRAY || t->kind == TYPE_POINTER){
+        if (t->kind == TYPE_IARRAY || t->kind == TYPE_ARRAY)
+            if (!t->refType->is_concrete()) 
+                error("Reference type of array must be concrete type");
+        t = t->refType;
+    }    
+    
+
+
     // just insert into symbol table
     st.addEntry(new VariableEntry(name, type));
 }
@@ -357,15 +378,30 @@ void VarDef::semantic() /* override */
 
 void LabelDef::semantic() /* override */
 {
-    for(std::string l : labels)
+    for(std::string l : labels){
+        SymbolEntry* entry = st.lookupEntry(l);
+        if (entry != nullptr) error("label \"",l,"\" already exists in scope");        
         st.addEntry(new LabelEntry(l));
+    }
 }
 
-void FormalsGroup::semantic() /* override */
+void ParameterGroup::semantic() /* override */
 {
-    // collection of variable names with specific type that represent the formal parameters of a function
-    // each of the variables needs to be added to the current function scope
+    
+
     // variables that pass by value, can't have pointer type
+    if ((type->kind == TYPE_ARRAY || type->kind == TYPE_IARRAY) && (pmode == PASS_BY_VALUE)){
+        error("Array parameters cannot be passed by value");
+    }
+    // check for array reftype must have concrete type 
+    Stype t = type; 
+    while (t->kind == TYPE_IARRAY || t->kind == TYPE_ARRAY || t->kind == TYPE_POINTER){
+        if (t->kind == TYPE_IARRAY || t->kind == TYPE_ARRAY)
+            if (!t->refType->is_concrete())
+                error("Reference type of array must be concrete type");
+        t = t->refType;
+    }    
+
 
     return;
 }
@@ -373,7 +409,10 @@ void FormalsGroup::semantic() /* override */
 void FunctionDef::semantic() /* override */
 {
     FunctionEntry* f = st.lookupFunction(name, LOOKUP_CURRENT_SCOPE);
-
+    SymbolEntry* e = st.lookupEntry(name , LOOKUP_CURRENT_SCOPE);
+    if (e != nullptr  && e->entryType != ENTRY_FUNCTION) 
+        error("Name \"",name,"\" already exists in scope");
+    // if function was seen for the first time, just DEFINE
     if (f == nullptr) {
         f = new FunctionEntry(name);
         f->pardef = PARDEF_DEFINE;
@@ -381,34 +420,62 @@ void FunctionDef::semantic() /* override */
     }
 
     switch (f->pardef) {
+        // add parameters given in the definition
         case PARDEF_DEFINE:
+            // check that parameters are defined correctly             
+            for (auto it : parameters){
+                it->semantic();
+            }
+            if (type->kind == TYPE_IARRAY || type->kind == TYPE_ARRAY)
+                error("Function cannot be declared with a return type of type array ");
+
             //clone parameters to f->arguments
             f->arguments = parameters;
-
             //set result type
             f->resultType = type;
             
             break;
-            
+
+        // if it was forwards check that everything matches
+        // no need to recheck things            
         case PARDEF_PENDING_CHECK:
-            for (std::list<ParameterGroup*>::iterator defit = parameters.begin(), symbit = f->arguments.begin(); defit != parameters.end() && symbit != f->arguments.end(); ++defit, ++symbit) {
-                if (*defit != *symbit)
-                    error("Formal parameters for function ", name, " do not match those on forward declaration");
+            for (std::list<ParameterGroup*>::iterator 
+                    defit = parameters.begin(), symbit = f->arguments.begin(); 
+                    defit != parameters.end() && symbit != f->arguments.end(); 
+                    ++defit, ++symbit) {
+
+                ParameterGroup *defgroup = *defit, *symgroup = *symbit; 
+
+                if (defgroup->pmode != symgroup->pmode) {
+                    error("Pass mode is not the same for function ", name ," forward declaration and definition");
+                }
+                if (!defgroup->type->equals(symgroup->type)) {
+                    error("Type is not the same for function ",name, " forward declaration and definition");
+              }
+                for (auto it1 = defgroup->names.begin(), 
+                          it2 = symgroup->names.begin() ;
+                    it1 != defgroup->names.end() && it2 != symgroup->names.end(); 
+                    ++it1, ++it2)
+                    if (*it1 != *it2)
+                        error("Formal parameters names for function ", name, " do not match those on forward declaration");
             }
 
             if (!f->resultType->equals(type))
                 error("Function ", name, " was forward declared with type ", f->resultType, " but now type ", type, " was given");
             
             break;
+        // see it second time but it is complete 
         case PARDEF_COMPLETE:
             error("Cannot redefine function ", name);
             break;
     }
-
+    // if it was forward we will go back to checking next time
     if (isForward) {
         f->pardef = PARDEF_PENDING_CHECK;
     }
+    // else completely define function and be done 
     else {
+     
         st.openScope();
 
         if (!type->equals(typeVoid))
@@ -416,7 +483,13 @@ void FunctionDef::semantic() /* override */
         
         for (ParameterGroup* p : parameters) {
             for (std::string v : p->names) {
+
+                // parameter should not already be defined                
+                SymbolEntry* entry = st.lookupEntry(v, LOOKUP_CURRENT_SCOPE);
+                if (entry != nullptr) error("name \"",v,"\" already exists in scope");
+
                 st.addEntry(new VariableEntry(v, p->type));
+
             }
         }
 
@@ -464,11 +537,13 @@ void Label::semantic() /* override */
     if (l->isBound)
         error("Label ", label, " already assigned");
     l->isBound = true;
+    // check the command of the label 
+    target->semantic();
 }
 
 void GoTo::semantic() /* override */
 {
-    //check if label exists (and is bound ???) IN CURRENT SCOPE ONLYYYYY
+    //check if label exists and is bound in current scope 
     LabelEntry *l = st.lookupLabel(label);
     if (l == nullptr)
      error("Label ", label, " not declared");

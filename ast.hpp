@@ -5,8 +5,6 @@
 #include <iostream>
 #include <variant>
 
-// #include "symbol.hpp"
-// #include "external.hpp"
 #include "types.hpp"
 #include "helpers.hpp"
 
@@ -19,11 +17,6 @@
 // add -lgc to lib flags 
 
 using namespace llvm;
-
-// ConstantInt* c_i32(int n);
-// ConstantInt* c_i8(char c);
-// ConstantInt* c_i1(int n);
-// ConstantFP* c_r64(double d);
 
 extern Type* i1; 
 extern Type* i8; 
@@ -44,6 +37,7 @@ void error(Ts&&... args)
     std::exit(1);
 }
 
+
 class AST
 {
 
@@ -60,7 +54,7 @@ class AST
             return out;
         }
 
-        Type* TypeConvert(Stype t, bool FunctionParam = false);
+        Type* TypeConvert(Stype t, bool is_var_def = false);
         bool check_type(Stype t1,Stype t2,bool check_size = true);
         
         int linecnt;
@@ -76,6 +70,38 @@ class AST
     
 
 };
+
+
+class Expr : public AST
+{
+    public:
+        Stype type;
+        bool lvalue = false;
+        Expr(Stype t) : type(t) {};
+        Expr() {};
+        bool is_arithmetic();
+        bool is_concrete();
+        bool type_verify(Stype t);
+
+};
+
+class Stmt : public AST {};
+
+
+class ParameterGroup : public Stmt {
+    public:
+        std::list<std::string> names;
+        Stype type;
+        PassMode pmode;
+
+        ParameterGroup(std::list<std::string> f, Stype t, PassMode pm, int cnt) : names(f), type(t), pmode(pm) {linecnt = cnt;}
+        
+        void printOn(std::ostream &out) const;
+        void semantic();
+        Value* compile(); 
+};
+
+
 
 
 class Program
@@ -119,20 +145,6 @@ class Program
 };
 
 
-class Expr : public AST
-{
-    public:
-        Stype type;
-        bool lvalue = false;
-        Expr(Stype t) : type(t) {};
-        Expr() {};
-        bool is_arithmetic();
-        bool is_concrete();
-        bool type_verify(Stype t);
-
-};
-
-class Stmt : public AST {};
 
 class ASTnodeCollection : public Stmt, public Expr
 {
@@ -266,7 +278,7 @@ class StringValue : public Expr {
     public:
         StringValue(const char* s, int cnt)
         {
-            //this->lvalue = true; 
+            this->lvalue = true; 
             linecnt = cnt;
             size_t len = strlen(s) + 1;
             type = typeArray(len, typeChar);
@@ -300,7 +312,8 @@ class Dereference : public Expr {
     public:
         Dereference(Expr* e, int cnt) : e(e) {
             linecnt = cnt;
-            this->lvalue = true;}
+            this->lvalue = true;
+            }
         
         void printOn(std::ostream &out) const;
         void semantic();
@@ -355,7 +368,7 @@ class Variable : public Stmt {
     public:
         Stype type;
         std::string name; 
-        Variable(std::string s, Stype t) : name(s), type(t) {};
+        Variable(std::string s, Stype t, int cnt) : name(s), type(t) {linecnt = cnt; };
     
         void printOn(std::ostream &out) const;
         void semantic();
@@ -369,7 +382,7 @@ class VarDef : public Stmt {
         std::list<Variable *> vars;   
     public:
         VarDef(int cnt) {linecnt = cnt;};
-        void push(std::list<std::string>* var_ids, Stype t);
+        void push(std::list<std::string>* var_ids, Stype t, int cnt);
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
@@ -386,18 +399,6 @@ class LabelDef : public Stmt {
         Value* compile(); 
 };
 
-class FormalsGroup : public Stmt {
-    public:
-        std::list<std::string> formals;
-        Stype type;
-        PassMode pass_by;
-
-        FormalsGroup(std::list<std::string>* f, Stype t, PassMode pm, int cnt) : formals(*f), type(t), pass_by(pm) {linecnt = cnt;}
-        
-        void printOn(std::ostream &out) const;
-        void semantic();
-        Value* compile(); 
-};
 
 
 /*
@@ -414,7 +415,7 @@ class FunctionDef : public Stmt {
         std::string name;
         Stype type;
         std::list<ParameterGroup*> parameters;
-        Block* body;
+        Block* body = nullptr;
         bool isForward;
         
     public:

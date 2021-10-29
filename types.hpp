@@ -27,6 +27,7 @@ class SemanticType
 
       bool equals(SemanticType* targetType)
       {
+        // nil is comparable to pointer
         if (kind != targetType->kind) return false;
         if (kind == TYPE_ARRAY && size != targetType->size) return false;
         if (kind == TYPE_POINTER || kind == TYPE_IARRAY || kind == TYPE_ARRAY)
@@ -53,9 +54,9 @@ class SemanticType
           case TYPE_INTEGER:
             return this->equals(t);
           case TYPE_REAL:
-            return t->kind == TYPE_REAL || t->kind == TYPE_INTEGER;
+            return t->kind == TYPE_REAL || t->kind == TYPE_INTEGER ;
           case TYPE_POINTER:
-            return this->equals(t) || this->pointer_special_case(t);            
+            return this->equals(t) || this->pointer_special_case(t) || t->kind == TYPE_VOID;            
           case TYPE_ARRAY:
             return this->equals(t);
           case TYPE_IARRAY:
@@ -73,12 +74,6 @@ typedef enum {
    PASS_BY_REFERENCE
 } PassMode;
 
-typedef struct
-{
-    std::list<std::string> names;
-    Stype type;
-    PassMode pmode;
-} ParameterGroup;
 
 extern Stype typeInteger;
 extern Stype typeReal;

@@ -57,6 +57,10 @@ ConstantFP* c_r64(double d)
     return ConstantFP::get(TheContext,APFloat(d));
 }
 
+ConstantPointerNull * c_point_void(Type* ptr){
+    return ConstantPointerNull::get(PointerType::get(ptr,0));
+}
+
 inline void Program::add_func_llvm(FunctionType *type, std::string name, 
     std::vector<PassMode> args, std::vector<Stype> types)
 {
@@ -238,7 +242,7 @@ Value* EmptyStmt::compile()
     return nullptr;
 }
 
-Value* BinOp::compile() /* override */
+Value* BinOp::compile() 
 {
     Value *l = left->compile();
     Value *r = nullptr; 
@@ -345,11 +349,22 @@ Value* BinOp::compile() /* override */
             return phi;
             }
         case "="_ : 
+            // need to handle seperately 
+            if (right->type->kind == TYPE_VOID && left->type->kind == TYPE_VOID)
+                return c_i1(1);
+            if (right->type->kind == TYPE_VOID) r = Builder.CreatePointerCast(r, TypeConvert(left->type), "bitcast");   
+            if (left->type->kind == TYPE_VOID) l = Builder.CreatePointerCast(l, TypeConvert(right->type), "bitcast");   
+
             if (real_ops)   res = Builder.CreateFCmpOEQ(l,r,"eqtmp");
             else            res =  Builder.CreateICmpEQ(l,r,"eqtmp");
             return res;
 
         case "<>"_ : 
+            if (right->type->kind == TYPE_VOID && left->type->kind == TYPE_VOID)
+                return c_i1(0);
+            if (right->type->kind == TYPE_VOID) r = Builder.CreatePointerCast(r, TypeConvert(left->type), "bitcast");   
+            if (left->type->kind == TYPE_VOID) l = Builder.CreatePointerCast(l, TypeConvert(right->type), "bitcast");   
+
             if (real_ops)   res = Builder.CreateFCmpONE(l,r,"neqtmp");
             else            res =  Builder.CreateICmpNE(l,r,"neqtmp");
             return res;
@@ -387,7 +402,7 @@ Value* BinOp::compile() /* override */
     return nullptr; 
 }
 
-Value* UnOp::compile() /* override */
+Value* UnOp::compile() 
 {
     Value* val = e->compile();
     switch( hashf(op.c_str()) ){
@@ -402,21 +417,18 @@ Value* UnOp::compile() /* override */
         }
         case "not"_ : return Builder.CreateNot(val,"nottmp");
         case "@"_ : 
-            return Builder.CreatePointerCast(val,TypeConvert(typePointer(e->type)));
+            // just return underlying pointer
+            return val;
              
     }
     return nullptr;
 }
 
-Value* Id::compile() /* override */
+Value* Id::compile() 
 {
     CodeGenEntry* entry = ct.lookup(name);
     Value * val = entry->value;
-    // this does not work, need to find a different thing to do with IARRAY
-    // beacuse if you have ^array of integer, you need the extra load
-    // but you won't get it 
-    if (entry->pass_by == PASS_BY_REFERENCE || type->kind == TYPE_IARRAY)
-        val = Builder.CreateLoad(val, "load_id");
+    
     return val; 
 }
 
@@ -425,15 +437,16 @@ Value* Result::compile()
     return ct.lookup("result")->value;
 }
 
-Value* Const::compile() /* override */
+Value* Const::compile() 
 {
     switch(type->kind)
     {
         case TYPE_INTEGER : return c_i32(std::get<int>(val));
         case TYPE_BOOLEAN : return c_i1(std::get<bool>(val));
         case TYPE_CHAR : return c_i8(std::get<char>(val));
-        case TYPE_REAL : return c_r64(std::get<double>(val));;
-        case TYPE_VOID : return nullptr;  
+        case TYPE_REAL : return c_r64(std::get<double>(val));
+        // return null i32*, but gets converted when needed
+        case TYPE_VOID : return c_point_void(TypeConvert(typePointer(typeInteger)));
     }
     return nullptr;  
 }
@@ -441,7 +454,9 @@ Value* Const::compile() /* override */
 
 
 Value* create_call(std::string fname, ASTnodeCollection *parameters){
-
+    // parameters : from the call 
+    // arguments - pasMode  : from definitin
+    // sem_types - types    : from definition
     CodeGenEntry* f = (CodeGenEntry *) ct.lookup(fname); 
     Value* func = f->value;
     
@@ -463,24 +478,25 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
 
             PassMode pass_by = arguments[i];
             Stype arg_type = sem_types[i];
-        
+
+            Stype param_type = p->type; 
+
+
             if (lval && pass_by == PASS_BY_VALUE) {
                 par_val = Builder.CreateLoad(par_val, "call");
-            }
-            else if (arg_type->kind == TYPE_ARRAY){
-                par_val = Builder.CreateGEP(par_val, {c_i64(0), c_i64(0)},"passArr");
-            }
+            }            
             if (pass_by == PASS_BY_VALUE){
+                // handle special convertion cases 
+                if (arg_type->pointer_special_case(param_type))
+                    par_val = Builder.CreatePointerCast(par_val, p->TypeConvert(arg_type), "bitcast_special_val");  
 
-                if (arg_type->pointer_special_case(p->type))
-                    par_val = Builder.CreatePointerCast(par_val, p->TypeConvert(arg_type), "bitcast");  
-
-                else if (arg_type->kind == TYPE_REAL && p->type->kind == TYPE_INTEGER)
+                if (arg_type->kind == TYPE_REAL && param_type->kind == TYPE_INTEGER)
                     par_val = Builder.CreateCast(Instruction::SIToFP, par_val, r64);
             }
-            else {
-                if (typePointer(arg_type)->pointer_special_case(typePointer(p->type)))
-                     par_val = Builder.CreatePointerCast(par_val, p->TypeConvert(arg_type), "bitcast");  
+            else { 
+                if (typePointer(arg_type)->pointer_special_case(typePointer(param_type)))
+                    par_val = Builder.CreatePointerCast(par_val, PointerType::get(p->TypeConvert(arg_type),0), "bitcast_special_ref");  
+
             }
             param_values.push_back(par_val);
             param_iter++; 
@@ -489,20 +505,20 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
     return Builder.CreateCall(func,param_values);
 }
 
-Value* CallFunc::compile() /* override */
+Value* CallFunc::compile() 
 {
     Value* ret = create_call(fname, parameters);
     return  ret;
 }
 
 
-Value* CallProc::compile() /* override */
+Value* CallProc::compile() 
 {
     create_call(fname, parameters);
     return  nullptr;
 }
 
-Value* StringValue::compile() /* override */
+Value* StringValue::compile() 
 {
     std::string pstr(strvalue);
     std::list<std::pair<std::string,std::string>> rep = {
@@ -512,6 +528,10 @@ Value* StringValue::compile() /* override */
         ReplaceStringInPlace(pstr,p.first, p.second);
     }
     Value *ret = Builder.CreateGlobalStringPtr(pstr.c_str(),"str",0);
+
+    // cast strings to [(n+1) x i8]* type
+    Stype casted_type =  typeArray(strvalue.size() + 1, typeChar);
+    ret = Builder.CreatePointerCast(ret, PointerType::get(TypeConvert( casted_type ),0), "string_bitcast");
     return ret;
 
 }
@@ -520,25 +540,30 @@ void pp(Value *a){
     a->getType()->print(llvm::errs(),true);
 }
 
-Value* ArrayAccess::compile() /* override */
+Value* ArrayAccess::compile() 
 {
     Value *index = pos->compile();
     Value *ptr = lval->compile();
-    ptr = Builder.CreatePointerCast(ptr, TypeConvert(typePointer(lval->type->refType)), "bitcast");         
     if (pos->lvalue)
         index = Builder.CreateLoad(index, "arrAcc");
     index = Builder.CreateSExt(index,i64);
-    Value *idx = Builder.CreateGEP(ptr, {index},"arrayIdx");    
+    Value * idx; 
+    if (lval->type->kind == TYPE_IARRAY){
+        idx = Builder.CreateGEP(ptr, {index },"arrayIdx");    
+    }
+    else 
+        idx = Builder.CreateGEP(ptr, {c_i64(0), index },"arrayIdx");    
     return idx;
 }
 
-Value* Dereference::compile() /* override */
+Value* Dereference::compile() 
 {
-    Value *ptr = e->compile();
-    return Builder.CreateLoad(ptr, "deref");
+    Value *val = e->compile();
+    val = Builder.CreateLoad(val);
+    return val; 
 }
 
-Value* Block::compile() /* override */
+Value* Block::compile() 
 {
     // we compile each locals, calling the right method for its initial class
     locals->compile();
@@ -547,14 +572,16 @@ Value* Block::compile() /* override */
 
 }
 
-Value* Variable::compile() /* override */
+Value* Variable::compile() 
 {
-    Value* value = Builder.CreateAlloca(TypeConvert(type), 0, name.c_str());
+    Value* value; 
+    value = Builder.CreateAlloca(TypeConvert(type, true), 0, name.c_str());    
+    //value = Builder.CreatePointerCast(value, TypeConvert(type), "bitcast");   
     ct.insert(name,value);
     return nullptr; 
 }
 
-Value* VarDef::compile() /* override */
+Value* VarDef::compile() 
 {
     // get entry block of current function for allocas to work properly 
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -567,20 +594,21 @@ Value* VarDef::compile() /* override */
     return nullptr;
 }
 
-Value* LabelDef::compile() /* override */
+Value* LabelDef::compile() 
 {
     //no need to do anything, labels are basic blocks
     return nullptr;
 }
 
-Value* FormalsGroup::compile() /* override */
+Value* ParameterGroup::compile() 
 {
     return nullptr;
 }
 
-Value* FunctionDef::compile() /* override */
+// single for both func and proc
+Value* FunctionDef::compile() 
 {
-        
+
     Function *routine;
     BasicBlock* parentBB = Builder.GetInsertBlock();
     std::vector<Type*> param_types; 
@@ -590,20 +618,18 @@ Value* FunctionDef::compile() /* override */
     for (ParameterGroup* param : parameters){
         // by reference passing is just adding a pointer
         Stype t = param->type;
-        std::cout << t << std::endl; 
+        Type *internal_t = TypeConvert(t);
         if (param->pmode == PASS_BY_REFERENCE){
-            if (!(param->type->kind == TYPE_ARRAY || param->type->kind == TYPE_IARRAY))
-                t = typePointer(t);   
+            internal_t = PointerType::get(internal_t,0);            
         }                         
         for (std::string name : param->names){
-             param_types.push_back(TypeConvert(t, true)) ;
+             param_types.push_back(internal_t) ;
              param_pass.push_back(param->pmode);
              sem_types.push_back(t);
         }
-        std::cout << t << std::endl; 
 
     }
-    FunctionType* Ftype =  FunctionType::get(TypeConvert(type, true),param_types,false);
+    FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
     routine = Function::Create(Ftype,
         Function::ExternalLinkage,name,TheModule
     );
@@ -612,6 +638,12 @@ Value* FunctionDef::compile() /* override */
     CodeGenEntry* f = ct.lookup(name);
     f->arguments = param_pass;
     f->types = sem_types; 
+
+    // add only function for forward definitions
+    if (body == nullptr) return nullptr;
+
+
+
     //create a new basic block 
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
@@ -622,18 +654,21 @@ Value* FunctionDef::compile() /* override */
         // need to create aloca here 
         for (std::string name : param->names ){
             Stype t = param->type;
-            if (param->pmode == PASS_BY_REFERENCE)
-                if (!(param->type->kind == TYPE_ARRAY || param->type->kind == TYPE_IARRAY))
-                    t = typePointer(t);   
-            Value* value = Builder.CreateAlloca(TypeConvert(t, true), 0, name.c_str());
-            Builder.CreateStore(param_iter,value);
+            Value* value; 
+            if (param->pmode == PASS_BY_VALUE){
+                value = Builder.CreateAlloca(TypeConvert(t), 0, name.c_str());
+                Builder.CreateStore(param_iter,value);
+            }                 
+            else {
+                value = param_iter; 
+            }
             ct.insert(name, value, param->pmode);
             param_iter++;
         }
     }
     // type void means its a procedure 
     if (! type->equals(typeVoid)) {
-        Value* value = Builder.CreateAlloca(TypeConvert(type, true), 0, "result");
+        Value* value = Builder.CreateAlloca(TypeConvert(type), 0, "result");
         ct.insert("result",value);
     }
     body->compile(); 
@@ -652,25 +687,32 @@ Value* FunctionDef::compile() /* override */
 }
 
 
-Value* Assignment::compile() /* override */
+Value* Assignment::compile() 
 {   // := 
     Value* l = lval->compile();
     Value* r = rval->compile();
     if (rval->lvalue)
         r = Builder.CreateLoad(r, "assign");
+
     Value* source; 
     if (lval->type_verify(typeReal) && rval->type_verify(typeInteger)){
         source = Builder.CreateCast(Instruction::SIToFP, r, r64);
     }
     else source = r; 
+
+    if (rval->type->kind == TYPE_VOID){
+        source = Builder.CreatePointerCast(r, TypeConvert(lval->type), "bitcast");   
+    }
+
     if (lval->type->pointer_special_case(rval->type))
         source = Builder.CreatePointerCast(r, TypeConvert(lval->type), "bitcast");         
 
     Builder.CreateStore(source,l);
+
     return nullptr;
 }
 
-Value* IfThenElse::compile() /* override */
+Value* IfThenElse::compile() 
 {
     Value *v = cond->compile();
     Value *cond = Builder.CreateICmpNE(v,c_i1(0), "if_cond");
@@ -697,7 +739,7 @@ Value* IfThenElse::compile() /* override */
     return nullptr; 
 }
 
-Value* While::compile() /* override */
+Value* While::compile() 
 {
     // get current block 
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -725,24 +767,28 @@ Value* While::compile() /* override */
     return nullptr; 
 }
 
-Value* Label::compile() /* override */
+Value* Label::compile() 
 {
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
     BasicBlock * LabelBB  = BasicBlock::Create(TheContext, label, TheFunction);
+    Builder.CreateBr(LabelBB);
     Builder.SetInsertPoint(LabelBB);
     ct.insert(label ,LabelBB);
     target->compile();            
     return nullptr; 
 }
 
-Value* GoTo::compile() /* override */
+Value* GoTo::compile() 
 {
+    // seems like we don't need Phi node for goto
+    // don't understand Phi nodes right now, come back
     BasicBlock* val = (BasicBlock*)ct.lookup(label)->value;
     Builder.CreateBr(val);
+    BBended = true; 
     return nullptr; 
 }
 
-Value* ReturnStmt::compile() /* override */
+Value* ReturnStmt::compile() 
 {
     Value* ret = ct.lookup("result")->value;
     Value* l = Builder.CreateLoad(ret, "return");
@@ -750,33 +796,46 @@ Value* ReturnStmt::compile() /* override */
     BBended = true; 
     return nullptr;
 }
-
-Value* Init::compile() /* override */
+/*
+    what are these values supposed to do
+*/
+Value* Init::compile() 
 {
     Value* ptr = lval->compile();
     Builder.CreateCall(GC_Malloc,{ptr});
     return nullptr;
 }
 
-Value* InitArray::compile() /* override */
+Value* InitArray::compile() 
 {
-    Value* ptr = lval->compile();
-    Builder.CreateCall(GC_Malloc,{ptr});
+    Value* ptr = lval->compile(); 
+    Value* arr_size = size->compile();
+    arr_size = Builder.CreateIntCast( arr_size, i64, true);
+
+    // llvm hack to find size of type
+    Value * type_size = Builder.CreateGEP( c_point_void(TypeConvert(lval->type->refType)) , { c_i64(1)});
+    type_size = Builder.CreatePtrToInt( type_size,i64);
+
+    Value * malloc_size = Builder.CreateMul(type_size, arr_size, "malloc_mul");
+    Value* mem = Builder.CreateCall(GC_Malloc, malloc_size);
+    mem = Builder.CreatePointerCast(mem, TypeConvert(lval->type));
+    Builder.CreateStore(mem, ptr);
+
     return nullptr; 
 }
 
-Value* Dispose::compile() /* override */
+Value* Dispose::compile() 
 {
     Value* ptr = lval->compile();
     Builder.CreateCall(GC_Free,ptr);
     return nullptr;
 }
 
-Value* DisposeArray::compile() /* override */
+Value* DisposeArray::compile() 
 {
     /* Dispose should be some function call from gc library */ 
     // Value* ptr = lval->compile();
-    // Builder.CreateCall(GC_Free,ptr);
+    //Builder.CreateCall(GC_Free,ptr);
     return nullptr;
 
 }

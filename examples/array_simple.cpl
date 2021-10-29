@@ -1,6 +1,6 @@
 program solve;
     var z : char ;
-    function zz(var y : char) : array [10] of integer ;
+    function zz(var x : array of char) : array [10] of integer ;
     begin 
         y := '3';
     end; 

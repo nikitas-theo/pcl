@@ -21,15 +21,10 @@ Program* TheProgram;
     Block* prog;
     VarDef* vgs;
     FunctionDef* rtn;
-    /* FormalsGroup* flg; */
     ParameterGroup* flg;
-    /* std::list<std::string>* ids; */
     std::list<std::string>* ids;
-    /* ASTvector<FormalsGroup*>* fgs; */
     std::list<ParameterGroup*>* fgs;
-    /* ASTvector<Stmt*>* sts; */
     ASTnodeCollection* sts;
-    /* ASTvector<Expr*>*  exs; */
     ASTnodeCollection* exs;
 }
 
@@ -127,8 +122,8 @@ local:
     ;
 
 var_def:
-      id_list ':' type ';' var_def  { $5->push($1, $3) ; $$ = $5; }
-    | id_list ':' type ';'          { $$ = new VarDef(yylloc.last_line); $$->push($1, $3); }
+      id_list ':' type ';' var_def  { $5->push($1, $3, yylloc.last_line) ; $$ = $5; }
+    | id_list ':' type ';'          { $$ = new VarDef(yylloc.last_line); $$->push($1, $3, yylloc.last_line); }
     ;
 
 id_list :
@@ -152,8 +147,8 @@ formal_list:
     ;
 
 formal:
-      id_list ':' type              { $$ = new ParameterGroup {*$1, $3, PASS_BY_VALUE}; /* $$ = new FormalsGroup($1, $3, PASS_BY_VALUE); */ }
-    | "var" id_list ':' type        { $$ = new ParameterGroup {*$2, $4, PASS_BY_REFERENCE}; /* $$ = new FormalsGroup($2, $4, PASS_BY_REFERENCE); */ }
+      id_list ':' type              { $$ = new ParameterGroup(*$1, $3, PASS_BY_VALUE,yylloc.last_line); }
+    | "var" id_list ':' type        { $$ = new ParameterGroup(*$2, $4, PASS_BY_REFERENCE,yylloc.last_line); }
     ;
 
 type :
