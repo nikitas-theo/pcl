@@ -802,7 +802,13 @@ Value* ReturnStmt::compile()
 Value* Init::compile() 
 {
     Value* ptr = lval->compile();
-    Builder.CreateCall(GC_Malloc,{ptr});
+    
+    // llvm hack to find size of type
+    Value * type_size = Builder.CreateGEP( c_point_void(TypeConvert(lval->type)) , { c_i64(1)});
+    type_size = Builder.CreatePtrToInt( type_size, i64);
+    Value* mem = Builder.CreateCall(GC_Malloc, type_size);
+    mem = Builder.CreatePointerCast(mem, TypeConvert(lval->type));
+    Builder.CreateStore(mem, ptr);
     return nullptr;
 }
 
@@ -827,15 +833,17 @@ Value* InitArray::compile()
 Value* Dispose::compile() 
 {
     Value* ptr = lval->compile();
+    ptr = Builder.CreateLoad(ptr);
+    ptr = Builder.CreatePointerCast(ptr, PointerType::get(i8,0));
     Builder.CreateCall(GC_Free,ptr);
     return nullptr;
 }
 
 Value* DisposeArray::compile() 
 {
-    /* Dispose should be some function call from gc library */ 
-    // Value* ptr = lval->compile();
-    //Builder.CreateCall(GC_Free,ptr);
+    Value* ptr = lval->compile();
+    ptr = Builder.CreateLoad(ptr);
+    ptr = Builder.CreatePointerCast(ptr, PointerType::get(i8,0));
+    Builder.CreateCall(GC_Free,ptr);
     return nullptr;
-
 }

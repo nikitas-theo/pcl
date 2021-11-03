@@ -58,29 +58,20 @@ declare i32 @roundFunc(double)
 define i32 @main() {
 entry:
   call void @GC_init()
-  %x = alloca [2 x i8]
-  %y = alloca i8*
-  %z = alloca [2 x i8]**
-  %bitcast = bitcast [2 x i8]* %x to i8*
-  %arrayIdx = getelementptr i8, i8* %bitcast, i64 0
-  store i8 49, i8* %arrayIdx
-  %bitcast1 = bitcast [2 x i8]* %x to i8*
-  %arrayIdx2 = getelementptr i8, i8* %bitcast1, i64 1
-  store i8 92, i8* %arrayIdx2
-  %deref = load [2 x i8]**, [2 x i8]*** %z
-  store [2 x i8]* %x, [2 x i8]** %deref
-  %deref3 = load [2 x i8]**, [2 x i8]*** %z
-  %deref4 = load [2 x i8]*, [2 x i8]** %deref3
-  %passArr = getelementptr [2 x i8], [2 x i8]* %deref4, i64 0, i64 0
-  call void @zz(i8* %passArr)
+  %b = alloca i8*
+  %0 = call i8* @GC_malloc(i64 mul (i64 ptrtoint (i8* getelementptr (i8, i8* null, i64 1) to i64), i64 10))
+  store i8* %0, i8** %b
+  %1 = load i8*, i8** %b
+  %arrayIdx = getelementptr i8, i8* %1, i64 0
+  store i8 65, i8* %arrayIdx
+  %2 = load i8*, i8** %b
+  %arrayIdx1 = getelementptr i8, i8* %2, i64 1
+  store i8 66, i8* %arrayIdx1
+  %3 = load i8*, i8** %b
+  call void @writeString(i8* %3)
+  %4 = load i8*, i8** %b
+  call void @GC_free(i8* %4)
+  %5 = load i8*, i8** %b
+  call void @writeString(i8* %5)
   ret i32 0
-}
-
-define void @zz(i8* %0) {
-entry:
-  %y = alloca i8*
-  store i8* %0, i8** %y
-  %load_id = load i8*, i8** %y
-  call void @writeString(i8* %load_id)
-  ret void
 }

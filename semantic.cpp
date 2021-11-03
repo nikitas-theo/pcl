@@ -2,6 +2,9 @@
 #include "symbol.hpp"
 
 SymbolTable st;
+std::vector<GoTo*> goto_statemets; 
+
+
 
 void Program::add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters=nullptr)
 {
@@ -82,6 +85,11 @@ void Program::semantic_run()
 
 void Program::semantic_finalize()
 {
+
+    for (auto it : goto_statemets){
+        it->check();
+    }
+
     /* If everything is ok then we will be left with the global and the initial scope which will be cleaned */
     st.closeScope();
     st.closeScope();
@@ -89,6 +97,7 @@ void Program::semantic_finalize()
     if (st.currentScope != nullptr) {
         error("Semantic analysis does bad scope management!");
     }
+    
 }
 
 void EmptyStmt::semantic()
@@ -543,12 +552,18 @@ void Label::semantic() /* override */
 
 void GoTo::semantic() /* override */
 {
-    //check if label exists and is bound in current scope 
+    // goto statements need to be checked after label definition
+    goto_statemets.push_back(this);
+}
+void GoTo::check()
+{
+
     LabelEntry *l = st.lookupLabel(label);
     if (l == nullptr)
-     error("Label ", label, " not declared");
+        error("Label ", label, " not declared");
     if (!l->isBound)
-     error("Label ", label, " not bound to a target");
+        error("Label ", label, " not bound to a target");
+
 }
 
 void ReturnStmt::semantic() /* override */

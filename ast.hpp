@@ -492,6 +492,7 @@ class GoTo : public Stmt {
         
         void printOn(std::ostream &out) const;
         void semantic();
+        void check();
         Value* compile(); 
 };
 

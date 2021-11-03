@@ -1,6 +1,8 @@
 program solve;
-    var b : ^array of array [10] of ^ array  of char; 
-    begin 
-        b^[0][0]^[0] := '1';
-    ;
+    var integer i; 
+    begin;
+
+        label a; 
+        writeString(i)
+        goto a; 
     end.
