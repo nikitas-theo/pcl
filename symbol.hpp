@@ -79,7 +79,7 @@ class LabelEntry : public SymbolEntry
 {
     public:
         bool isBound;
-
+        bool isTargeted = false; 
         LabelEntry(String name) : SymbolEntry(name, ENTRY_LABEL), isBound(false) {}
 };
 
@@ -102,10 +102,9 @@ class Scope
     private:
         HashMap* levelEntries;
         int dummy_variable;
-
     public:
         int nestingLevel;
-        // AST* owingFunctionNode;
+        std::vector<std::string> labelNames; 
 
         Scope();
 
@@ -114,6 +113,7 @@ class Scope
         bool addEntry(SymbolEntry* e);
 
         SymbolEntry* lookupEntry(String id);
+
 };
 
 class SymbolTable
@@ -136,6 +136,7 @@ class SymbolTable
 
         void addEntry(SymbolEntry* e);
 
+
         SymbolEntry* lookupEntry(String id, LookupType lookup=LOOKUP_ALL_SCOPES);
 
         VariableEntry* lookupVariable(String id, LookupType lookup=LOOKUP_ALL_SCOPES);
@@ -157,6 +158,8 @@ public:
   PassMode pass_by;
   std::vector<PassMode> arguments; 
   std::vector<Stype> types; 
+  Label* label;
+  std::vector<GoTo*> goto_nodes;
   CodeGenEntry() {}
   CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
 
@@ -168,9 +171,13 @@ public:
 
   CodeGenScope() : locals(), offset(-1), size(0) {}
   CodeGenScope(int ofs) : locals(), offset(ofs), size(0) {}
+  
+  
 
   int getOffset() const { return offset; }
   int getSize() const { return size; }
+
+  std::vector<std::string> label_names; 
 
   CodeGenEntry *lookup(std::string name) {
 
@@ -218,7 +225,16 @@ public:
 
   }
 
-  void closeScope() { scopes.pop_back(); };
+  void closeScope() { 
+
+    for (std::string l : scopes.back().label_names){
+      CodeGenEntry *e = lookup(l);
+      for (GoTo * g : e->goto_nodes) g->compile_final(e->label);
+    }
+
+
+    scopes.pop_back(); 
+    };
 
   CodeGenEntry *lookup(std::string name) {
 
@@ -232,8 +248,16 @@ public:
     return e; 
   }
 
+  void addToLabel(std::string label, GoTo* g){
+      CodeGenEntry *l = lookup(label);
+      l->goto_nodes.push_back(g);
+  }
+  void addLabel(std::string label){
+    scopes.back().label_names.push_back(label);
+  }
   int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
   int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE) { return scopes.back().insert(name, v, pb); }
+
 private:
 
   std::list<CodeGenScope> scopes;

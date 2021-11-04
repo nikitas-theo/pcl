@@ -2,7 +2,6 @@
 #include "symbol.hpp"
 
 SymbolTable st;
-std::vector<GoTo*> goto_statemets; 
 
 
 
@@ -85,10 +84,6 @@ void Program::semantic_run()
 
 void Program::semantic_finalize()
 {
-
-    for (auto it : goto_statemets){
-        it->check();
-    }
 
     /* If everything is ok then we will be left with the global and the initial scope which will be cleaned */
     st.closeScope();
@@ -552,18 +547,11 @@ void Label::semantic() /* override */
 
 void GoTo::semantic() /* override */
 {
-    // goto statements need to be checked after label definition
-    goto_statemets.push_back(this);
-}
-void GoTo::check()
-{
-
     LabelEntry *l = st.lookupLabel(label);
     if (l == nullptr)
         error("Label ", label, " not declared");
-    if (!l->isBound)
-        error("Label ", label, " not bound to a target");
 
+    l->isTargeted = true; 
 }
 
 void ReturnStmt::semantic() /* override */

@@ -79,14 +79,22 @@ void SymbolTable::openScope()
 
 void SymbolTable::closeScope()
 {
+    for (std::string label_id : currentScope->labelNames){
+        LabelEntry* l = lookupLabel(label_id);
+        if (! l->isBound && l->isTargeted) 
+            error("goto instruction to unbound label");        
+    }
     delete(currentScope);
     scopeStack.pop_back();
     currentScope = scopeStack.empty() ? nullptr : scopeStack.back();
 }
 
+
 void SymbolTable::addEntry(SymbolEntry* e)
 {
     currentScope->addEntry(e);
+    if (e->entryType == ENTRY_LABEL) 
+        currentScope->labelNames.push_back(e->id);
 }
 
 SymbolEntry* SymbolTable::lookupEntry(String id, LookupType lookup)

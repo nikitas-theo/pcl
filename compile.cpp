@@ -34,6 +34,7 @@ CodeGenTable ct = CodeGenTable();
 bool BBended;
 
 
+
 ConstantInt* c_i32(int n)
 {
     return ConstantInt::get(TheContext,APInt(32,n,true));
@@ -126,6 +127,7 @@ void Program::add_libs_llvm()
     e->arguments = {PASS_BY_VALUE};
     e->types = {typeReal}; 
 
+
 };
 
 void Program::compile_initalize()
@@ -166,7 +168,7 @@ void Program::compile_initalize()
 
     // add main 
     main = Function::Create(
-        FunctionType::get(i32,{}, false), 
+        FunctionType::get(voidTy,{}, false), 
         Function::ExternalLinkage,"main",TheModule
         );
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
@@ -181,7 +183,8 @@ void Program::compile_run()
 
 void Program::compile_finalize()
 {
-    Builder.CreateRet(c_i32(0));
+
+    Builder.CreateRet(nullptr);
     ct.closeScope();
 
     // verify module for badly formed IR
@@ -232,7 +235,6 @@ Value* ASTnodeCollection :: compile()
 {
     for (AST* n : nodes){
         n->compile();
-        if (BBended) break; 
     }
     return nullptr;
 }
@@ -595,8 +597,12 @@ Value* VarDef::compile()
 }
 
 Value* LabelDef::compile() 
-{
-    //no need to do anything, labels are basic blocks
+{   
+    for (std::string label : labels){
+        ct.insert(label, nullptr);
+        ct.addLabel(label);
+    }
+    // nothing to do, label is just basic block
     return nullptr;
 }
 
@@ -771,34 +777,58 @@ Value* Label::compile()
 {
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
     BasicBlock * LabelBB  = BasicBlock::Create(TheContext, label, TheFunction);
-    Builder.CreateBr(LabelBB);
+    if (!BBended)
+        Builder.CreateBr(LabelBB);
     Builder.SetInsertPoint(LabelBB);
-    ct.insert(label ,LabelBB);
-    target->compile();            
+    
+    // save basic block a goto would jump to 
+    basic_block = LabelBB; 
+
+    CodeGenEntry* l = ct.lookup(label);
+    l->label = this; 
+
+    target->compile();          
+
     return nullptr; 
 }
 
 Value* GoTo::compile() 
 {
-    // seems like we don't need Phi node for goto
-    // don't understand Phi nodes right now, come back
-    BasicBlock* val = (BasicBlock*)ct.lookup(label)->value;
-    Builder.CreateBr(val);
-    BBended = true; 
+    insert_point = Builder.GetInsertPoint();
+    insert_block = Builder.GetInsertBlock();
+    ct.addToLabel(label, this); 
+    
+    // create a stray basic block to handle code 
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    BasicBlock * LabelBB  = BasicBlock::Create(TheContext, label, TheFunction);
+    Builder.SetInsertPoint(LabelBB);
+
+
+
     return nullptr; 
+}
+
+void GoTo::compile_final(Label* label_node)
+{    
+    // labels need to be defined before GoTo
+    Builder.SetInsertPoint(insert_block, insert_point);
+    Builder.CreateBr(label_node->basic_block);
 }
 
 Value* ReturnStmt::compile() 
 {
-    Value* ret = ct.lookup("result")->value;
-    Value* l = Builder.CreateLoad(ret, "return");
-    Builder.CreateRet(l);    
+
+    CodeGenEntry* e  = ct.lookup("result");
+    if (e == nullptr){
+        Builder.CreateRet(nullptr);
+    }
+    else {
+        Value* l = Builder.CreateLoad(e->value, "return");
+        Builder.CreateRet(l);    
+    }
     BBended = true; 
     return nullptr;
 }
-/*
-    what are these values supposed to do
-*/
 Value* Init::compile() 
 {
     Value* ptr = lval->compile();

@@ -58,6 +58,7 @@ class AST
         bool check_type(Stype t1,Stype t2,bool check_size = true);
         
         int linecnt;
+        
         // template<typename ...Ts>
         // void error(Ts&&... args);
         template<typename ...Ts>
@@ -478,10 +479,12 @@ class Label : public Stmt {
         Stmt *target;
     public:
         Label(std::string name, Stmt* stmt, int cnt) : label(name), target(stmt) {linecnt = cnt;}
-        
+                
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
+
+        BasicBlock* basic_block ; 
 };
 
 class GoTo : public Stmt {
@@ -492,9 +495,14 @@ class GoTo : public Stmt {
         
         void printOn(std::ostream &out) const;
         void semantic();
-        void check();
+        BasicBlock::iterator insert_point; 
+        BasicBlock* insert_block; 
+        Label* label_node; 
         Value* compile(); 
+        void compile_final(Label* label_node);
 };
+
+
 
 class ReturnStmt : public Stmt {
     public: 

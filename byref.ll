@@ -1,6 +1,9 @@
 ; ModuleID = 'byref'
 source_filename = "byref"
 
+@str = private unnamed_addr constant [4 x i8] c"AFA\00", align 1
+@str.1 = private unnamed_addr constant [5 x i8] c"exit\00", align 1
+
 declare i8* @GC_malloc(i64)
 
 declare void @GC_init()
@@ -55,23 +58,44 @@ declare i32 @truncFunc(double)
 
 declare i32 @roundFunc(double)
 
-define i32 @main() {
+define void @main() {
 entry:
   call void @GC_init()
-  %b = alloca i8*
-  %0 = call i8* @GC_malloc(i64 mul (i64 ptrtoint (i8* getelementptr (i8, i8* null, i64 1) to i64), i64 10))
-  store i8* %0, i8** %b
-  %1 = load i8*, i8** %b
-  %arrayIdx = getelementptr i8, i8* %1, i64 0
-  store i8 65, i8* %arrayIdx
-  %2 = load i8*, i8** %b
-  %arrayIdx1 = getelementptr i8, i8* %2, i64 1
-  store i8 66, i8* %arrayIdx1
-  %3 = load i8*, i8** %b
-  call void @writeString(i8* %3)
-  %4 = load i8*, i8** %b
-  call void @GC_free(i8* %4)
-  %5 = load i8*, i8** %b
-  call void @writeString(i8* %5)
-  ret i32 0
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %a1
+
+a:                                                ; No predecessors!
+  call void @writeString(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  br label %a1
+
+a1:                                               ; preds = %endif, %entry, %a
+  %call = load i32, i32* %i
+  call void @writeInteger(i32 %call)
+  %binop_l = load i32, i32* %i
+  %addtmp = add i32 %binop_l, 1
+  store i32 %addtmp, i32* %i
+  %binop_l2 = load i32, i32* %i
+  %eqtmp = icmp eq i32 %binop_l2, 5
+  %if_cond = icmp ne i1 %eqtmp, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %a1
+  br label %b4
+
+endif:                                            ; preds = %else, %b
+  br label %a1
+
+else:                                             ; preds = %a1
+  br label %endif
+
+b:                                                ; No predecessors!
+  br label %endif
+
+a3:                                               ; No predecessors!
+  br label %b4
+
+b4:                                               ; preds = %then, %a3
+  call void @writeString(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.1, i32 0, i32 0))
+  ret void
 }

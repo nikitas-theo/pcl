@@ -1,8 +1,16 @@
 program solve;
-    var integer i; 
+    label a, b ;
+    var i : integer;
     begin;
-
-        label a; 
-        writeString(i)
+        i := 0;
+        goto a;
+        writeString("AFA");   
+        a : writeInteger(i);
+        i := i + 1; 
+        if i = 5 then
+        begin; 
+            goto b ; 
+        end;
         goto a; 
+        b : writeString("exit");
     end.
