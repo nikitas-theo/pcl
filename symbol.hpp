@@ -1,5 +1,3 @@
-// #ifndef __SYMBOL_H__
-// #define __SYMBOL_H__
 #pragma once
 
 #include <map>
@@ -105,7 +103,7 @@ class Scope
     public:
         int nestingLevel;
         std::vector<std::string> labelNames; 
-
+        FunctionDef *function; 
         Scope();
 
         ~Scope();
@@ -116,13 +114,14 @@ class Scope
 
 };
 
+
 class SymbolTable
 {
     private:
         std::list<Scope*> scopeStack;
 
     public:
-        Scope* currentScope;
+        Scope* currentScope = nullptr;
         
         SymbolTable();
 
@@ -130,11 +129,12 @@ class SymbolTable
 
         // void Initialize();
 
-        void openScope();
+        void openScope(FunctionDef*);
 
         void closeScope();
 
         void addEntry(SymbolEntry* e);
+
 
 
         SymbolEntry* lookupEntry(String id, LookupType lookup=LOOKUP_ALL_SCOPES);
@@ -150,19 +150,20 @@ class SymbolTable
 /* ------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
 /* ---------------------------- CODE GENERATION TABLE ------------------------ */
+// should move this to .cpp 
 
 class CodeGenEntry {
 public:
   int offset;
   llvm::Value* value; 
   PassMode pass_by;
+  bool is_library_fun = false; 
   std::vector<PassMode> arguments; 
   std::vector<Stype> types; 
   Label* label;
   std::vector<GoTo*> goto_nodes;
   CodeGenEntry() {}
   CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
-
 };
 
 class CodeGenScope {
@@ -178,6 +179,8 @@ public:
   int getSize() const { return size; }
 
   std::vector<std::string> label_names; 
+
+  FunctionDef *function; 
 
   CodeGenEntry *lookup(std::string name) {
 
@@ -217,12 +220,12 @@ class CodeGenTable {
       return 1 on duplicate entry 
 */ 
 public:
-  void openScope() {
+  void openScope(FunctionDef *fun) {
 
     int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
 
     scopes.push_back(CodeGenScope(ofs));
-
+    scopes.back().function = fun;
   }
 
   void closeScope() { 
@@ -254,6 +257,9 @@ public:
   }
   void addLabel(std::string label){
     scopes.back().label_names.push_back(label);
+  }
+  FunctionDef *get_fun(){
+    return  scopes.back().function;
   }
   int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
   int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE) { return scopes.back().insert(name, v, pb); }

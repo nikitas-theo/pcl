@@ -39,8 +39,9 @@ void Program::semantic_initialize()
     /* 
         Initial Scope:
             Add predefined functions
+            need two scopes because predefined funtions can be redefined
     */
-    st.openScope();
+    st.openScope(nullptr);
    
     add_lib_func_semantic("writeInteger", typeVoid, make_single_parameter(typeInteger, PASS_BY_VALUE));
     add_lib_func_semantic("writeChar", typeVoid, make_single_parameter(typeChar, PASS_BY_VALUE));
@@ -72,7 +73,8 @@ void Program::semantic_initialize()
     add_lib_func_semantic("round", typeReal, make_single_parameter(typeInteger, PASS_BY_VALUE));
 
     /* Prepare global program scope */
-    st.openScope();
+    st.openScope(new FunctionDef("main",new std::list<ParameterGroup*>(), typeVoid,0));
+
 }
 
 
@@ -480,7 +482,7 @@ void FunctionDef::semantic() /* override */
     // else completely define function and be done 
     else {
      
-        st.openScope();
+        st.openScope(this);
 
         if (!type->equals(typeVoid))
             st.addEntry(new VariableEntry("result", type));

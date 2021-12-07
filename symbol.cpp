@@ -41,6 +41,8 @@ bool Scope::addEntry(SymbolEntry* e)
     return mapInRes.second;
 }
 
+
+
 SymbolEntry* Scope::lookupEntry(String id)
 {
     HashMap::iterator it;
@@ -69,11 +71,15 @@ SymbolTable::~SymbolTable()
     }
 }
 
-void SymbolTable::openScope()
+void SymbolTable::openScope(FunctionDef* function)
 {
     Scope *s = new Scope();
     s->nestingLevel = scopeStack.empty() ? 0 : currentScope->nestingLevel + 1;
     scopeStack.push_back(s);
+    s->function = function;  
+    // if this isn't the Main scope
+    if (currentScope != nullptr) 
+        s->function->static_parent = currentScope->function ;
     currentScope = s;
 }
 
@@ -121,15 +127,27 @@ SymbolEntry* SymbolTable::lookupEntry(String id, LookupType lookup)
 
 VariableEntry* SymbolTable::lookupVariable(String id, LookupType lookup)
 {
-    SymbolEntry *e = lookupEntry(id, lookup);
+    SymbolEntry *e;
+    if ( (e = currentScope->lookupEntry(id)) != nullptr )
+        return (VariableEntry*) e; 
 
-    if (e != nullptr && e->entryType == ENTRY_VARIABLE) {
-        return (VariableEntry *)e;
-    }
-    else {
-        return nullptr;
-    }
-    
+    int nesting_diff; 
+    int struct_idx; 
+
+    if (lookup == LOOKUP_CURRENT_SCOPE) return nullptr;             
+        for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {                
+                if ( (e = (*it)->lookupEntry(id)) != nullptr ){
+                    nesting_diff =  currentScope->nestingLevel - (*it)->nestingLevel;
+                    VariableEntry* v = (VariableEntry*) e; 
+                    struct_idx = (*it)->function->add_provide(id, v->type);
+                    break; 
+                    }
+            }
+    if (e == nullptr) return nullptr ;
+    VariableEntry* v = (VariableEntry*) e; 
+    currentScope->function->add_request(id, nesting_diff, struct_idx, v->type);    
+    return v; 
+
 }
 
 LabelEntry* SymbolTable::lookupLabel(String id)

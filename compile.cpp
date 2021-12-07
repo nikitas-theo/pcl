@@ -69,7 +69,9 @@ inline void Program::add_func_llvm(FunctionType *type, std::string name,
     CodeGenEntry* e = ct.lookup(name);
     e->arguments = args;
     e->types = types; 
-};
+    e->is_library_fun = true; 
+}
+;
 
 void Program::add_libs_llvm()
 {
@@ -87,7 +89,7 @@ void Program::add_libs_llvm()
 
     add_func_llvm(FunctionType::get(i32,{},false),"readInteger",{}, {});
     add_func_llvm(FunctionType::get(i1,{},false), "readBoolean",{}, {});
-    add_func_llvm(FunctionType::get(i8,{},false), "readChar",{}, {});
+    add_func_llvm(FunctionType::get(i8,{},false), "readChar",{}, {});  
     add_func_llvm(FunctionType::get(r64,{},false), "readReal",{}, {});
     add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString",{}, {});
 
@@ -160,8 +162,20 @@ void Program::compile_initalize()
         );
     
     BBended = false; 
-    // open global scope 
-    ct.openScope();
+    // open global scope
+    /*
+        need to think a little more about this
+        main `provides` should be carried on from semantic, 
+        maybe add a provides on Program and copy it here
+
+        problem is `main` should go over all the usual preparations for making a struct
+        set_struct_ty, 
+        prepare_struct, maybe add this also as separate function and it will be OK.
+        so we can add these after SetInsertPoint(BB);
+    */
+    FunctionDef* f = new FunctionDef("main",new std::list<ParameterGroup*>(), typeVoid,0);
+    f->set_struct_ty();
+    ct.openScope(f);
 
     // add external libraries 
     add_libs_llvm();
@@ -174,6 +188,8 @@ void Program::compile_initalize()
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
     Builder.SetInsertPoint(BB);
     Builder.CreateCall(GC_Init, {});
+    f->hidden_struct = Builder.CreateAlloca(f->hidden_struct_ty, 0, "hidden_struct");
+
 }
 
 void Program::compile_run()
@@ -428,9 +444,22 @@ Value* UnOp::compile()
 
 Value* Id::compile() 
 {
-    CodeGenEntry* entry = ct.lookup(name);
-    Value * val = entry->value;
-    
+    Value *val;
+    FunctionDef *fun = ct.get_fun(); 
+    std::map<std::string, DepenVar*>::iterator it;
+    if ( fun != nullptr && ((it = fun->requests.find(name)) != fun->requests.end())){
+        DepenVar* v = it->second; 
+        Value *hidden_struct = fun->hidden_struct;
+        std::vector<Value*> idxs(v->nesting_diff + 1, c_i32(0));
+        idxs.push_back(c_i32(v->struct_idx));
+        Value *pos = Builder.CreateGEP(hidden_struct, idxs);
+        val = Builder.CreateLoad(pos);
+        }
+    else {
+        CodeGenEntry* entry = ct.lookup(name);
+        val = entry->value;
+    }    
+
     return val; 
 }
 
@@ -465,7 +494,13 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
     std::vector<PassMode> arguments = f->arguments;
     std::vector<Stype> sem_types = f->types;
     std::vector<Value*> param_values;
-    
+
+    if (! f->is_library_fun){
+        // push back our struct as first argument
+        FunctionDef* fun = ct.get_fun();
+        param_values.push_back(fun->hidden_struct);
+    }
+
     if (parameters != nullptr) {
 
         auto param_iter = (parameters->nodes).begin();     
@@ -611,16 +646,60 @@ Value* ParameterGroup::compile()
     return nullptr;
 }
 
+
+
+void FunctionDef::set_struct_ty(){
+
+    StructType *parent_struct_ty;
+
+    if (static_parent == nullptr) 
+        parent_struct_ty = StructType::get(TheContext, "empty");
+    else  
+        parent_struct_ty = static_parent->hidden_struct_ty;
+
+    std::vector<Type*> deps; 
+
+    // parent_struct is at first position 
+    deps.push_back(parent_struct_ty);
+
+    for (auto d : provides){
+        deps.push_back(TypeConvert(d.second->type));
+    }
+    StructType* final_struct = StructType::get(TheContext,  deps);
+    // save for later calls
+    hidden_struct_ty = final_struct;
+
+}
+
+
 // single for both func and proc
 Value* FunctionDef::compile() 
 {
+
+
 
     Function *routine;
     BasicBlock* parentBB = Builder.GetInsertBlock();
     std::vector<Type*> param_types; 
     std::vector<Stype> sem_types; 
     std::vector<PassMode> param_pass;
-    
+
+    set_struct_ty();
+    // calculate or get my struct of hidden parameters 
+    StructType* my_struct = hidden_struct_ty;
+    // put it on the last position 
+    param_types.push_back(my_struct);
+    /*
+        hidden params are only passed by reference 
+        so we don't need to accoutn for the extra pointer 
+        we need to change the CodeGen table to account for this though 
+        and for by reference params it seems only the special pointer case needs some bitcasting
+
+        ^^ this might be an issue. 
+
+        during calling we also need to do the loading which might be tricky. 
+    */ 
+
     for (ParameterGroup* param : parameters){
         // by reference passing is just adding a pointer
         Stype t = param->type;
@@ -635,6 +714,8 @@ Value* FunctionDef::compile()
         }
 
     }
+
+
     FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
     routine = Function::Create(Ftype,
         Function::ExternalLinkage,name,TheModule
@@ -654,8 +735,12 @@ Value* FunctionDef::compile()
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
     // create a new scope
-    ct.openScope();
+    ct.openScope(this);
     auto param_iter = routine->arg_begin(); 
+    // first position is struct
+    param_iter++;
+
+
     for (ParameterGroup* param : parameters){
         // need to create aloca here 
         for (std::string name : param->names ){
@@ -672,6 +757,30 @@ Value* FunctionDef::compile()
             param_iter++;
         }
     }
+
+    // allocate our struct;
+    param_iter = routine->arg_begin(); 
+    Value *struct_value = Builder.CreateAlloca(my_struct, 0, "hidden_struct");
+
+    // first argument should be dads struct
+    // add this as it is at first position 
+    Value *first_pos = Builder.CreateGEP(struct_value, {0, 0});    
+    Builder.CreateStore(first_pos, param_iter);
+
+    // now fix our own dependencies
+    // by storing from the allocas we calculated 
+    for (auto const&  x : provides){
+        Value *pos = Builder.CreateGEP(struct_value, {0, c_i32(x.second->struct_idx) });
+        Value * val = ct.lookup(x.second->name)->value;
+        Builder.CreateStore(pos, val);
+    }
+
+    // save struct for function calling
+    
+    // TODO: here one could acount for pointer special case 
+    // these are all by reference, if you have special case bitcast also 
+    hidden_struct = struct_value;
+
     // type void means its a procedure 
     if (! type->equals(typeVoid)) {
         Value* value = Builder.CreateAlloca(TypeConvert(type), 0, "result");

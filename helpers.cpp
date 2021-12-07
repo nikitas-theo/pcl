@@ -30,6 +30,7 @@ Type* AST::TypeConvert(Stype t, bool is_var_def)
 
 
 
+
 bool AST::check_type(Stype t1,Stype t2,bool check_size)
 {
     return t1->equals(t2);
@@ -115,4 +116,27 @@ void FunctionDef::set_forward()
 void FunctionDef::add_body(Block* theBody)
 {
     this->body = theBody;
+}
+
+
+
+void FunctionDef::add_request(std::string id, int nesting_diff, int struct_idx, Stype type){
+    std::map<std::string, DepenVar*>::iterator it;
+    it = requests.find(id);
+    if (it == requests.end())
+        requests.insert(std::make_pair(id, new DepenVar(id, nesting_diff, struct_idx, type)));    
+}
+
+int FunctionDef::add_provide(std::string id, Stype type){
+    
+    std::map<std::string, DepenVar*>::iterator it;
+    it = provides.find(id);
+    if (it != provides.end())
+        return it->second->struct_idx;
+    else { 
+        int idx = provides.size() + 1;
+        provides.insert(std::make_pair(id,new DepenVar(id, idx, type)));        
+        return idx; 
+    }
+
 }

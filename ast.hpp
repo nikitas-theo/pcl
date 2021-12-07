@@ -140,6 +140,8 @@ class Program
         void semantic_run();
         void semantic_finalize();
 
+            
+
         void compile_initalize();
         void compile_run();
         void compile_finalize();
@@ -411,6 +413,26 @@ class LabelDef : public Stmt {
     if a parameter is by reference we just pass a pointer
     instead of the actual parameter
 */ 
+
+class DepenVar{
+    public : 
+        int nesting_diff; 
+        int struct_idx; 
+        Stype type; 
+        std::string name; 
+
+        DepenVar(std::string id, int nesting_diff, int struct_idx, Stype type) : 
+            name(id), nesting_diff(nesting_diff), type(type), struct_idx(struct_idx){};
+
+        DepenVar(std::string id,   int struct_idx,  Stype type) : 
+            name(id), type(type), struct_idx(struct_idx) {};
+
+        
+
+};
+
+
+
 class FunctionDef : public Stmt {
     private:
         std::string name;
@@ -418,17 +440,30 @@ class FunctionDef : public Stmt {
         std::list<ParameterGroup*> parameters;
         Block* body = nullptr;
         bool isForward;
-        
+
     public:
         FunctionDef(std::string n, std::list<ParameterGroup*>* params, Stype t, int cnt) 
         : name(n), parameters(*params), type(t) { isForward = false; linecnt = cnt;}
 
         void set_forward();
+        void add_request(std::string id, int nesting_diff, int struct_idx, Stype type);
+        int add_provide(std::string id, Stype type);
+
         void add_body(Block* theBody);
         
         void printOn(std::ostream &out) const;
         void semantic();
         Value* compile(); 
+
+        void set_struct_ty();
+
+        std::map< std::string, DepenVar*> requests;
+        std::map< std::string, DepenVar*> provides; 
+        StructType *hidden_struct_ty = nullptr; 
+        FunctionDef *static_parent = nullptr;
+        Value* hidden_struct; 
+
+
 };
 
 class Assignment : public Stmt {

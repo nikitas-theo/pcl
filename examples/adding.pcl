@@ -4,6 +4,4 @@ program solve;
     begin
         x[1] := 2;
         z := 4;
-        writeInteger(z);
-        writeInteger(x[1])
     end.
