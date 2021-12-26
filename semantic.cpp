@@ -73,7 +73,9 @@ void Program::semantic_initialize()
     add_lib_func_semantic("round", typeReal, make_single_parameter(typeInteger, PASS_BY_VALUE));
 
     /* Prepare global program scope */
-    st.openScope(new FunctionDef("main",new std::list<ParameterGroup*>(), typeVoid,0));
+    FunctionDef *f = new FunctionDef("main",new std::list<ParameterGroup*>(), typeVoid,0);
+    this->main_obj = f; 
+    st.openScope(f);
 
 }
 

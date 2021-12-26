@@ -61,6 +61,7 @@ declare i32 @roundFunc(double)
 define void @main() {
 entry:
   call void @GC_init()
+  %hidden_struct = alloca {}
   %i = alloca i32
   store i32 0, i32* %i
   br label %a1

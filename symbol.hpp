@@ -151,7 +151,10 @@ class SymbolTable
 
 /* ---------------------------- CODE GENERATION TABLE ------------------------ */
 // should move this to .cpp 
-
+/*
+  this is a mess... should fix at some point 
+  maybe take a day after finishing everything to clean up code 
+*/
 class CodeGenEntry {
 public:
   int offset;
@@ -160,6 +163,7 @@ public:
   bool is_library_fun = false; 
   std::vector<PassMode> arguments; 
   std::vector<Stype> types; 
+  int nesting_level;
   Label* label;
   std::vector<GoTo*> goto_nodes;
   CodeGenEntry() {}
@@ -262,6 +266,7 @@ public:
     return  scopes.back().function;
   }
   int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
+  int getNumScopes() { return scopes.size();}
   int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE) { return scopes.back().insert(name, v, pb); }
 
 private:

@@ -173,9 +173,8 @@ void Program::compile_initalize()
         prepare_struct, maybe add this also as separate function and it will be OK.
         so we can add these after SetInsertPoint(BB);
     */
-    FunctionDef* f = new FunctionDef("main",new std::list<ParameterGroup*>(), typeVoid,0);
-    f->set_struct_ty();
-    ct.openScope(f);
+    main_obj->set_struct_ty();
+    ct.openScope(main_obj);
 
     // add external libraries 
     add_libs_llvm();
@@ -188,7 +187,7 @@ void Program::compile_initalize()
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",main);
     Builder.SetInsertPoint(BB);
     Builder.CreateCall(GC_Init, {});
-    f->hidden_struct = Builder.CreateAlloca(f->hidden_struct_ty, 0, "hidden_struct");
+    main_obj->hidden_struct = Builder.CreateAlloca(main_obj->hidden_struct_ty, 0, "hidden_struct");
 
 }
 
@@ -450,18 +449,20 @@ Value* Id::compile()
     if ( fun != nullptr && ((it = fun->requests.find(name)) != fun->requests.end())){
         DepenVar* v = it->second; 
         Value *hidden_struct = fun->hidden_struct;
-        std::vector<Value*> idxs(v->nesting_diff + 1, c_i32(0));
-        idxs.push_back(c_i32(v->struct_idx));
-        Value *pos = Builder.CreateGEP(hidden_struct, idxs);
-        val = Builder.CreateLoad(pos);
+        Value *pos = hidden_struct; 
+        for (int ii = 0 ; ii < v->nesting_diff ; ii ++){
+            pos = Builder.CreateGEP(pos, {c_i32(0),  c_i32(0)});
+            pos = Builder.CreateLoad(pos);
         }
+        val = Builder.CreateGEP(pos, {c_i32(0),  c_i32(v->struct_idx)});
+    }
     else {
         CodeGenEntry* entry = ct.lookup(name);
         val = entry->value;
     }    
-
     return val; 
 }
+
 
 Value* Result::compile()
 {
@@ -497,8 +498,33 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
 
     if (! f->is_library_fun){
         // push back our struct as first argument
+
+        // now fix our own dependencies
+        // by storing from the allocas we calculated 
         FunctionDef* fun = ct.get_fun();
-        param_values.push_back(fun->hidden_struct);
+        int number_load = fun->nesting_level - f->nesting_level  +1;
+        Value *ss; 
+        if (number_load > 0){
+            Value *hidden_struct = fun->hidden_struct;
+            Value *pos = hidden_struct; 
+            for (int ii = 0 ; ii < number_load ; ii ++){
+                pos = Builder.CreateGEP(pos, {c_i32(0),  c_i32(0)});
+                pos = Builder.CreateLoad(pos);
+            }  
+            ss = pos;           
+        }
+        else { 
+            for (auto const&  x : fun->provides){
+                Value *pos = Builder.CreateGEP(fun->hidden_struct, { c_i32(0), c_i32(x.second->struct_idx) });
+                Value * val = ct.lookup(x.second->name)->value;
+                val = Builder.CreateLoad(val);
+                Builder.CreateStore(val, pos);
+            }
+
+            ss = fun->hidden_struct; 
+        }
+
+        param_values.push_back(ss);
     }
 
     if (parameters != nullptr) {
@@ -650,22 +676,18 @@ Value* ParameterGroup::compile()
 
 void FunctionDef::set_struct_ty(){
 
-    StructType *parent_struct_ty;
+    Type *parent_struct_ty;
+    std::vector<Type*> deps; 
 
     if (static_parent == nullptr) 
         parent_struct_ty = StructType::get(TheContext, "empty");
     else  
         parent_struct_ty = static_parent->hidden_struct_ty;
-
-    std::vector<Type*> deps; 
-
-    // parent_struct is at first position 
-    deps.push_back(parent_struct_ty);
-
+    deps.push_back(PointerType::get(parent_struct_ty,0));
     for (auto d : provides){
         deps.push_back(TypeConvert(d.second->type));
     }
-    StructType* final_struct = StructType::get(TheContext,  deps);
+    Type* final_struct = StructType::create(TheContext,  deps, "anon");
     // save for later calls
     hidden_struct_ty = final_struct;
 
@@ -686,9 +708,11 @@ Value* FunctionDef::compile()
 
     set_struct_ty();
     // calculate or get my struct of hidden parameters 
-    StructType* my_struct = hidden_struct_ty;
-    // put it on the last position 
-    param_types.push_back(my_struct);
+    Type* my_struct = hidden_struct_ty;
+
+    // put parent's struct on the first position 
+
+    param_types.push_back(PointerType::get(static_parent->hidden_struct_ty,0));
     /*
         hidden params are only passed by reference 
         so we don't need to accoutn for the extra pointer 
@@ -725,6 +749,8 @@ Value* FunctionDef::compile()
     CodeGenEntry* f = ct.lookup(name);
     f->arguments = param_pass;
     f->types = sem_types; 
+    nesting_level = ct.getNumScopes();
+    f->nesting_level = nesting_level;
 
     // add only function for forward definitions
     if (body == nullptr) return nullptr;
@@ -764,16 +790,10 @@ Value* FunctionDef::compile()
 
     // first argument should be dads struct
     // add this as it is at first position 
-    Value *first_pos = Builder.CreateGEP(struct_value, {0, 0});    
-    Builder.CreateStore(first_pos, param_iter);
+    Value *first_pos = Builder.CreateGEP(struct_value, { c_i32(0), c_i32(0) });    
+    Builder.CreateStore(param_iter, first_pos);
 
-    // now fix our own dependencies
-    // by storing from the allocas we calculated 
-    for (auto const&  x : provides){
-        Value *pos = Builder.CreateGEP(struct_value, {0, c_i32(x.second->struct_idx) });
-        Value * val = ct.lookup(x.second->name)->value;
-        Builder.CreateStore(pos, val);
-    }
+
 
     // save struct for function calling
     

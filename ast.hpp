@@ -13,6 +13,8 @@
 #include <llvm/IR/Type.h>
 
 
+#include "llvm/Support/raw_ostream.h"
+
 // for garbage collection of malloc arrays 
 // add -lgc to lib flags 
 
@@ -104,48 +106,6 @@ class ParameterGroup : public Stmt {
 
 
 
-
-class Program
-{
-    private:
-        AST* rootNode;
-        std::string program_name;
-        bool optimize;
-        bool imm_stdout;
-        bool print_ast;
-
-        Function* main;
-
-        inline void add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args, std::vector<Stype> types);
-        void add_libs_llvm();
-
-        inline std::list<ParameterGroup*>* make_single_parameter(Stype type, PassMode pm);
-        void add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters);
-    
-    public:
-        // Program(std::string name, AST* root) : program_name(name), rootNode(root), optimize(false), imm_stdout(false) {}
-        Program() : optimize(false), imm_stdout(false), print_ast(false) {}
-
-        void mark_optimizable(bool on=true);
-        void mark_console_interactive(bool dump=true);
-        void mark_printable(bool mark=true);
-
-        bool is_console_interactive();
-
-        void set_name_if_blank(std::string name);
-
-        void attach_AST(AST* root);
-
-        void semantic_initialize();
-        void semantic_run();
-        void semantic_finalize();
-
-            
-
-        void compile_initalize();
-        void compile_run();
-        void compile_finalize();
-};
 
 
 
@@ -459,9 +419,10 @@ class FunctionDef : public Stmt {
 
         std::map< std::string, DepenVar*> requests;
         std::map< std::string, DepenVar*> provides; 
-        StructType *hidden_struct_ty = nullptr; 
+        Type *hidden_struct_ty = nullptr; 
         FunctionDef *static_parent = nullptr;
         Value* hidden_struct; 
+        int nesting_level; 
 
 
 };
@@ -596,3 +557,49 @@ class DisposeArray : public Stmt {
         Value* compile(); 
 };
 
+
+
+
+
+class Program
+{
+    private:
+        AST* rootNode;
+        std::string program_name;
+        bool optimize;
+        bool imm_stdout;
+        bool print_ast;
+
+        Function* main;
+
+        inline void add_func_llvm(FunctionType *type, std::string name, std::vector<PassMode> args, std::vector<Stype> types);
+        void add_libs_llvm();
+
+        inline std::list<ParameterGroup*>* make_single_parameter(Stype type, PassMode pm);
+        void add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters);
+    
+    public:
+        // Program(std::string name, AST* root) : program_name(name), rootNode(root), optimize(false), imm_stdout(false) {}
+        Program() : optimize(false), imm_stdout(false), print_ast(false) {}
+        FunctionDef* main_obj; 
+
+        void mark_optimizable(bool on=true);
+        void mark_console_interactive(bool dump=true);
+        void mark_printable(bool mark=true);
+
+        bool is_console_interactive();
+
+        void set_name_if_blank(std::string name);
+
+        void attach_AST(AST* root);
+
+        void semantic_initialize();
+        void semantic_run();
+        void semantic_finalize();
+
+            
+
+        void compile_initalize();
+        void compile_run();
+        void compile_finalize();
+};
