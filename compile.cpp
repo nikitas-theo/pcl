@@ -454,7 +454,8 @@ Value* Id::compile()
             pos = Builder.CreateGEP(pos, {c_i32(0),  c_i32(0)});
             pos = Builder.CreateLoad(pos);
         }
-        val = Builder.CreateGEP(pos, {c_i32(0),  c_i32(v->struct_idx)});
+        pos = Builder.CreateGEP(pos, {c_i32(0),  c_i32(v->struct_idx)});
+        val = Builder.CreateLoad(pos);
     }
     else {
         CodeGenEntry* entry = ct.lookup(name);
@@ -517,7 +518,6 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
             for (auto const&  x : fun->provides){
                 Value *pos = Builder.CreateGEP(fun->hidden_struct, { c_i32(0), c_i32(x.second->struct_idx) });
                 Value * val = ct.lookup(x.second->name)->value;
-                val = Builder.CreateLoad(val);
                 Builder.CreateStore(val, pos);
             }
 
@@ -673,19 +673,21 @@ Value* ParameterGroup::compile()
 }
 
 
-
 void FunctionDef::set_struct_ty(){
 
     Type *parent_struct_ty;
-    std::vector<Type*> deps; 
+    std::vector<Type*> deps(provides.size()+1); 
 
     if (static_parent == nullptr) 
         parent_struct_ty = StructType::get(TheContext, "empty");
     else  
         parent_struct_ty = static_parent->hidden_struct_ty;
-    deps.push_back(PointerType::get(parent_struct_ty,0));
+    deps[0] = PointerType::get(parent_struct_ty,0);
     for (auto d : provides){
-        deps.push_back(TypeConvert(d.second->type));
+        // add an extra pointer everything is by ref
+        deps[d.second->struct_idx] =
+            PointerType::get(
+            TypeConvert(d.second->type), 0);
     }
     Type* final_struct = StructType::create(TheContext,  deps, "anon");
     // save for later calls

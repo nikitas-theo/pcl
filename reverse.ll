@@ -1,7 +1,7 @@
 ; ModuleID = 'reverse'
 source_filename = "reverse"
 
-%anon = type { <{}>*, [32 x i8] }
+%anon = type { <{}>*, [32 x i8]* }
 %anon.0 = type { %anon* }
 %anon.1 = type { %anon* }
 
@@ -68,8 +68,7 @@ entry:
   %hidden_struct = alloca %anon
   %r = alloca [32 x i8]
   %0 = getelementptr %anon, %anon* %hidden_struct, i32 0, i32 1
-  %1 = load [32 x i8], [32 x i8]* %r
-  store [32 x i8] %1, [32 x i8]* %0
+  store [32 x i8]* %r, [32 x i8]** %0
   call void @reverse(%anon* %hidden_struct, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str, i32 0, i32 0))
   %bitcast_special_ref = bitcast [32 x i8]* %r to i8*
   call void @writeString(i8* %bitcast_special_ref)
@@ -129,25 +128,27 @@ endloop:                                          ; preds = %loop
   %7 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
   %8 = load %anon*, %anon** %7
   %9 = getelementptr %anon, %anon* %8, i32 0, i32 1
+  %10 = load [32 x i8]*, [32 x i8]** %9
   %arrAcc7 = load i32, i32* %i
-  %10 = sext i32 %arrAcc7 to i64
-  %arrayIdx8 = getelementptr [32 x i8], [32 x i8]* %9, i64 0, i64 %10
+  %11 = sext i32 %arrAcc7 to i64
+  %arrayIdx8 = getelementptr [32 x i8], [32 x i8]* %10, i64 0, i64 %11
   store i8 0, i8* %arrayIdx8
   ret void
 
 body:                                             ; preds = %loop
-  %11 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
-  %12 = load %anon*, %anon** %11
-  %13 = getelementptr %anon, %anon* %12, i32 0, i32 1
+  %12 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  %13 = load %anon*, %anon** %12
+  %14 = getelementptr %anon, %anon* %13, i32 0, i32 1
+  %15 = load [32 x i8]*, [32 x i8]** %14
   %arrAcc = load i32, i32* %i
-  %14 = sext i32 %arrAcc to i64
-  %arrayIdx = getelementptr [32 x i8], [32 x i8]* %13, i64 0, i64 %14
+  %16 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr [32 x i8], [32 x i8]* %15, i64 0, i64 %16
   %binop_l1 = load i32, i32* %l
   %binop_r2 = load i32, i32* %i
   %addtmp = sub i32 %binop_l1, %binop_r2
   %addtmp3 = sub i32 %addtmp, 1
-  %15 = sext i32 %addtmp3 to i64
-  %arrayIdx4 = getelementptr i8, i8* %1, i64 %15
+  %17 = sext i32 %addtmp3 to i64
+  %arrayIdx4 = getelementptr i8, i8* %1, i64 %17
   %assign = load i8, i8* %arrayIdx4
   store i8 %assign, i8* %arrayIdx
   %binop_l5 = load i32, i32* %i
