@@ -1,22 +1,22 @@
 program yes_and_no;
 
-forward procedure no();
-forward procedure yes();
+forward procedure no(x : integer);
+forward procedure yes(x : integer);
 
-var x : integer;
-
-procedure yes();
+procedure yes(x : integer);
 begin
+    if x = 0 then return;
     writeString("YES");
-    no();
+    no(x-1);
 end;
 
-procedure no();
+procedure no(x : integer);
 begin
+    if x = 0 then return;
     writeString("NO");
-    yes();
+    yes(x-1);
 end;
 
 begin
-    yes();
+    yes(10);
 end.

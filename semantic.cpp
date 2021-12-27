@@ -7,7 +7,7 @@ SymbolTable st;
 
 void Program::add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters=nullptr)
 {
-    FunctionEntry* f = new FunctionEntry(name);
+    FunctionEntry* f = new FunctionEntry(name, nullptr);
     f->pardef = PARDEF_COMPLETE;
     if (parameters != nullptr)
         f->arguments = *parameters;
@@ -227,8 +227,7 @@ void Const::semantic() /* override */
     /* empty */
 }
 
-
-
+// should merge at some point
 void CallProc::semantic() /* override */
 {
 
@@ -272,8 +271,11 @@ void CallProc::semantic() /* override */
 
             if (pm == PASS_BY_VALUE) 
                 condition = p->type->is_compatible_with(e->type);
-            else 
+            else {
+                if (! e->lvalue) error("Cannot match r-value expression with parameter defined var (by reference)");
                 condition = typePointer(p->type)->is_compatible_with(typePointer(e->type)); 
+            }                
+
 
             if ( !condition)
                 error("Parameter ", p->name, " has type ", p->type, " which is incompatible with ", e->type);
@@ -324,9 +326,10 @@ void CallFunc::semantic() /* override */
 
             if (pm == PASS_BY_VALUE) 
                 condition = p->type->is_compatible_with(e->type);
-            else 
+            else {
+                if (! e->lvalue) error("Cannot match r-value expression with parameter defined var (by reference)");
                 condition = typePointer(p->type)->is_compatible_with(typePointer(e->type)); 
-
+            }
             if ( !condition)
                 error("Parameter ", p->name, " has type ", p->type, " which is incompatible with ", e->type);
         }
@@ -433,15 +436,23 @@ void FunctionDef::semantic() /* override */
 {
     FunctionEntry* f = st.lookupFunction(name, LOOKUP_CURRENT_SCOPE);
     SymbolEntry* e = st.lookupEntry(name , LOOKUP_CURRENT_SCOPE);
+    
+    // need to save have the forward declaration (if exists)
+    // for the final openScope(..)
+    FunctionDef* forward; 
+    
     if (e != nullptr  && e->entryType != ENTRY_FUNCTION) 
         error("Name \"",name,"\" already exists in scope");
     // if function was seen for the first time, just DEFINE
     if (f == nullptr) {
-        f = new FunctionEntry(name);
+        f = new FunctionEntry(name, this);
         f->pardef = PARDEF_DEFINE;
         st.addEntry(f);
+        forward = nullptr;
     }
-
+    else { 
+        forward = f->function;
+    }
     switch (f->pardef) {
         // add parameters given in the definition
         case PARDEF_DEFINE:
@@ -499,7 +510,7 @@ void FunctionDef::semantic() /* override */
     // else completely define function and be done 
     else {
      
-        st.openScope(this);
+        st.openScope(this, forward);
 
         if (!type->equals(typeVoid))
             st.addEntry(new VariableEntry("result", type));
@@ -612,7 +623,7 @@ void Dispose::semantic() /* override */
 void DisposeArray::semantic() /* override */
 {
     lval->semantic();
-
+ 
     bool cc = lval->type->kind == TYPE_POINTER && (lval->type->refType->kind == TYPE_ARRAY || lval->type->refType->kind == TYPE_IARRAY);
 
     if (!cc)

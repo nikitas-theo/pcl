@@ -1,2 +1,3 @@
-ERROR in line 4:
-Function g does not exist in current scope.
+warning: overriding the module target triple with x86_64-pc-linux-gnu [-Woverride-module]
+1 warning generated.
+SEMANTIC CORRECT

@@ -1,7 +1,7 @@
 program powergauss;
-forward function gauss (var x, p: integer) : integer;
+forward function gauss (x, p: integer) : integer;
 
-function gauss (var x, p : integer) : integer;
+function gauss (x, p : integer) : integer;
     var temp : integer;
 begin
     if p = 0 then

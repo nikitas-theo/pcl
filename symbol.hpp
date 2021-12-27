@@ -89,8 +89,8 @@ class FunctionEntry : public SymbolEntry
         std::list<ParameterGroup *> arguments;
 
         Stype resultType;
-
-        FunctionEntry(String name) : SymbolEntry(name, ENTRY_FUNCTION) {}
+        FunctionDef* function;
+        FunctionEntry(String name, FunctionDef* function) : SymbolEntry(name, ENTRY_FUNCTION) , function(function) {}
 
         ~FunctionEntry();
 };
@@ -129,7 +129,7 @@ class SymbolTable
 
         // void Initialize();
 
-        void openScope(FunctionDef*);
+        void openScope(FunctionDef* f, FunctionDef* forward = nullptr);
 
         void closeScope();
 
@@ -204,7 +204,7 @@ class CodeGenTable {
     void openScope(FunctionDef *fun);
     void closeScope();
 
-    CodeGenEntry *lookup(std::string name);
+    CodeGenEntry *lookup(std::string name, LookupType lookup = LOOKUP_ALL_SCOPES);
 
     void addToLabel(std::string label, GoTo* g);
     void addLabel(std::string label);

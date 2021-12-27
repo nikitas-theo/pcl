@@ -71,15 +71,19 @@ SymbolTable::~SymbolTable()
     }
 }
 
-void SymbolTable::openScope(FunctionDef* function)
+void SymbolTable::openScope(FunctionDef* function, FunctionDef* forward)
 {
     Scope *s = new Scope();
     s->nestingLevel = scopeStack.empty() ? 0 : currentScope->nestingLevel + 1;
     scopeStack.push_back(s);
     s->function = function;  
     // if this isn't the Main scope
-    if (currentScope != nullptr) 
+    if (currentScope != nullptr){
         s->function->static_parent = currentScope->function ;
+        // need to do this fix, because in compile of forward def we need to have parent struct 
+        if (forward != nullptr)
+            forward->static_parent = currentScope->function ;
+    }
     currentScope = s;
 }
 
@@ -128,7 +132,7 @@ SymbolEntry* SymbolTable::lookupEntry(String id, LookupType lookup)
 VariableEntry* SymbolTable::lookupVariable(String id, LookupType lookup)
 {
     SymbolEntry *e;
-    if ( (e = currentScope->lookupEntry(id)) != nullptr )
+    if ( (e = currentScope->lookupEntry(id)) != nullptr  && e->entryType == ENTRY_VARIABLE)
         return (VariableEntry*) e; 
 
     int nesting_diff; 
@@ -136,7 +140,7 @@ VariableEntry* SymbolTable::lookupVariable(String id, LookupType lookup)
 
     if (lookup == LOOKUP_CURRENT_SCOPE) return nullptr;             
         for (auto it = scopeStack.rbegin(); it != scopeStack.rend(); ++it) {                
-                if ( (e = (*it)->lookupEntry(id)) != nullptr ){
+                if ( (e = (*it)->lookupEntry(id)) != nullptr && e->entryType == ENTRY_VARIABLE){
                     nesting_diff =  currentScope->nestingLevel - (*it)->nestingLevel;
                     VariableEntry* v = (VariableEntry*) e; 
                     struct_idx = (*it)->function->add_provide(id, v->type);
@@ -196,17 +200,32 @@ void CodeGenTable::closeScope() {
     scopes.pop_back(); 
     };
 
-CodeGenEntry * CodeGenTable::lookup(std::string name) {
+CodeGenEntry * CodeGenTable::lookup(std::string name, LookupType lookup) {
 
     CodeGenEntry *e;
 
-    for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
-        e = i->lookup(name);
-        if (e != nullptr) return e;
-    }    
+    switch (lookup)
+    {
+        case LOOKUP_CURRENT_SCOPE:
+        {
+            CodeGenScope currentScope = scopes.back();
+            if ( (e = currentScope.lookup(name)) != nullptr )
+                return e;
+            break;
+        }        
+        case LOOKUP_ALL_SCOPES:
+        {
+            for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
+                e = i->lookup(name);
+                if (e != nullptr) return e;
+            }    
+            break;
+        }
+    }
 
-    return e; 
+    return nullptr;
 }
+
 
 void CodeGenTable::addToLabel(std::string label, GoTo* g){
     CodeGenEntry *l = lookup(label);

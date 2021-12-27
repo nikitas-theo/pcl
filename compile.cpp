@@ -177,10 +177,11 @@ void Program::compile_initalize()
         so we can add these after SetInsertPoint(BB);
     */
     main_obj->set_struct_ty();
-    ct->openScope(main_obj);
 
+    ct->openScope(nullptr);
     // add external libraries 
     add_libs_llvm();
+    ct->openScope(main_obj);
 
     // add main 
     main = Function::Create(
@@ -496,23 +497,23 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
     // parameters : from the call 
     // arguments - pasMode  : from definitin
     // sem_types - types    : from definition
-    CodeGenEntry* f = (CodeGenEntry *) ct->lookup(fname); 
-    Value* func = f->value;
+    CodeGenEntry* called = (CodeGenEntry *) ct->lookup(fname); 
+    Value* func = called->value;
     
-    std::vector<PassMode> arguments = f->arguments;
-    std::vector<Stype> sem_types = f->types;
+    std::vector<PassMode> arguments = called->arguments;
+    std::vector<Stype> sem_types = called->types;
     std::vector<Value*> param_values;
 
-    if (! f->is_library_fun){
+    if (! called->is_library_fun){
         // push back our struct as first argument
 
         // now fix our own dependencies
         // by storing from the allocas we calculated 
-        FunctionDef* fun = ct->get_fun();
-        int number_load = fun->nesting_level - f->nesting_level  +1;
+        FunctionDef* caller = ct->get_fun();
+        int number_load = caller->nesting_level - called->nesting_level  +1;
         Value *ss; 
         if (number_load > 0){
-            Value *hidden_struct = fun->hidden_struct;
+            Value *hidden_struct = caller->hidden_struct;
             Value *pos = hidden_struct; 
             for (int ii = 0 ; ii < number_load ; ii ++){
                 pos = Builder.CreateGEP(pos, {c_i32(0),  c_i32(0)});
@@ -521,13 +522,13 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
             ss = pos;           
         }
         else { 
-            for (auto const&  x : fun->provides){
-                Value *pos = Builder.CreateGEP(fun->hidden_struct, { c_i32(0), c_i32(x.second->struct_idx) });
+            for (auto const&  x : caller->provides){
+                Value *pos = Builder.CreateGEP(caller->hidden_struct, { c_i32(0), c_i32(x.second->struct_idx) });
                 Value * val = ct->lookup(x.second->name)->value;
                 Builder.CreateStore(val, pos);
             }
 
-            ss = fun->hidden_struct; 
+            ss = caller->hidden_struct; 
         }
 
         param_values.push_back(ss);
@@ -703,67 +704,75 @@ void FunctionDef::set_struct_ty(){
 
 
 // single for both func and proc
-/*
-    need to account for forward declarations here
-    seems like I have mostly forgotten
-*/
 Value* FunctionDef::compile() 
 {
 
-
-
+    // this is important for overriding functions, e.g. override writeString()
+    CodeGenEntry* f = ct->lookup(name, LOOKUP_CURRENT_SCOPE);
+    // first time defining 
     Function *routine;
-    BasicBlock* parentBB = Builder.GetInsertBlock();
-    std::vector<Type*> param_types; 
-    std::vector<Stype> sem_types; 
-    std::vector<PassMode> param_pass;
+ 
+    if (f == nullptr){
+        std::vector<Type*> param_types; 
+        std::vector<Stype> sem_types; 
+        std::vector<PassMode> param_pass;
 
-    set_struct_ty();
-    // calculate or get my struct of hidden parameters 
-    Type* my_struct = hidden_struct_ty;
 
-    // put parent's struct on the first position 
+        // put parent's struct on the first position 
 
-    param_types.push_back(PointerType::get(static_parent->hidden_struct_ty,0));
+        param_types.push_back(PointerType::get(static_parent->hidden_struct_ty,0));
 
-    for (ParameterGroup* param : parameters){
-        // by reference passing is just adding a pointer
-        Stype t = param->type;
-        Type *internal_t = TypeConvert(t);
-        if (param->pmode == PASS_BY_REFERENCE){
-            internal_t = PointerType::get(internal_t,0);            
-        }                         
-        for (std::string name : param->names){
-             param_types.push_back(internal_t) ;
-             param_pass.push_back(param->pmode);
-             sem_types.push_back(t);
+        for (ParameterGroup* param : parameters){
+            // by reference passing is just adding a pointer
+            Stype t = param->type;
+            Type *internal_t = TypeConvert(t);
+            if (param->pmode == PASS_BY_REFERENCE){
+                internal_t = PointerType::get(internal_t,0);            
+            }                         
+            for (std::string name : param->names){
+                param_types.push_back(internal_t) ;
+                param_pass.push_back(param->pmode);
+                sem_types.push_back(t);
+            }
+
         }
+
+
+        FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
+        routine = Function::Create(Ftype,
+            Function::ExternalLinkage,name,TheModule
+        );
+        // insert function in current scope 
+        ct->insert(name,routine);
+        f = ct->lookup(name);
+        f->arguments = param_pass;
+        f->types = sem_types; 
+
+        // also here 
+        nesting_level = ct->getNumScopes();
+
+        f->nesting_level = nesting_level;
 
     }
 
-
-    FunctionType* Ftype =  FunctionType::get(TypeConvert(type),param_types,false);
-    routine = Function::Create(Ftype,
-        Function::ExternalLinkage,name,TheModule
-    );
-    // insert function in current scope 
-    ct->insert(name,routine);
-    CodeGenEntry* f = ct->lookup(name);
-    f->arguments = param_pass;
-    f->types = sem_types; 
+    // important, need to do this in both forward and body declaration
     nesting_level = ct->getNumScopes();
-    f->nesting_level = nesting_level;
 
     // add only function for forward definitions
     if (body == nullptr) return nullptr;
-
-
+    // know this is a function 
+    routine = (Function*) f->value; 
+    BasicBlock* parentBB = Builder.GetInsertBlock();
+    set_struct_ty();
+    // calculate or get my struct of hidden parameters 
+    Type* my_struct = hidden_struct_ty;
 
     //create a new basic block 
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
     // create a new scope
     ct->openScope(this);
+
     auto param_iter = routine->arg_begin(); 
     // first position is struct
     param_iter++;
@@ -808,6 +817,8 @@ Value* FunctionDef::compile()
         Value* value = Builder.CreateAlloca(TypeConvert(type), 0, "result");
         ct->insert("result",value);
     }
+
+
     body->compile(); 
     if (! BBended){   
         if (! type->equals(typeVoid)){

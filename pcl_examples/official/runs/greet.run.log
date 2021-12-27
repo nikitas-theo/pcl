@@ -1,1 +1,5 @@
-bash: ./greet.out: No such file or directory
+Enter name len : 4
+
+4
+Hello: 4
+

@@ -1,6 +1,6 @@
 program powernaive;
-    forward function pow(var x, p: integer) : integer;
-    function pow(var x, p: integer) : integer;
+    forward function pow( x, p: integer) : integer;
+    function pow( x, p: integer) : integer;
     begin
         if p = 0 then
         begin

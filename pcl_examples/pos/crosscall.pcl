@@ -1,15 +1,31 @@
 program crosscall;
-forward procedure g();
-procedure f();
+forward procedure g(x : integer);
+
+procedure correct();
+begin 
+  writeString("\n---------\n10987654321Stop\n");
+end; 
+
+procedure f(x : integer);
 begin
-  g();
+  if x = 0 then writeString("Stop")
+  else writeInteger(x);
+  if x = 0 then return;
+  g(x-1);
+
 end;
 
-procedure g();
+procedure g(x : integer);
 begin
-  f();
+  if x = 0 then writeString("Stop")
+  else writeInteger(x);
+  if x = 0 then return;
+  f(x-1)
+  
+
 end;
 
 begin
-  f();
+  f(10);
+  correct()
 end.
