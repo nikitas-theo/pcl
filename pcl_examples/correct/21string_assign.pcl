@@ -1,0 +1,8 @@
+program solve;
+    var x : array [3] of char; 
+    var z: ^array of char;
+    begin
+        x := "42"; 
+        z := @x; 
+        writeString(z^);
+    end.

@@ -1,0 +1,9 @@
+program main;
+
+   function f (x : integer) : integer; begin result := x+1 end;
+   function f (x : integer) : integer; begin result := x+2 end;
+
+begin
+   writeInteger(f(3));
+   writeString("\nthis program is wrong!!!\n")
+end.

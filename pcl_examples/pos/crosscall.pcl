@@ -1,0 +1,15 @@
+program crosscall;
+forward procedure g();
+procedure f();
+begin
+  g();
+end;
+
+procedure g();
+begin
+  f();
+end;
+
+begin
+  f();
+end.

@@ -1,0 +1,15 @@
+program samnst;
+
+   procedure a1 ();
+      procedure b (); begin writeInteger(4) end;
+   begin b() end;
+
+   procedure a2 ();
+      procedure b (); begin writeInteger(2) end;
+   begin b() end;
+
+begin
+   a1();
+   a2();
+   writeString("\n")
+end.

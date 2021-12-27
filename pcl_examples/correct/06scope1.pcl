@@ -1,0 +1,14 @@
+program solve;
+    var z : integer; 
+    procedure x();        
+        var e : integer; 
+        begin
+            e := z + 2; 
+            z := e; 
+        end;
+
+    begin     
+        z := 40; 
+        x();
+        writeInteger(42);
+    end.

@@ -53,7 +53,22 @@ void Program::semantic_initialize()
     add_lib_func_semantic("readChar", typeChar);
     add_lib_func_semantic("readReal", typeReal);
     add_lib_func_semantic("readBoolean", typeBoolean);
-    add_lib_func_semantic("readString", typePointer(typeIArray(typeChar)));
+
+    
+    std::list<ParameterGroup*> *readString_group = new std::list<ParameterGroup*> {
+        new ParameterGroup (
+            { "" },
+            typeInteger,
+            PASS_BY_VALUE,
+            0),
+        new ParameterGroup (
+            { "" },
+            typeIArray(typeChar),
+            PASS_BY_REFERENCE,
+            0)
+    };
+
+    add_lib_func_semantic("readString", typeVoid, readString_group);
 
     add_lib_func_semantic("abs", typeInteger, make_single_parameter(typeInteger, PASS_BY_VALUE));
     add_lib_func_semantic("fabs", typeReal, make_single_parameter(typeReal, PASS_BY_VALUE));
@@ -69,8 +84,8 @@ void Program::semantic_initialize()
     add_lib_func_semantic("ord", typeInteger, make_single_parameter(typeChar, PASS_BY_VALUE));
     add_lib_func_semantic("chr", typeChar, make_single_parameter(typeInteger, PASS_BY_VALUE));
 
-    add_lib_func_semantic("trunc", typeReal, make_single_parameter(typeInteger, PASS_BY_VALUE));
-    add_lib_func_semantic("round", typeReal, make_single_parameter(typeInteger, PASS_BY_VALUE));
+    add_lib_func_semantic("trunc", typeInteger, make_single_parameter(typeReal, PASS_BY_VALUE));
+    add_lib_func_semantic("round", typeInteger, make_single_parameter(typeReal, PASS_BY_VALUE));
 
     /* Prepare global program scope */
     FunctionDef *f = new FunctionDef("main",new std::list<ParameterGroup*>(), typeVoid,0);

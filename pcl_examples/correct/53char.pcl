@@ -1,0 +1,7 @@
+program ch;
+   var c : char;
+begin
+   c := chr(42);
+   writeInteger(ord(c));
+   writeChar(chr(10))
+end.

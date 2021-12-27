@@ -1,0 +1,13 @@
+program main;
+   var a : array [10] of integer;
+       i : integer;
+begin
+   i := 0;
+   while i < 10 do
+   begin
+      a[i] := i * (i + 1);
+      i := i + 1
+   end;
+   writeInteger(a[6]);
+   writeString("\n")
+end.

@@ -1,0 +1,6 @@
+program main;
+   var a, b, c : integer;
+begin
+   c := a > b;
+   writeString("\nThis program is wrong!\n")
+end.

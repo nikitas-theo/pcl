@@ -11,7 +11,8 @@ lexer.cpp
 
 # all object files
 *.o
-
+*.ll
+*.out
 # ignore test and dev files
 *_test.*
 *_dev*

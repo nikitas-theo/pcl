@@ -1,0 +1,6 @@
+program main;
+   var a : boolean;
+begin
+   a := '\xWW';
+   writeString("\nThis program is wrong!\n")
+end.

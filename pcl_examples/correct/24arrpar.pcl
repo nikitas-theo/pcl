@@ -1,0 +1,16 @@
+program main;
+
+   procedure reverse (var s, r : array of char; c : char);
+   begin
+      if true then writeChar(c)
+      else if false then writeChar(s[0])
+      else writeChar(r[0])
+   end;
+
+   var p, s : array [20] of char;
+
+begin
+   reverse(s, p, '4');
+   reverse("Hello", p, '2');
+   reverse(p, "Hello", '\n')
+end.

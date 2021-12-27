@@ -2,7 +2,7 @@
 
 #include <list>
 #include <string>
-
+#include <iostream>
 // Stype for llvm::Type disambiguation 
 typedef enum 
 {                       
@@ -15,6 +15,8 @@ typedef enum
    TYPE_IARRAY, 
    TYPE_POINTER
 } OfType;
+
+
 
 class SemanticType
 {
@@ -84,3 +86,37 @@ extern Stype typeVoid;
 extern Stype typeIArray(Stype refType);
 extern Stype typeArray(int size,Stype refType);
 extern Stype typePointer(Stype refType);
+
+
+
+inline std::ostream& operator<<(std::ostream& os, const Stype t) {
+    switch (t->kind)
+    {
+        case TYPE_ARRAY:
+            os << "array[" << t->size << "] of " << t->refType;
+            break;
+        case TYPE_BOOLEAN:
+            os << "bool";
+            break;
+        case TYPE_CHAR:
+            os << "char";
+            break;
+        case TYPE_IARRAY:
+            os << "array of " << t->refType;
+            break;
+        case TYPE_INTEGER:
+            os << "int";
+            break;
+        case TYPE_POINTER:
+            os << "pointer on " << t->refType;
+            break;
+        case TYPE_REAL:
+            os << "real";
+            break;
+        case TYPE_VOID:
+            os << "void";
+            break;
+    }
+    return os;
+}
+

@@ -1,0 +1,8 @@
+program arr;
+   var a : array [32] of integer;
+begin
+   a[0] := 14;
+   a[24] := 28;
+   writeInteger(a[0] + a[24]);
+   writeString("\n")
+end.

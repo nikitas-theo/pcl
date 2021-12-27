@@ -1,0 +1,2 @@
+ERROR in line 11:
+Parameter  has type array of char which is incompatible with pointer on array of char

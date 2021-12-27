@@ -1,0 +1,30 @@
+program divis;
+   var n, lcv : integer;
+       flag : boolean;
+begin
+   writeString("Number to find the divisors of: ");
+   n := readInteger();
+   lcv := 2;
+   flag := true;
+   while lcv <= n div 2 do
+   begin
+      if n mod lcv = 0 then
+      begin
+         if flag then
+         begin
+            writeString("The non-trivial divisors of ");
+            writeInteger(n);
+            writeString(" are: \n")
+         end;
+         flag := false;
+         writeInteger(lcv);
+         writeChar('\n')
+      end;
+      lcv := lcv + 1
+   end;
+   if flag then
+   begin
+      writeInteger(n);
+      writeString(" is prime\n")
+   end
+end.

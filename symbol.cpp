@@ -1,5 +1,5 @@
 #include "symbol.hpp"
-#include "helpers.hpp"
+#include "ast.hpp"
 
 // why are types here? for some include reason
 Stype typeInteger = new SemanticType(TYPE_INTEGER,nullptr,0);
@@ -174,4 +174,78 @@ FunctionEntry* SymbolTable::lookupFunction(String id, LookupType lookup)
         return nullptr;
     }
     
+}
+
+
+
+
+
+void CodeGenTable::openScope(FunctionDef *fun) {
+
+    int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
+
+    scopes.push_back(CodeGenScope(ofs));
+    scopes.back().function = fun;
+}
+
+void CodeGenTable::closeScope() { 
+    for (std::string l : scopes.back().label_names){
+        CodeGenEntry *e = lookup(l);
+        for (GoTo * g : e->goto_nodes) g->compile_final(e->label);
+    }
+    scopes.pop_back(); 
+    };
+
+CodeGenEntry * CodeGenTable::lookup(std::string name) {
+
+    CodeGenEntry *e;
+
+    for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
+        e = i->lookup(name);
+        if (e != nullptr) return e;
+    }    
+
+    return e; 
+}
+
+void CodeGenTable::addToLabel(std::string label, GoTo* g){
+    CodeGenEntry *l = lookup(label);
+    l->goto_nodes.push_back(g);
+}
+
+void CodeGenTable::addLabel(std::string label){
+    scopes.back().label_names.push_back(label);
+}
+
+FunctionDef * CodeGenTable::get_fun(){
+    return  scopes.back().function;
+}
+
+int CodeGenTable::getSizeOfCurrentScope() { 
+    return scopes.back().getSize(); 
+}
+
+int CodeGenTable::getNumScopes() { 
+    return scopes.size();
+}
+
+int CodeGenTable::insert(std::string name, llvm::Value* v,PassMode pb) { 
+    return scopes.back().insert(name, v, pb); 
+}
+
+
+CodeGenEntry * CodeGenScope::lookup(std::string name) {
+
+    if (locals.find(name) == locals.end()) return nullptr;
+    return &(locals[name]);
+}
+int CodeGenScope::insert(std::string name, llvm::Value* v, PassMode pb) {
+
+    if (locals.find(name) != locals.end()) {
+        return 1;
+    }
+    locals[name] = CodeGenEntry(v, offset++,pb);
+    ++size;
+
+    return 0; 
 }

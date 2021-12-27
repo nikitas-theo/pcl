@@ -1,0 +1,25 @@
+program main;
+
+   procedure correct();
+   begin
+      writeString("\n---\n");
+      writeString("truefalsetruefalsefalse\n")
+   end;
+
+   function lala (a : boolean; var b : boolean) : boolean;
+   begin
+      result := a and b
+   end;
+
+   var a, b : boolean;
+
+begin
+   a := true;
+   b := false;
+   writeBoolean(true);
+   writeBoolean(false);
+   writeBoolean(a);
+   writeBoolean(b);
+   writeBoolean(lala(false, a));
+   correct()
+end.

@@ -1,0 +1,25 @@
+program primes;
+   var n, p, t, c : integer;
+begin
+   writeString("Limit: ");
+   n := readInteger();
+   c := 1;
+   writeInteger(2);
+   p := 3;
+   writeString("\n");
+   while p < n do
+   begin
+      t := 3;
+      while p mod t <> 0 do
+         t := t + 2;
+      if p = t then
+      begin
+         writeInteger(p);
+         writeString("\n");
+         c := c + 1
+      end;
+      p := p + 2
+   end;
+   writeInteger(c);
+   writeString(" prime number(s) found.\n")
+end.

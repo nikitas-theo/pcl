@@ -1,6 +1,0 @@
-program solve;
-    var z : integer;
-    begin
-        z := 4;
-        writeInteger(z);
-    end.

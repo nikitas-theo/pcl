@@ -1,0 +1,25 @@
+program difvars;
+
+   var a, b : integer;
+
+   procedure p1 ();
+      var b, x, y : integer;
+   begin
+      x:=9991;  y:=9992;  a:=4;  b:=9993
+   end;
+
+   procedure p2 ();
+      var a, x, y : integer;
+   begin
+      x:=9994;  y:=9995;  a:=9996;  b:=2
+   end;
+
+begin
+   a:=7;
+   b:=8;
+   p1();
+   p2();
+   writeInteger(a);
+   writeInteger(b);
+   writeString("\n")
+end.

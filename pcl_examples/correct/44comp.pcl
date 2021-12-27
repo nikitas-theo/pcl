@@ -1,0 +1,16 @@
+program comp;
+
+   procedure correct ();
+   begin
+      writeString("\n---\n");
+      writeString("236710\n")
+   end;
+
+begin
+   if not (3 > 2) then writeInteger(1) else writeInteger(2);
+   if not not (3 > 2) then writeInteger(3) else writeInteger(4);
+   if not (3 < 7) then writeInteger(5) else writeInteger(6);
+   if not ((3 > 2) and (3 < 2)) then writeInteger(7) else writeInteger(8);
+   if (3 < 2) and (3 > 2) and (3 < 2) then writeInteger(9) else writeInteger(10);
+   correct ()
+end.

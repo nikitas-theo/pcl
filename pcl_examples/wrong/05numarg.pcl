@@ -1,0 +1,15 @@
+program main;
+
+   procedure narg (a, b : integer);
+   begin
+      writeInteger(a+b);
+      writeString("\nthis program is wrong!!!\n")
+   end;
+
+   var i : integer;
+
+begin
+   i := 5;
+   narg(i);
+   writeString("\nthis program is wrong!!!\n")
+end.

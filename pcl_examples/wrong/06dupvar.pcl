@@ -1,0 +1,7 @@
+program main;
+   var a, b, a : integer;
+begin
+   a := 1;
+   writeInteger(a);
+   writeString("\nthis program is wrong!!!\n")
+end.

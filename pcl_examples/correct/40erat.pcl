@@ -1,0 +1,36 @@
+program erat;
+
+   var count, i, n : integer;
+       mark : array [1001] of boolean;
+
+begin
+   count := 0;
+   
+   i := 0;
+   while i <= 1000 do
+   begin
+      mark[i] := true;
+      i := i+1
+   end;
+
+   n:=2;
+   while n <= 1000 do
+   begin
+      if mark[n] then
+      begin
+         count := count+1;
+         writeInteger(n);
+         writeString("\t");
+         i:=n;
+         while i <= 1000 do
+         begin
+            mark[i] := false;
+            i := i+n
+         end
+      end;
+      n:=n+1
+   end;
+   writeString("\n\n");
+   writeInteger(count);
+   writeString(" prime number(s) found\n")
+end.

@@ -29,7 +29,7 @@ Function* GC_Malloc;
 Function* GC_Init;
 Function* GC_Free;
 
-CodeGenTable ct = CodeGenTable();
+CodeGenTable *ct = new CodeGenTable();
 
 bool BBended;
 
@@ -65,8 +65,8 @@ ConstantPointerNull * c_point_void(Type* ptr){
 inline void Program::add_func_llvm(FunctionType *type, std::string name, 
     std::vector<PassMode> args, std::vector<Stype> types)
 {
-    ct.insert(name, Function::Create(type, Function::ExternalLinkage, name, TheModule));
-    CodeGenEntry* e = ct.lookup(name);
+    ct->insert(name, Function::Create(type, Function::ExternalLinkage, name, TheModule));
+    CodeGenEntry* e = ct->lookup(name);
     e->arguments = args;
     e->types = types; 
     e->is_library_fun = true; 
@@ -91,7 +91,7 @@ void Program::add_libs_llvm()
     add_func_llvm(FunctionType::get(i1,{},false), "readBoolean",{}, {});
     add_func_llvm(FunctionType::get(i8,{},false), "readChar",{}, {});  
     add_func_llvm(FunctionType::get(r64,{},false), "readReal",{}, {});
-    add_func_llvm(FunctionType::get(PointerType::get(i8, 0),{},false),"readString",{}, {});
+    add_func_llvm(FunctionType::get(voidTy,{ i32, PointerType::get(i8, 0)},false),"readString",{PASS_BY_VALUE, PASS_BY_REFERENCE}, {typeInteger,  typeIArray(typeChar) });
 
 
     // MATH UTILS 
@@ -108,26 +108,29 @@ void Program::add_libs_llvm()
     add_func_llvm(FunctionType::get(r64,{},false),"pi",{PASS_BY_VALUE}, {typeReal});
 
     // CHAR UTILS
-    add_func_llvm(FunctionType::get(i8,{i32},false),"ord",{PASS_BY_VALUE}, {typeInteger});
-    add_func_llvm(FunctionType::get(i32,{i8},false),"chr",{PASS_BY_VALUE}, {typeChar});
+    add_func_llvm(FunctionType::get(i32,{i8},false),"ord",{PASS_BY_VALUE}, {typeChar});
+    add_func_llvm(FunctionType::get(i8,{i32},false),"chr",{PASS_BY_VALUE}, {typeInteger});
 
     // ROUND UTILS
 
     Function *trunc = Function::Create(
         FunctionType::get(i32,{r64},false), 
         Function::ExternalLinkage, "truncFunc", TheModule);
-    ct.insert("trunc",trunc);
-    CodeGenEntry* e = ct.lookup("trunc");
+
+    ct->insert("trunc",trunc);
+    CodeGenEntry* e = ct->lookup("trunc");
     e->arguments = {PASS_BY_VALUE};
     e->types = {typeReal};     
+    e->is_library_fun = true; 
 
     Function *round = Function::Create(
         FunctionType::get(i32,{r64},false), 
         Function::ExternalLinkage, "roundFunc", TheModule);
-    ct.insert("round",round);
-    e = ct.lookup("round");
+    ct->insert("round",round);
+    e = ct->lookup("round");
     e->arguments = {PASS_BY_VALUE};
     e->types = {typeReal}; 
+    e->is_library_fun = true; 
 
 
 };
@@ -174,7 +177,7 @@ void Program::compile_initalize()
         so we can add these after SetInsertPoint(BB);
     */
     main_obj->set_struct_ty();
-    ct.openScope(main_obj);
+    ct->openScope(main_obj);
 
     // add external libraries 
     add_libs_llvm();
@@ -200,7 +203,7 @@ void Program::compile_finalize()
 {
 
     Builder.CreateRet(nullptr);
-    ct.closeScope();
+    ct->closeScope();
 
     // verify module for badly formed IR
     bool failed = verifyModule(*TheModule,&errs());
@@ -265,11 +268,13 @@ Value* BinOp::compile()
     Value *r = nullptr; 
     Value * res ;
     // need to implement short-circuit
-    if (op != "and" && op != "or") r = right->compile();
+    if (op != "and" && op != "or"){
+        r = right->compile();
+        if (right->lvalue) r = Builder.CreateLoad(r, "binop_r");
+    }
     bool real_ops = false; 
 
     if (left->lvalue) l = Builder.CreateLoad(l, "binop_l");
-    if (right->lvalue) r = Builder.CreateLoad(r, "binop_r");
     
 
     // sign exted to real if necessary
@@ -292,10 +297,9 @@ Value* BinOp::compile()
             if (real_ops)   return Builder.CreateFMul(l,r,"addtmp");
             else            return Builder.CreateMul(l,r,"addtmp");
         case "/"_ : 
-            if (check_type(left->type,typeInteger) || check_type(right->type,typeInteger)) {
-                Builder.CreateSExt(l,r64);
-                Builder.CreateSExt(r,r64);
-            }
+            if (check_type(left->type,typeInteger)) l = Builder.CreateCast(Instruction::SIToFP, l, r64);
+            if (check_type(right->type,typeInteger)) r = Builder.CreateCast(Instruction::SIToFP, r, r64);
+            
             return Builder.CreateFDiv(l,r,"addtmp");
 
         // we use signed modulo ops of integer operants
@@ -320,6 +324,7 @@ Value* BinOp::compile()
             // need to evaluate second operant                    
             Builder.SetInsertPoint(fullBB);
             r = right->compile();
+            if (right->lvalue) r = Builder.CreateLoad(r, "binop_r");
 
             // get current block because compile can be arbitrary
             BasicBlock *CurrBB = Builder.GetInsertBlock();
@@ -351,6 +356,7 @@ Value* BinOp::compile()
             // need to evaluate second operant                    
             Builder.SetInsertPoint(fullBB);
             r = right->compile();
+            if (right->lvalue) r = Builder.CreateLoad(r, "binop_r");
 
             // get current block because compile can be arbitrary
             BasicBlock *CurrBB = Builder.GetInsertBlock();
@@ -444,7 +450,7 @@ Value* UnOp::compile()
 Value* Id::compile() 
 {
     Value *val;
-    FunctionDef *fun = ct.get_fun(); 
+    FunctionDef *fun = ct->get_fun(); 
     std::map<std::string, DepenVar*>::iterator it;
     if ( fun != nullptr && ((it = fun->requests.find(name)) != fun->requests.end())){
         DepenVar* v = it->second; 
@@ -458,7 +464,7 @@ Value* Id::compile()
         val = Builder.CreateLoad(pos);
     }
     else {
-        CodeGenEntry* entry = ct.lookup(name);
+        CodeGenEntry* entry = ct->lookup(name);
         val = entry->value;
     }    
     return val; 
@@ -467,7 +473,7 @@ Value* Id::compile()
 
 Value* Result::compile()
 {
-    return ct.lookup("result")->value;
+    return ct->lookup("result")->value;
 }
 
 Value* Const::compile() 
@@ -490,7 +496,7 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
     // parameters : from the call 
     // arguments - pasMode  : from definitin
     // sem_types - types    : from definition
-    CodeGenEntry* f = (CodeGenEntry *) ct.lookup(fname); 
+    CodeGenEntry* f = (CodeGenEntry *) ct->lookup(fname); 
     Value* func = f->value;
     
     std::vector<PassMode> arguments = f->arguments;
@@ -502,7 +508,7 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
 
         // now fix our own dependencies
         // by storing from the allocas we calculated 
-        FunctionDef* fun = ct.get_fun();
+        FunctionDef* fun = ct->get_fun();
         int number_load = fun->nesting_level - f->nesting_level  +1;
         Value *ss; 
         if (number_load > 0){
@@ -517,7 +523,7 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
         else { 
             for (auto const&  x : fun->provides){
                 Value *pos = Builder.CreateGEP(fun->hidden_struct, { c_i32(0), c_i32(x.second->struct_idx) });
-                Value * val = ct.lookup(x.second->name)->value;
+                Value * val = ct->lookup(x.second->name)->value;
                 Builder.CreateStore(val, pos);
             }
 
@@ -640,7 +646,7 @@ Value* Variable::compile()
     Value* value; 
     value = Builder.CreateAlloca(TypeConvert(type, true), 0, name.c_str());    
     //value = Builder.CreatePointerCast(value, TypeConvert(type), "bitcast");   
-    ct.insert(name,value);
+    ct->insert(name,value);
     return nullptr; 
 }
 
@@ -660,8 +666,8 @@ Value* VarDef::compile()
 Value* LabelDef::compile() 
 {   
     for (std::string label : labels){
-        ct.insert(label, nullptr);
-        ct.addLabel(label);
+        ct->insert(label, nullptr);
+        ct->addLabel(label);
     }
     // nothing to do, label is just basic block
     return nullptr;
@@ -697,6 +703,10 @@ void FunctionDef::set_struct_ty(){
 
 
 // single for both func and proc
+/*
+    need to account for forward declarations here
+    seems like I have mostly forgotten
+*/
 Value* FunctionDef::compile() 
 {
 
@@ -715,16 +725,6 @@ Value* FunctionDef::compile()
     // put parent's struct on the first position 
 
     param_types.push_back(PointerType::get(static_parent->hidden_struct_ty,0));
-    /*
-        hidden params are only passed by reference 
-        so we don't need to accoutn for the extra pointer 
-        we need to change the CodeGen table to account for this though 
-        and for by reference params it seems only the special pointer case needs some bitcasting
-
-        ^^ this might be an issue. 
-
-        during calling we also need to do the loading which might be tricky. 
-    */ 
 
     for (ParameterGroup* param : parameters){
         // by reference passing is just adding a pointer
@@ -747,11 +747,11 @@ Value* FunctionDef::compile()
         Function::ExternalLinkage,name,TheModule
     );
     // insert function in current scope 
-    ct.insert(name,routine);
-    CodeGenEntry* f = ct.lookup(name);
+    ct->insert(name,routine);
+    CodeGenEntry* f = ct->lookup(name);
     f->arguments = param_pass;
     f->types = sem_types; 
-    nesting_level = ct.getNumScopes();
+    nesting_level = ct->getNumScopes();
     f->nesting_level = nesting_level;
 
     // add only function for forward definitions
@@ -763,7 +763,7 @@ Value* FunctionDef::compile()
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
     // create a new scope
-    ct.openScope(this);
+    ct->openScope(this);
     auto param_iter = routine->arg_begin(); 
     // first position is struct
     param_iter++;
@@ -781,7 +781,7 @@ Value* FunctionDef::compile()
             else {
                 value = param_iter; 
             }
-            ct.insert(name, value, param->pmode);
+            ct->insert(name, value, param->pmode);
             param_iter++;
         }
     }
@@ -806,19 +806,19 @@ Value* FunctionDef::compile()
     // type void means its a procedure 
     if (! type->equals(typeVoid)) {
         Value* value = Builder.CreateAlloca(TypeConvert(type), 0, "result");
-        ct.insert("result",value);
+        ct->insert("result",value);
     }
     body->compile(); 
     if (! BBended){   
         if (! type->equals(typeVoid)){
-            Value* ret = ct.lookup("result")->value;
+            Value* ret = ct->lookup("result")->value;
             Value* l = Builder.CreateLoad(ret, "fdef");
             Builder.CreateRet(l);    
         }
         else Builder.CreateRetVoid();
     }
     else BBended = false; 
-    ct.closeScope();
+    ct->closeScope();
     Builder.SetInsertPoint(parentBB);
     return nullptr; 
 }
@@ -852,6 +852,8 @@ Value* Assignment::compile()
 Value* IfThenElse::compile() 
 {
     Value *v = cond->compile();
+    if (cond->lvalue) v = Builder.CreateLoad(v);
+
     Value *cond = Builder.CreateICmpNE(v,c_i1(0), "if_cond");
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
     BasicBlock *ThenBB = BasicBlock::Create(TheContext,"then", TheFunction);
@@ -915,7 +917,7 @@ Value* Label::compile()
     // save basic block a goto would jump to 
     basic_block = LabelBB; 
 
-    CodeGenEntry* l = ct.lookup(label);
+    CodeGenEntry* l = ct->lookup(label);
     l->label = this; 
 
     target->compile();          
@@ -927,7 +929,7 @@ Value* GoTo::compile()
 {
     insert_point = Builder.GetInsertPoint();
     insert_block = Builder.GetInsertBlock();
-    ct.addToLabel(label, this); 
+    ct->addToLabel(label, this); 
     
     // create a stray basic block to handle code 
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -949,7 +951,7 @@ void GoTo::compile_final(Label* label_node)
 Value* ReturnStmt::compile() 
 {
 
-    CodeGenEntry* e  = ct.lookup("result");
+    CodeGenEntry* e  = ct->lookup("result");
     if (e == nullptr){
         Builder.CreateRet(nullptr);
     }
@@ -977,6 +979,8 @@ Value* InitArray::compile()
 {
     Value* ptr = lval->compile(); 
     Value* arr_size = size->compile();
+
+    if (size->lvalue) arr_size = Builder.CreateLoad(arr_size);
     arr_size = Builder.CreateIntCast( arr_size, i64, true);
 
     // llvm hack to find size of type

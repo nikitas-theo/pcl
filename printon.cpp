@@ -1,6 +1,39 @@
+
+#include <iostream>
+#include <list>
+#include <string>
+
 #include "ast.hpp"
+#include "types.hpp"
 #include "symbol.hpp"
-#include "helpers.hpp"
+
+inline std::ostream& operator<<(std::ostream& os, const std::list<std::string>& l) {
+    os << "[";
+    for (auto t : l) {
+        os << t;
+        if (t != *(--l.end()))
+            os << ",";
+    }
+    os << "]";
+    return os;
+}
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const std::list<T>& l) {
+    os << "{";
+    for (T t : l) {
+        if (std::is_pointer<T>::value) 
+            os << *t ; 
+        else 
+            os << t;
+        
+        if (t != *(--l.end()))
+            os << ", ";
+    }
+    os << "}";
+    return os;
+}
+
 
 
 void ParameterGroup :: printOn(std::ostream &out) const /* override */

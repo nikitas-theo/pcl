@@ -1,12 +1,11 @@
 ; ModuleID = 'reverse'
 source_filename = "reverse"
 
-%anon = type { <{}>*, [32 x i8]* }
+%anon = type { <{}>* }
 %anon.0 = type { %anon* }
 %anon.1 = type { %anon* }
 
-@str = private unnamed_addr constant [14 x i8] c"\0A!dlrow olleH\00", align 1
-@str.1 = private unnamed_addr constant [3 x i8] c"AA\00", align 1
+@str = private unnamed_addr constant [6 x i8] c"Hello\00", align 1
 
 declare i8* @GC_malloc(i64)
 
@@ -32,7 +31,7 @@ declare i8 @readChar()
 
 declare double @readReal()
 
-declare i8* @readString()
+declare void @readString(i32, i8*)
 
 declare i32 @abs(i32)
 
@@ -54,9 +53,9 @@ declare double @ln(double)
 
 declare double @pi()
 
-declare i8 @ord(i32)
+declare i32 @ord(i8)
 
-declare i32 @chr(i8)
+declare i8 @chr(i32)
 
 declare i32 @truncFunc(double)
 
@@ -66,13 +65,13 @@ define void @main() {
 entry:
   call void @GC_init()
   %hidden_struct = alloca %anon
-  %r = alloca [32 x i8]
-  %0 = getelementptr %anon, %anon* %hidden_struct, i32 0, i32 1
-  store [32 x i8]* %r, [32 x i8]** %0
-  call void @reverse(%anon* %hidden_struct, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str, i32 0, i32 0))
-  %bitcast_special_ref = bitcast [32 x i8]* %r to i8*
-  call void @writeString(i8* %bitcast_special_ref)
-  call void @writeString(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str.1, i32 0, i32 0))
+  %r = alloca [6 x i8]
+  %assign = load [6 x i8], [6 x i8]* @str
+  store [6 x i8] %assign, [6 x i8]* %r
+  %bitcast_special_ref = bitcast [6 x i8]* %r to i8*
+  call void @reverse(%anon* %hidden_struct, i8* %bitcast_special_ref)
+  %bitcast_special_ref1 = bitcast [6 x i8]* %r to i8*
+  call void @writeString(i8* %bitcast_special_ref1)
   ret void
 }
 
@@ -111,6 +110,7 @@ entry:
   store %anon* %0, %anon** %2
   %i = alloca i32
   %l = alloca i32
+  %tmp = alloca i8
   %3 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
   %4 = load %anon*, %anon** %3
   %5 = call i32 @strlen(%anon* %4, i8* %1)
@@ -119,40 +119,42 @@ entry:
   br label %loop
 
 loop:                                             ; preds = %body, %entry
-  %binop_l = load i32, i32* %i
-  %binop_r = load i32, i32* %l
-  %6 = icmp slt i32 %binop_l, %binop_r
+  %binop_l = load i32, i32* %l
+  %divtmp = sdiv i32 %binop_l, 2
+  %binop_l1 = load i32, i32* %i
+  %6 = icmp slt i32 %binop_l1, %divtmp
   br i1 %6, label %body, label %endloop
 
 endloop:                                          ; preds = %loop
-  %7 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
-  %8 = load %anon*, %anon** %7
-  %9 = getelementptr %anon, %anon* %8, i32 0, i32 1
-  %10 = load [32 x i8]*, [32 x i8]** %9
-  %arrAcc7 = load i32, i32* %i
-  %11 = sext i32 %arrAcc7 to i64
-  %arrayIdx8 = getelementptr [32 x i8], [32 x i8]* %10, i64 0, i64 %11
-  store i8 0, i8* %arrayIdx8
   ret void
 
 body:                                             ; preds = %loop
-  %12 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
-  %13 = load %anon*, %anon** %12
-  %14 = getelementptr %anon, %anon* %13, i32 0, i32 1
-  %15 = load [32 x i8]*, [32 x i8]** %14
   %arrAcc = load i32, i32* %i
-  %16 = sext i32 %arrAcc to i64
-  %arrayIdx = getelementptr [32 x i8], [32 x i8]* %15, i64 0, i64 %16
-  %binop_l1 = load i32, i32* %l
-  %binop_r2 = load i32, i32* %i
-  %addtmp = sub i32 %binop_l1, %binop_r2
-  %addtmp3 = sub i32 %addtmp, 1
-  %17 = sext i32 %addtmp3 to i64
-  %arrayIdx4 = getelementptr i8, i8* %1, i64 %17
-  %assign = load i8, i8* %arrayIdx4
-  store i8 %assign, i8* %arrayIdx
-  %binop_l5 = load i32, i32* %i
-  %addtmp6 = add i32 %binop_l5, 1
-  store i32 %addtmp6, i32* %i
+  %7 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i8, i8* %1, i64 %7
+  %assign = load i8, i8* %arrayIdx
+  store i8 %assign, i8* %tmp
+  %arrAcc2 = load i32, i32* %i
+  %8 = sext i32 %arrAcc2 to i64
+  %arrayIdx3 = getelementptr i8, i8* %1, i64 %8
+  %binop_r = load i32, i32* %i
+  %binop_l4 = load i32, i32* %l
+  %addtmp = sub i32 %binop_l4, %binop_r
+  %addtmp5 = sub i32 %addtmp, 1
+  %9 = sext i32 %addtmp5 to i64
+  %arrayIdx6 = getelementptr i8, i8* %1, i64 %9
+  %assign7 = load i8, i8* %arrayIdx6
+  store i8 %assign7, i8* %arrayIdx3
+  %binop_r8 = load i32, i32* %i
+  %binop_l9 = load i32, i32* %l
+  %addtmp10 = sub i32 %binop_l9, %binop_r8
+  %addtmp11 = sub i32 %addtmp10, 1
+  %10 = sext i32 %addtmp11 to i64
+  %arrayIdx12 = getelementptr i8, i8* %1, i64 %10
+  %assign13 = load i8, i8* %tmp
+  store i8 %assign13, i8* %arrayIdx12
+  %binop_l14 = load i32, i32* %i
+  %addtmp15 = add i32 %binop_l14, 1
+  store i32 %addtmp15, i32* %i
   br label %loop
 }

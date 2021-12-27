@@ -1,0 +1,19 @@
+program predef;
+
+   procedure newline ();
+   begin
+      writeString("\n")
+   end;
+   
+   procedure writeString (i : integer);
+   begin
+      writeInteger(i)
+   end;
+   
+   var writeInteger : integer;
+
+begin
+   writeInteger := 42;
+   writeString(writeInteger);
+   newline()
+end.

@@ -150,128 +150,74 @@ class SymbolTable
 /* ------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
 /* ---------------------------- CODE GENERATION TABLE ------------------------ */
-// should move this to .cpp 
-/*
-  this is a mess... should fix at some point 
-  maybe take a day after finishing everything to clean up code 
-*/
+
+
 class CodeGenEntry {
-public:
-  int offset;
-  llvm::Value* value; 
-  PassMode pass_by;
-  bool is_library_fun = false; 
-  std::vector<PassMode> arguments; 
-  std::vector<Stype> types; 
-  int nesting_level;
-  Label* label;
-  std::vector<GoTo*> goto_nodes;
-  CodeGenEntry() {}
-  CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
+  public:
+    int offset;
+    llvm::Value* value; 
+    PassMode pass_by;
+    bool is_library_fun = false; 
+    std::vector<PassMode> arguments; 
+    std::vector<Stype> types; 
+    int nesting_level;
+    Label* label;
+    std::vector<GoTo*> goto_nodes;
+    CodeGenEntry() {}
+    CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
 };
+
 
 class CodeGenScope {
 
-public:
+  public:
 
-  CodeGenScope() : locals(), offset(-1), size(0) {}
-  CodeGenScope(int ofs) : locals(), offset(ofs), size(0) {}
-  
-  
+    CodeGenScope() : locals(), offset(-1), size(0) {}
+    CodeGenScope(int ofs) : locals(), offset(ofs), size(0) {}
+    
+    int getOffset() const { return offset; }
+    int getSize() const { return size; }
 
-  int getOffset() const { return offset; }
-  int getSize() const { return size; }
+    // we need label names to jump to label defined afterwards 
+    std::vector<std::string> label_names; 
 
-  std::vector<std::string> label_names; 
+    // every scope is associated with a function
+    // we need it to create hidden structs 
+    FunctionDef *function; 
 
-  FunctionDef *function; 
+    CodeGenEntry *lookup(std::string name);
+    int insert(std::string name, llvm::Value* v, PassMode pb);
 
-  CodeGenEntry *lookup(std::string name) {
+  private:
 
-    if (locals.find(name) == locals.end()) return nullptr;
-    return &(locals[name]);
-
-  }
-  int insert(std::string name, llvm::Value* v, PassMode pb) {
-
-    if (locals.find(name) != locals.end()) {
-      return 1;
-    }
-    locals[name] = CodeGenEntry(v, offset++,pb);
-    ++size;
-
-    return 0; 
-  }
-
-
-private:
-
-  std::map<std::string, CodeGenEntry> locals;
-  int offset;
-  int size;
+    std::map<std::string, CodeGenEntry> locals;
+    int offset;
+    int size;
 
 };
 
 
 class CodeGenTable {
-/*  
-  
-  - lookup(name::string) : search for a name in SymbolTable
-      return nullptr upon not founding 
-  
-  - insert(name::string, v::llvm::Value*)
-      return 0 on correct insertion
-      return 1 on duplicate entry 
-*/ 
-public:
-  void openScope(FunctionDef *fun) {
 
-    int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
+  public:
 
-    scopes.push_back(CodeGenScope(ofs));
-    scopes.back().function = fun;
-  }
+    void openScope(FunctionDef *fun);
+    void closeScope();
 
-  void closeScope() { 
+    CodeGenEntry *lookup(std::string name);
 
-    for (std::string l : scopes.back().label_names){
-      CodeGenEntry *e = lookup(l);
-      for (GoTo * g : e->goto_nodes) g->compile_final(e->label);
-    }
+    void addToLabel(std::string label, GoTo* g);
+    void addLabel(std::string label);
 
+    FunctionDef *get_fun();
 
-    scopes.pop_back(); 
-    };
+    int getSizeOfCurrentScope();
+    int getNumScopes();
+    int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE);
 
-  CodeGenEntry *lookup(std::string name) {
+  private:
+    std::list<CodeGenScope> scopes;
 
-    CodeGenEntry *e;
-
-    for (auto i = scopes.rbegin(); i != scopes.rend(); ++i) {
-      e = i->lookup(name);
-      if (e != nullptr) return e;
-    }    
-
-    return e; 
-  }
-
-  void addToLabel(std::string label, GoTo* g){
-      CodeGenEntry *l = lookup(label);
-      l->goto_nodes.push_back(g);
-  }
-  void addLabel(std::string label){
-    scopes.back().label_names.push_back(label);
-  }
-  FunctionDef *get_fun(){
-    return  scopes.back().function;
-  }
-  int getSizeOfCurrentScope() const { return scopes.back().getSize(); }
-  int getNumScopes() { return scopes.size();}
-  int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE) { return scopes.back().insert(name, v, pb); }
-
-private:
-
-  std::list<CodeGenScope> scopes;
 };
 
 // #endif

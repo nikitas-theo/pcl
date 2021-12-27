@@ -1,0 +1,11 @@
+program main;
+   procedure g ();
+      function f (x : integer) : integer; begin result := x+1 end;
+      function f (x : integer) : integer; begin result := x+2 end;
+   begin
+     writeInteger(f(3))
+   end;
+
+begin
+   writeString("\nthis program is wrong!!!\n")
+end.

@@ -1,0 +1,42 @@
+program gcd;
+
+   function stupid (a, b : integer) : integer;
+      var i : integer;
+   begin
+      if a>b then i:=a else i:=b;
+      
+      while i>1 do
+      begin
+         if (a mod i = 0) and (b mod i = 0) then
+         begin
+            result := i;
+            return
+         end;
+         i := i-1
+      end;
+      result := 1
+   end;
+
+   function euclid (a, b : integer) : integer;
+   begin
+      if a = 0 then
+         result := b
+      else
+         result := euclid(b mod a, a)
+   end;
+         
+   function clever (a, b : integer) : integer;
+   begin
+      if (a = 0) and (b = 0) then
+         result := 0
+      else if a <= b then
+         result := euclid(a, b)
+      else
+         result := euclid(b, a)
+   end;
+   
+begin
+   writeInteger(stupid(100, 932));
+   writeInteger(clever(288, 118));
+   writeChar(chr(clever(26910, 3130)))
+end.

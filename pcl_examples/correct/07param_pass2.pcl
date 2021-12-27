@@ -1,0 +1,16 @@
+program solve;
+    var z : integer; 
+    var a : array [2] of char; 
+    procedure x();        
+        var e : integer; 
+        begin
+            writeString(a);
+            e := z + z; 
+            writeInteger(e);
+        end;
+
+    begin     
+        z := 1; 
+        a := "4";
+        x();        
+    end.

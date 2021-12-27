@@ -1,0 +1,9 @@
+program add;
+   var x, y : integer;
+begin
+   x := 14;
+   y := 28;
+   writeInteger(x + y);
+   writeString("\n")
+end.
+

@@ -1,0 +1,26 @@
+
+TODO : 
+
+1) make grader, and some example programs to test
+    - find a semantic error here,
+    - also I rememeber need to fix correct line (add +1, or -1 when I make the definition) 
+    - and also see a litle bit about flags etc. 
+2) read specification again to see if we have missed anything
+
+3) pretify code, specifically symbol.hpp CodeGenEntry is a mess, separate to    different classes 
+
+4) write readme.md
+
+prolems :
+
+func ( var x : integer){...}
+var i : integer
+func(i + 3) <-- this is a mistake, semantic doesn't catch it
+
+
+
+
+done
+
+call Christos, 
+email Pap and see what is the easiest to hand in the assignment. 

@@ -1,0 +1,14 @@
+program main;
+
+   procedure aaa (var a : integer);
+   begin
+      writeInteger(a)
+    end;
+
+   var i : integer;
+
+begin
+   i := 3;
+   (* what is the error here? non l-value not allowed? *)
+   aaa(i+5)
+end.

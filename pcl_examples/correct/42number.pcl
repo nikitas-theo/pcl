@@ -1,0 +1,24 @@
+program number;
+   var i, j, k : integer;
+begin
+   i := 1;
+   while i < 10 do
+   begin
+      j := 0;
+      while j < 10 do
+      begin
+         k := 0;
+         while k < 10 do
+         begin
+            if 100*i + 10*j + k = i*i*i +j*j*j +k*k*k then
+            begin
+               writeInteger(100*i+10*j+k);
+               writeString("\n")
+            end;
+            k := k+1
+         end;
+         j := j+1
+      end;
+      i := i+1
+   end
+end.

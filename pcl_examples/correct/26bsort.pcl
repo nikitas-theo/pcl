@@ -1,0 +1,66 @@
+program main;
+
+   procedure bsort (n : integer; var x : array of integer);
+      var i       : integer;
+          changed : boolean;
+
+      procedure swap (var x, y : integer);
+         var t : integer;
+      begin
+         t := x;
+	 x := y;
+	 y := t
+      end;
+
+   begin
+      changed := true;
+      while changed do
+      begin
+         changed := false;
+         i := 0;
+         while i < n-1 do
+         begin
+            if x[i] > x[i+1] then
+            begin
+               swap(x[i], x[i+1]);
+               changed := true
+            end;
+            i := i+1
+         end
+      end
+   end;
+
+   procedure writeArray (var msg : array of char;
+                             n   : integer;
+                         var x   : array of integer);
+      var i : integer;
+   begin
+      writeString(msg);
+      i := 0;
+      while i < n do
+      begin
+         if i > 0 then
+            writeString(", ");
+         writeInteger(x[i]);
+         i := i+1
+      end;
+      writeString("\n");
+   end;
+
+   var seed : integer;
+       x    : array [16] of integer;
+       i    : integer;
+
+begin
+   seed := 65;
+   i := 0;
+   while i < 16 do
+   begin
+      seed := (seed * 137 + 220 + i) mod 101;
+      x[i] := seed;
+      i := i + 1
+   end;
+   writeArray("Initial array: ", 16, x);
+   bsort(16, x);
+   writeArray("Sorted array: ", 16, x)
+end.

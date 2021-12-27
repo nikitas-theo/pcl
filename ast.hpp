@@ -6,7 +6,6 @@
 #include <variant>
 
 #include "types.hpp"
-#include "helpers.hpp"
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
@@ -31,6 +30,21 @@ typedef std::list<std::string> IdCollection;
 
 typedef std::variant<int,double,char,bool> data_const ;
 
+
+
+template<typename T>
+std::ostream & _error(std::ostream & o, T&& arg) { 
+   return o << std::forward<T>(arg); 
+}
+
+template<typename T, typename ...Ts>
+std::ostream & _error(std::ostream & o, T&& arg, Ts&&... args)
+{
+   o << std::forward<T>(arg);
+   return _error(o, std::forward<Ts>(args)...);
+}
+
+
 // access this if outside of AST
 template<typename ...Ts>
 void error(Ts&&... args)
@@ -38,7 +52,6 @@ void error(Ts&&... args)
     _error(std::cerr, args...) << "\n";
     std::exit(1);
 }
-
 
 
 

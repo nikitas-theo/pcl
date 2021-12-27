@@ -1,0 +1,21 @@
+program main;
+   
+   function fact (n : integer) : integer;
+      var i : integer;
+   begin
+      result := 1;
+      i := n;
+      while i > 1 do
+      begin
+         result := result * i;
+         i := i - 1
+      end
+   end;
+
+   var z : integer;
+
+begin
+  z := fact(7);
+  if z = 5040 then writeString("42\n")
+  else begin writeInteger(z); writeString(" wrong!\n") end
+end.

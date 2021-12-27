@@ -1,7 +1,0 @@
-program solve;
-    var x : array [10] of char; 
-    var z: ^ array of char;
-    begin
-        z := @"asfdasfds"; 
-        (z^)[0] := 'a';
-    end.

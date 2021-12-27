@@ -1,0 +1,32 @@
+program cancer;
+
+   function is_it (n : integer; var source : array of char) : boolean;
+      var i : integer;
+   begin
+      i:=0;
+      while i < n div 2 do
+      begin
+         if (source[i] <> source[n-i-1]) then
+         begin
+            result := false;
+            return
+         end;
+         i:=i+1
+      end;
+      result := true
+   end;
+	
+   var n : integer;
+       source : array [31] of char;
+   
+begin
+   writeString("Give a string with maximum length 30: ");
+   readString(30, source);
+   n := 0;
+   while source[n] <> '\0' do
+      n := n+1;
+   if is_it(n, source) then
+      writeString("\nIs cancer...\n")
+   else
+      writeString("\nIs not cancer...\n")
+end.

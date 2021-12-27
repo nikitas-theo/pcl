@@ -1,0 +1,56 @@
+program twoprime;
+
+   function is2prime (primeprime : integer) : boolean;
+   
+      var num, sqrt, odd, sum, divisor, quotient : integer;
+          more : boolean;
+   
+   begin
+      num := primeprime;
+      more := true;
+      while more and (num <> 2) and (num > 0) do
+      begin
+         sqrt := 0;
+         odd := 1;
+         sum := 1;
+         while (sum <= num) do
+         begin
+            sqrt := sqrt + 1;
+            odd := odd + 2;
+            sum := sum + odd
+         end;
+         divisor := 3;
+         while more and (divisor <= sqrt) do
+         begin
+            quotient := num div divisor;
+            if num = divisor * quotient then
+               more := false
+            else
+               divisor := divisor + 2
+         end;
+         num := num div 10
+      end;
+      result := more
+   end;
+   
+   procedure output (n : integer);
+   begin
+      writeInteger(n);
+      writeString("\n")
+   end;
+   
+   var max2prime, i : integer;
+
+begin
+   writeString("Limit: ");
+   max2prime := readInteger();
+   i := 6;
+   while i <= max2prime do
+   begin
+      if is2prime(i-1) then
+         output(i-1);
+      if (i+1 <= max2prime) and is2prime(i+1) then
+         output(i+1);
+      i := i + 6
+   end
+end.

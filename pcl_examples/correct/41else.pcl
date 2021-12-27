@@ -1,0 +1,13 @@
+program testelse;
+
+   procedure test (x : integer; var msg1, msg2, msg3 : array of char);
+   begin
+      if x <> 1 then if x <> 2 then writeString(msg3) else writeString(msg2);
+      if x = 1 then writeString(msg1)
+   end;
+
+begin
+   test(1, "4", "\n\nwrong!!!\n\n", "\n\nwrong!!!\n\n");
+   test(2, "\n\nwrong!!!\n\n", "2", "\n\nwrong!!!\n\n");
+   test(3, "\n\nwrong!!!\n\n", "\n\nwrong!!!\n\n", "\n")
+end.

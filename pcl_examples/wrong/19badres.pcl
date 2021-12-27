@@ -1,0 +1,11 @@
+program main;
+
+   procedure f (a : integer);
+   begin
+     result := a
+   end;
+
+begin
+   f(5);
+   writeString("\nThis program is wrong!\n")
+end.

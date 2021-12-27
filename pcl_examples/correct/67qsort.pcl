@@ -1,0 +1,74 @@
+program main;
+
+   procedure qsort (n : integer; var a : array of integer);
+
+      procedure qsort_auxil (lower, upper : integer);
+
+	 procedure swap (var a, b : integer);
+	    var t : integer;
+	 begin
+	    t := a;
+	    a := b;
+	    b := t
+	 end;
+
+         var x, i, j : integer;
+         
+      begin
+         if lower < upper then
+         begin
+            x := a[(lower + upper) div 2];
+            i := lower;
+            j := upper;
+            while i <= j do
+            begin
+               while a[i] < x do i := i+1;
+               while a[j] > x do j := j-1;
+               if i <= j then
+               begin
+	          swap(a[i], a[j]);
+                  i := i+1;
+                  j := j-1
+	       end
+            end;
+	    qsort_auxil(lower, j);
+	    qsort_auxil(i, upper)
+         end
+      end;
+
+   begin
+      qsort_auxil(0, n-1)
+   end;
+
+   procedure writeArray (var msg : array of char;
+                         n : integer; var x : array of integer);
+      var i : integer;
+   begin
+      writeString(msg);
+      i := 0;
+      while i < n do
+      begin
+         if i > 0 then writeString(", ");
+         writeInteger(x[i]);
+         i := i+1
+      end;
+      writeString("\n")
+   end;
+
+   var seed, i : integer;
+       x       : array [16] of integer;
+
+begin
+   writeString("Seed :\t");
+   seed := readInteger();
+   i := 0;
+   while i < 16 do
+   begin
+      seed := (seed * 137 + 220 + i) mod 101;
+      x[i] := seed;
+      i := i+1
+   end;
+   writeArray("Initial array; ", 16, x);
+   qsort(16, x);
+   writeArray("Sorted array: ", 16, x)
+end.

@@ -111,19 +111,19 @@ program :
 
 body:
       local body            { $2->push_local($1) ; $$ = $2; }
-    | block                 { $$ = new Block($1, yylloc.last_line); }
+    | block                 { $$ = new Block($1, yylloc.last_line - 1 ); }
     ;
 
 local:
       "var" var_def         { $$ = $2; }
-    | "label" id_list ';'   { $$ = new LabelDef($2, yylloc.last_line); }
+    | "label" id_list ';'   { $$ = new LabelDef($2, yylloc.last_line - 1 ); }
     | header ';' body ';'   { $$ = $1; $1->add_body($3); }
     | "forward" header ';'  { $$ = $2; $2->set_forward(); }
     ;
 
 var_def:
-      id_list ':' type ';' var_def  { $5->push($1, $3, yylloc.last_line) ; $$ = $5; }
-    | id_list ':' type ';'          { $$ = new VarDef(yylloc.last_line); $$->push($1, $3, yylloc.last_line); }
+      id_list ':' type ';' var_def  { $5->push($1, $3, yylloc.last_line - 1 ) ; $$ = $5; }
+    | id_list ':' type ';'          { $$ = new VarDef(yylloc.last_line - 1 ); $$->push($1, $3, yylloc.last_line - 1 ); }
     ;
 
 id_list :
@@ -132,8 +132,8 @@ id_list :
     ;
 
 header :
-	  "procedure" T_id '(' parameter_list ')'           { $$ = new FunctionDef($2, $4, typeVoid, yylloc.last_line); }
-	| "function" T_id '(' parameter_list ')' ':' type   { $$ = new FunctionDef($2, $4, $7, yylloc.last_line); }
+	  "procedure" T_id '(' parameter_list ')'           { $$ = new FunctionDef($2, $4, typeVoid, yylloc.last_line - 1 ); }
+	| "function" T_id '(' parameter_list ')' ':' type   { $$ = new FunctionDef($2, $4, $7, yylloc.last_line - 1 ); }
 	;
 
 parameter_list: 
@@ -147,8 +147,8 @@ formal_list:
     ;
 
 formal:
-      id_list ':' type              { $$ = new ParameterGroup(*$1, $3, PASS_BY_VALUE,yylloc.last_line); }
-    | "var" id_list ':' type        { $$ = new ParameterGroup(*$2, $4, PASS_BY_REFERENCE,yylloc.last_line); }
+      id_list ':' type              { $$ = new ParameterGroup(*$1, $3, PASS_BY_VALUE,yylloc.last_line - 1 ); }
+    | "var" id_list ':' type        { $$ = new ParameterGroup(*$2, $4, PASS_BY_REFERENCE,yylloc.last_line - 1 ); }
     ;
 
 type :
@@ -171,20 +171,20 @@ stmt_list :
     ;
 
 stmt:
-      %empty                        { $$ = new EmptyStmt(yylloc.last_line);}
-    | l_value T_assign expr           { $$ = new Assignment($1, $3, yylloc.last_line); } 
+      %empty                        { $$ = new EmptyStmt(yylloc.last_line - 1 );}
+    | l_value T_assign expr           { $$ = new Assignment($1, $3, yylloc.last_line - 1 ); } 
     | block                         { $$ = $1; }
     | proc_call                     { $$ = $1; }
-    | "if" expr "then" stmt                 { $$ = new IfThenElse($2, $4,yylloc.last_line); }
-    | "if" expr "then" stmt "else" stmt     { $$ = new IfThenElse($2, $4, $6, yylloc.last_line); } 
-    | "while" expr "do" stmt        { $$ = new While($2, $4, yylloc.last_line); }
-    | T_id ':' stmt                 { $$ = new Label($1, $3, yylloc.last_line); }
-    | "goto" T_id                   { $$ = new GoTo($2, yylloc.last_line); }
-    | "return"                      { $$ = new ReturnStmt(yylloc.last_line); }
-    | "new" l_value                 { $$ = new Init($2, yylloc.last_line); } 
-    | "new" '[' expr ']' l_value    { $$ = new InitArray($5, $3, yylloc.last_line); }
-    | "dispose" l_value             { $$ = new Dispose($2, yylloc.last_line); } 
-    | "dispose" '[' ']' l_value     { $$ = new DisposeArray($4, yylloc.last_line); }
+    | "if" expr "then" stmt                 { $$ = new IfThenElse($2, $4,yylloc.last_line - 1 ); }
+    | "if" expr "then" stmt "else" stmt     { $$ = new IfThenElse($2, $4, $6, yylloc.last_line - 1 ); } 
+    | "while" expr "do" stmt        { $$ = new While($2, $4, yylloc.last_line - 1 ); }
+    | T_id ':' stmt                 { $$ = new Label($1, $3, yylloc.last_line - 1 ); }
+    | "goto" T_id                   { $$ = new GoTo($2, yylloc.last_line - 1 ); }
+    | "return"                      { $$ = new ReturnStmt(yylloc.last_line - 1 ); }
+    | "new" l_value                 { $$ = new Init($2, yylloc.last_line - 1 ); } 
+    | "new" '[' expr ']' l_value    { $$ = new InitArray($5, $3, yylloc.last_line - 1 ); }
+    | "dispose" l_value             { $$ = new Dispose($2, yylloc.last_line - 1 ); } 
+    | "dispose" '[' ']' l_value     { $$ = new DisposeArray($4, yylloc.last_line - 1 ); }
     ;
 
 expr:
@@ -199,48 +199,48 @@ expr_list:
 
 
 r_value:
-      "integer-const"               { $$ = new Const($1,typeInteger, yylloc.last_line); } 
-    | "real-const"                  { $$ = new Const($1,typeReal, yylloc.last_line); }
-    | "char-const"                  { $$ = new Const($1,typeChar, yylloc.last_line); } 
-    | "true"                        { $$ = new Const(true,typeBoolean, yylloc.last_line); }
-    | "false"                       { $$ = new Const(false,typeBoolean, yylloc.last_line); }
+      "integer-const"               { $$ = new Const($1,typeInteger, yylloc.last_line - 1 ); } 
+    | "real-const"                  { $$ = new Const($1,typeReal, yylloc.last_line - 1 ); }
+    | "char-const"                  { $$ = new Const($1,typeChar, yylloc.last_line - 1 ); } 
+    | "true"                        { $$ = new Const(true,typeBoolean, yylloc.last_line - 1 ); }
+    | "false"                       { $$ = new Const(false,typeBoolean, yylloc.last_line - 1 ); }
     | '(' r_value ')'               { $$ = $2; }
-    | "nil"                         { $$ = new Const(0,typeVoid, yylloc.last_line); } 
+    | "nil"                         { $$ = new Const(0,typeVoid, yylloc.last_line - 1 ); } 
     | func_call                     { $$ = $1; }
-    | '@' ll_value                  { $$ = new UnOp($1, $2, yylloc.last_line); }
-    | "not" expr                    { $$ = new UnOp($1, $2, yylloc.last_line); }
-    | sign expr %prec U_SIGN        { $$ = new UnOp($1, $2, yylloc.last_line); }
-    | expr binop_high expr %prec '*'    { $$ = new BinOp($1, $2, $3, yylloc.last_line); }
-    | expr binop_med expr %prec '+'     { $$ = new BinOp($1, $2, $3, yylloc.last_line); }
-    | expr binop_low expr %prec '='     { $$ = new BinOp($1, $2, $3, yylloc.last_line); }
+    | '@' ll_value                  { $$ = new UnOp($1, $2, yylloc.last_line - 1 ); }
+    | "not" expr                    { $$ = new UnOp($1, $2, yylloc.last_line - 1 ); }
+    | sign expr %prec U_SIGN        { $$ = new UnOp($1, $2, yylloc.last_line - 1 ); }
+    | expr binop_high expr %prec '*'    { $$ = new BinOp($1, $2, $3, yylloc.last_line - 1 ); }
+    | expr binop_med expr %prec '+'     { $$ = new BinOp($1, $2, $3, yylloc.last_line - 1 ); }
+    | expr binop_low expr %prec '='     { $$ = new BinOp($1, $2, $3, yylloc.last_line - 1 ); }
 
 
 
 l_value:
-      T_id                      { $$ = new Id($1, yylloc.last_line); }
-    | "result"                  { $$ = new Result(yylloc.last_line); }
-    | "string-literal"          { $$ = new StringValue($1, yylloc.last_line); }
-    | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3, yylloc.last_line); }
-    | expr '^'                  { $$ = new Dereference($1, yylloc.last_line); }
+      T_id                      { $$ = new Id($1, yylloc.last_line - 1 ); }
+    | "result"                  { $$ = new Result(yylloc.last_line - 1 ); }
+    | "string-literal"          { $$ = new StringValue($1, yylloc.last_line - 1 ); }
+    | l_value '[' expr ']'      { $$ = new ArrayAccess($1, $3, yylloc.last_line - 1 ); }
+    | expr '^'                  { $$ = new Dereference($1, yylloc.last_line - 1 ); }
     | '(' l_value ')'           { $$ = $2; }
     ;
 
 ll_value:
-      T_id                      { $$ = new Id($1, yylloc.last_line); }
-    | "result"                  { $$ = new Result(yylloc.last_line); }
-    | "string-literal"          { $$ = new StringValue($1, yylloc.last_line);  }
-    | ll_value '[' expr ']'     { $$ = new ArrayAccess($1, $3, yylloc.last_line); } 
+      T_id                      { $$ = new Id($1, yylloc.last_line - 1 ); }
+    | "result"                  { $$ = new Result(yylloc.last_line - 1 ); }
+    | "string-literal"          { $$ = new StringValue($1, yylloc.last_line - 1 );  }
+    | ll_value '[' expr ']'     { $$ = new ArrayAccess($1, $3, yylloc.last_line - 1 ); } 
     | '(' l_value ')'           { $$ = $2; }
     ;
 
 func_call :
-      T_id '(' ')'              { $$ = new CallFunc($1, yylloc.last_line); }
-    | T_id '(' expr_list ')'    { $$ = new CallFunc($1, $3, yylloc.last_line); }
+      T_id '(' ')'              { $$ = new CallFunc($1, yylloc.last_line - 1 ); }
+    | T_id '(' expr_list ')'    { $$ = new CallFunc($1, $3, yylloc.last_line - 1 ); }
     ;
 
 proc_call :
-      T_id '(' ')'              {$$ =  new CallProc($1, yylloc.last_line);}
-    | T_id '(' expr_list ')'    {$$ =  new CallProc($1, $3,yylloc.last_line);}
+      T_id '(' ')'              {$$ =  new CallProc($1, yylloc.last_line - 1 );}
+    | T_id '(' expr_list ')'    {$$ =  new CallProc($1, $3,yylloc.last_line - 1 );}
     ;
 
 
@@ -292,6 +292,10 @@ int main(int argc, char *argv[])
         TheProgram->set_name_if_blank(filename);
 
         yyin = fopen(argv[1], "r");
+        if (! yyin){
+          std::cerr << "File doesn't exist\n";
+          exit(1);
+        }
     }
     else {
       std::cout << "INTERACTIVE MODE\n";

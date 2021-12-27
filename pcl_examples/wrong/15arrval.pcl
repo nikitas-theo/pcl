@@ -1,0 +1,12 @@
+program main;
+
+   procedure f (a : array of integer);
+   begin
+      writeString("\nThis program is wrong!\n")
+   end;
+
+   var x : array [10] of integer;
+
+begin
+   f(x)
+end.

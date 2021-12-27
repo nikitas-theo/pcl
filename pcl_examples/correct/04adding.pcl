@@ -1,0 +1,8 @@
+program solve;
+    var x : array [10] of integer; 
+    var z : integer;
+    begin
+        x[1] := 40;
+        z := 2;
+        writeInteger(x[1] + z);
+    end.

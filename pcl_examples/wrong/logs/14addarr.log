@@ -1,0 +1,2 @@
+ERROR in line 3:
+Operator '+' requires numeric operands but was given array[10] of int and array[10] of int

@@ -1,0 +1,18 @@
+program main;
+
+  function inc (x : real) : real;
+  begin
+    result := x + 1.0
+  end;
+
+  procedure doit (f : real);
+
+  begin
+    writeInteger(trunc(inc(f)));
+  end;
+
+begin
+   doit(3.0);
+   doit(1.0);
+   writeString("\n")
+end.

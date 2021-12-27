@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 void writeInteger(int n){
     printf("%d",n);
@@ -46,16 +47,38 @@ double readReal(){
     return r; 
 }
 
-void readString(int size, char * s){
-    int curr_size = 0; 
-    size --; // acount for '\0'
-    char c;
-    while (curr_size < size && (c = getchar() != '\n') ){
-        if (c == EOF) break;
-        s[curr_size++] = c; 
+char* readString(int size, char *s) {
+    if (size <= 0) {
+      return NULL;
     }
-    s[curr_size] = '\0';
+
+    // Create safeguard buffer
+    char buf[size];
+
+    // Sets the sequence to 0
+    memset(buf, 0, size);
+
+    if (size == 1) {
+      return NULL;
+    }
+    size--; // Nead to read size - 1 chars
+
+    // Counter
+    int i = 0;
+
+    char c = getchar();
+    buf[i] = c;
+    // Read the string until EOF or newline
+    for (i = 0; i < size; i++) {
+      c = getchar();
+      buf[i] = c;
+      if (c == EOF || c == '\n') break;
+    }
+    // Copy from safeguard buffer
+    strcpy((char *)s, (char *)buf);
+    return NULL;
 }
+
 
 double ln(double x) {
   return log(x);

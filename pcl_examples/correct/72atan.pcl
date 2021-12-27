@@ -1,0 +1,23 @@
+program main;
+
+   procedure correct ();
+   begin
+      writeString("---\n");
+      writeString("4.2\n");
+      writeString("1.33705314593   (approximately)\n")
+   end;
+
+   var i, j : integer;
+       x, y : real;
+
+begin
+   i := 84;
+   j := 20;
+   x := i / j;
+   writeReal(x);
+   writeString("\n");
+   y := arctan(x);
+   writeReal(y);
+   writeString("\n");
+   correct()
+end.

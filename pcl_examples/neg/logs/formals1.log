@@ -1,0 +1,2 @@
+ERROR in line 9:
+Parameter x has type int which is incompatible with real

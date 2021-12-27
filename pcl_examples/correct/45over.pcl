@@ -1,0 +1,19 @@
+program over;
+
+   procedure f ();
+   begin
+      writeString("wrong!!!\n")
+   end;
+
+   procedure g ();
+      procedure f ();
+      begin
+         writeString("42\n")
+      end;
+   begin
+      f()
+   end;
+
+begin
+   g()
+end.

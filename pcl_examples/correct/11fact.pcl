@@ -1,0 +1,15 @@
+program main;
+   
+   function fact (n : integer) : integer;
+   begin
+      if n = 0 then result := 1
+      else result := n * fact (n - 1)
+   end;
+
+   var z : integer;
+
+begin
+  z := fact(7);
+  if z = 5040 then writeString("42\n")
+  else begin writeInteger(z); writeString(" wrong!\n") end
+end.

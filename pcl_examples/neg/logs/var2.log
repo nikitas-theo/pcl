@@ -1,0 +1,2 @@
+ERROR in line 6:
+Type real cannot be assigned to variable of type int

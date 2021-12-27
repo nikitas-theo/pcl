@@ -1,0 +1,27 @@
+program func;
+
+   function inc (x : integer) : integer;
+   begin
+      result := x + 1
+   end;
+   
+   function odd (x : integer) : boolean;
+   begin
+      result := x mod 2 <> 0
+   end;
+
+   function f (x : integer) : integer;
+   begin
+      if odd(x) then
+         result := x
+      else
+         result := x * inc(x)
+   end;
+
+   var x : integer;
+
+begin
+   x := f(6);
+   writeInteger(x);
+   writeString("\n")
+end.

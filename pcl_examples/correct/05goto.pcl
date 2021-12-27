@@ -1,0 +1,15 @@
+program solve;
+    label a, b ;
+    var i : integer;
+    begin;
+        i := 0;
+        goto a;
+        writeString("4");   
+        a : i := i + 1; 
+        if i = 5 then
+        begin; 
+            goto b ; 
+        end;
+        goto a; 
+        b : writeString("2");
+    end.

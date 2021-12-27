@@ -1,0 +1,23 @@
+program main;
+
+   var x : integer;
+   
+   function f (n : integer) : integer;
+      var s, i : integer;
+   begin
+      s := 0;
+      i := 1;
+      while i <= n do
+      begin
+         s := s + i;
+         i := i + 1
+      end;
+      result := s
+   end;
+
+begin
+   x := 6;
+   x := f(x) + f(f(3));
+   writeInteger(x);
+   writeString("\n")
+end.

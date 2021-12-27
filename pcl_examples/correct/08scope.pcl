@@ -1,0 +1,19 @@
+program scope;
+
+   var x, y : integer;
+
+   procedure test ();
+      var y : integer;
+   begin
+      y := 2;
+      writeInteger(x);
+      writeInteger(y);
+      writeString("\n")
+   end;
+      
+begin
+   x := 4;
+   y := 9;
+   test()
+end.
+

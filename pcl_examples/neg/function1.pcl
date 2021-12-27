@@ -1,0 +1,5 @@
+program function1;
+
+begin
+  Sfoo(1, 2, 3);
+end.
