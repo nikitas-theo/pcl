@@ -4,7 +4,7 @@ BASE = './pcl_examples/'
 print("#"*20)
 print('Testing')
 print("#"*20)
-for ex_set in ['correct','wrong','official','neg','pos'] :
+for ex_set in ['correct','wrong','official'] :
     path_save = BASE + ex_set + '/'
     exs = glob(path_save + '*.pcl')
     exs.sort()
