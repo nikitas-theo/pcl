@@ -186,15 +186,13 @@ FunctionEntry* SymbolTable::lookupFunction(String id, LookupType lookup)
 
 void CodeGenTable::openScope(FunctionDef *fun) {
 
-    int ofs = scopes.empty() ? 0 : scopes.back().getOffset();
-
-    scopes.push_back(CodeGenScope(ofs));
+    scopes.push_back(CodeGenScope());
     scopes.back().function = fun;
 }
 
 void CodeGenTable::closeScope() { 
     for (std::string l : scopes.back().label_names){
-        CodeGenEntry *e = lookup(l);
+        LabelGenEntry *e = (LabelGenEntry*) lookup(l);
         for (GoTo * g : e->goto_nodes) g->compile_final(e->label);
     }
     scopes.pop_back(); 
@@ -228,7 +226,7 @@ CodeGenEntry * CodeGenTable::lookup(std::string name, LookupType lookup) {
 
 
 void CodeGenTable::addToLabel(std::string label, GoTo* g){
-    CodeGenEntry *l = lookup(label);
+    LabelGenEntry *l = (LabelGenEntry*) lookup(label);
     l->goto_nodes.push_back(g);
 }
 
@@ -248,23 +246,22 @@ int CodeGenTable::getNumScopes() {
     return scopes.size();
 }
 
-int CodeGenTable::insert(std::string name, llvm::Value* v,PassMode pb) { 
-    return scopes.back().insert(name, v, pb); 
+void CodeGenTable::insert(std::string name, CodeGenEntry* e) { 
+    return scopes.back().insert(name, e); 
 }
 
 
 CodeGenEntry * CodeGenScope::lookup(std::string name) {
 
     if (locals.find(name) == locals.end()) return nullptr;
-    return &(locals[name]);
+    return locals[name];
 }
-int CodeGenScope::insert(std::string name, llvm::Value* v, PassMode pb) {
+
+void CodeGenScope::insert(std::string name, CodeGenEntry* e ) {
 
     if (locals.find(name) != locals.end()) {
-        return 1;
+        error("Internal error, found double entry in the same scope");
     }
-    locals[name] = CodeGenEntry(v, offset++,pb);
+    locals[name] = e;
     ++size;
-
-    return 0; 
 }

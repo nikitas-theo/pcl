@@ -1,0 +1,114 @@
+; ModuleID = '24arrpar'
+source_filename = "24arrpar"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+
+@str = private unnamed_addr constant [6 x i8] c"Hello\00", align 1
+@str.1 = private unnamed_addr constant [6 x i8] c"Hello\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %p = alloca [20 x i8]
+  %s = alloca [20 x i8]
+  %bitcast_special_ref = bitcast [20 x i8]* %s to i8*
+  %bitcast_special_ref1 = bitcast [20 x i8]* %p to i8*
+  call void @reverse(%anon* %hidden_struct, i8* %bitcast_special_ref, i8* %bitcast_special_ref1, i8 52)
+  %bitcast_special_ref2 = bitcast [20 x i8]* %p to i8*
+  call void @reverse(%anon* %hidden_struct, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str, i32 0, i32 0), i8* %bitcast_special_ref2, i8 50)
+  %bitcast_special_ref3 = bitcast [20 x i8]* %p to i8*
+  call void @reverse(%anon* %hidden_struct, i8* %bitcast_special_ref3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.1, i32 0, i32 0), i8 10)
+  ret void
+}
+
+define void @reverse(%anon* %0, i8* %1, i8* %2, i8 %3) {
+entry:
+  %c = alloca i8
+  store i8 %3, i8* %c
+  %hidden_struct = alloca %anon.0
+  %4 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %4
+  br i1 true, label %then, label %else
+
+then:                                             ; preds = %entry
+  %call = load i8, i8* %c
+  call void @writeChar(i8 %call)
+  br label %endif
+
+endif:                                            ; preds = %endif2, %then
+  ret void
+
+else:                                             ; preds = %entry
+  br i1 false, label %then1, label %else3
+
+then1:                                            ; preds = %else
+  %arrayIdx = getelementptr i8, i8* %1, i64 0
+  %call4 = load i8, i8* %arrayIdx
+  call void @writeChar(i8 %call4)
+  br label %endif2
+
+endif2:                                           ; preds = %else3, %then1
+  br label %endif
+
+else3:                                            ; preds = %else
+  %arrayIdx5 = getelementptr i8, i8* %2, i64 0
+  %call6 = load i8, i8* %arrayIdx5
+  call void @writeChar(i8 %call6)
+  br label %endif2
+}

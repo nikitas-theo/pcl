@@ -1,0 +1,242 @@
+; ModuleID = 'bsort'
+source_filename = "bsort"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+%anon.1 = type { %anon.0* }
+%anon.2 = type { %anon* }
+
+@str = private unnamed_addr constant [3 x i8] c", \00", align 1
+@str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@str.2 = private unnamed_addr constant [16 x i8] c"Initial array: \00", align 1
+@str.3 = private unnamed_addr constant [15 x i8] c"Sorted array: \00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %seed = alloca i32
+  %x = alloca [16 x i32]
+  %i = alloca i32
+  store i32 0, i32* %i
+  store i32 65, i32* %seed
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %binop_l = load i32, i32* %i
+  %0 = icmp slt i32 %binop_l, 16
+  br i1 %0, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  %bitcast_special_ref = bitcast [16 x i32]* %x to i32*
+  call void @PrintArray(%anon* %hidden_struct, i8* getelementptr inbounds ([16 x i8], [16 x i8]* @str.2, i32 0, i32 0), i32* %bitcast_special_ref, i32 16)
+  %bitcast_special_ref6 = bitcast [16 x i32]* %x to i32*
+  call void @BubbleSort(%anon* %hidden_struct, i32* %bitcast_special_ref6, i32 16)
+  %bitcast_special_ref7 = bitcast [16 x i32]* %x to i32*
+  call void @PrintArray(%anon* %hidden_struct, i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.3, i32 0, i32 0), i32* %bitcast_special_ref7, i32 16)
+  ret void
+
+body:                                             ; preds = %loop
+  %binop_l1 = load i32, i32* %seed
+  %addtmp = mul i32 %binop_l1, 137
+  %addtmp2 = add i32 %addtmp, 221
+  %binop_r = load i32, i32* %i
+  %addtmp3 = add i32 %addtmp2, %binop_r
+  %modtmp = srem i32 %addtmp3, 101
+  store i32 %modtmp, i32* %seed
+  %arrAcc = load i32, i32* %i
+  %1 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr [16 x i32], [16 x i32]* %x, i64 0, i64 %1
+  %assign = load i32, i32* %seed
+  store i32 %assign, i32* %arrayIdx
+  %binop_l4 = load i32, i32* %i
+  %addtmp5 = add i32 %binop_l4, 1
+  store i32 %addtmp5, i32* %i
+  br label %loop
+}
+
+define void @BubbleSort(%anon* %0, i32* %1, i32 %2) {
+entry:
+  %n = alloca i32
+  store i32 %2, i32* %n
+  %hidden_struct = alloca %anon.0
+  %3 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %changed = alloca i1
+  %i = alloca i32
+  store i1 true, i1* %changed
+  br label %loop
+
+loop:                                             ; preds = %endloop2, %entry
+  %vcond = load i1, i1* %changed
+  br i1 %vcond, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  ret void
+
+body:                                             ; preds = %loop
+  store i32 0, i32* %i
+  store i1 false, i1* %changed
+  br label %loop1
+
+loop1:                                            ; preds = %endif, %body
+  %binop_l = load i32, i32* %n
+  %addtmp = sub i32 %binop_l, 1
+  %binop_l4 = load i32, i32* %i
+  %4 = icmp slt i32 %binop_l4, %addtmp
+  br i1 %4, label %body3, label %endloop2
+
+endloop2:                                         ; preds = %loop1
+  br label %loop
+
+body3:                                            ; preds = %loop1
+  %arrAcc = load i32, i32* %i
+  %5 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i32, i32* %1, i64 %5
+  %binop_l5 = load i32, i32* %i
+  %addtmp6 = add i32 %binop_l5, 1
+  %6 = sext i32 %addtmp6 to i64
+  %arrayIdx7 = getelementptr i32, i32* %1, i64 %6
+  %binop_r = load i32, i32* %arrayIdx7
+  %binop_l8 = load i32, i32* %arrayIdx
+  %7 = icmp sgt i32 %binop_l8, %binop_r
+  %if_cond = icmp ne i1 %7, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %body3
+  %arrAcc9 = load i32, i32* %i
+  %8 = sext i32 %arrAcc9 to i64
+  %arrayIdx10 = getelementptr i32, i32* %1, i64 %8
+  %binop_l11 = load i32, i32* %i
+  %addtmp12 = add i32 %binop_l11, 1
+  %9 = sext i32 %addtmp12 to i64
+  %arrayIdx13 = getelementptr i32, i32* %1, i64 %9
+  call void @swap(%anon.0* %hidden_struct, i32* %arrayIdx10, i32* %arrayIdx13)
+  store i1 true, i1* %changed
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %binop_l14 = load i32, i32* %i
+  %addtmp15 = add i32 %binop_l14, 1
+  store i32 %addtmp15, i32* %i
+  br label %loop1
+
+else:                                             ; preds = %body3
+  br label %endif
+}
+
+define void @swap(%anon.0* %0, i32* %1, i32* %2) {
+entry:
+  %hidden_struct = alloca %anon.1
+  %3 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  store %anon.0* %0, %anon.0** %3
+  %t = alloca i32
+  %assign = load i32, i32* %1
+  store i32 %assign, i32* %t
+  %assign1 = load i32, i32* %2
+  store i32 %assign1, i32* %1
+  %assign2 = load i32, i32* %t
+  store i32 %assign2, i32* %2
+  ret void
+}
+
+define void @PrintArray(%anon* %0, i8* %1, i32* %2, i32 %3) {
+entry:
+  %n = alloca i32
+  store i32 %3, i32* %n
+  %hidden_struct = alloca %anon.2
+  %4 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %4
+  %i = alloca i32
+  call void @writeString(i8* %1)
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %endif, %entry
+  %binop_r = load i32, i32* %n
+  %binop_l = load i32, i32* %i
+  %5 = icmp slt i32 %binop_l, %binop_r
+  br i1 %5, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.1, i32 0, i32 0))
+  ret void
+
+body:                                             ; preds = %loop
+  %binop_l1 = load i32, i32* %i
+  %6 = icmp sgt i32 %binop_l1, 0
+  %if_cond = icmp ne i1 %6, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %body
+  call void @writeString(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %arrAcc = load i32, i32* %i
+  %7 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i32, i32* %2, i64 %7
+  %call = load i32, i32* %arrayIdx
+  call void @writeInteger(i32 %call)
+  %binop_l2 = load i32, i32* %i
+  %addtmp = add i32 %binop_l2, 1
+  store i32 %addtmp, i32* %i
+  br label %loop
+
+else:                                             ; preds = %body
+  br label %endif
+}

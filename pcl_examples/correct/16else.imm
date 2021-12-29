@@ -1,0 +1,99 @@
+; ModuleID = '16else'
+source_filename = "16else"
+
+%anon = type { <{}>* }
+
+@str = private unnamed_addr constant [4 x i8] c"42\0A\00", align 1
+@str.1 = private unnamed_addr constant [12 x i8] c"wrong 1!!!\0A\00", align 1
+@str.2 = private unnamed_addr constant [12 x i8] c"wrong 2!!!\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  br i1 true, label %then, label %else
+
+then:                                             ; preds = %entry
+  br i1 true, label %then1, label %else3
+
+endif:                                            ; preds = %else, %endif2
+  ret void
+
+else:                                             ; preds = %entry
+  br label %endif
+
+then1:                                            ; preds = %then
+  br i1 true, label %then4, label %else6
+
+endif2:                                           ; preds = %else3, %endif5
+  br label %endif
+
+else3:                                            ; preds = %then
+  call void @writeString(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.2, i32 0, i32 0))
+  br label %endif2
+
+then4:                                            ; preds = %then1
+  call void @writeString(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0))
+  br label %endif5
+
+endif5:                                           ; preds = %else6, %then4
+  br label %endif2
+
+else6:                                            ; preds = %then1
+  call void @writeString(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @str.1, i32 0, i32 0))
+  br label %endif5
+}

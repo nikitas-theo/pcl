@@ -132,10 +132,11 @@ W [ \t\r\n]
 
 
 {W}+        {  /* do nothing */ }
-<*>.        { yyerror("lexical error"); }
+<*>.        { yyerror("lexical error - no token recognized"); }
 
 %%
 
 void yyerror (const char *msg) {
     fprintf (stderr, "At %d:%d : %s\n",yylloc.first_line, yylloc.first_column, msg);
+    exit(1);
 }

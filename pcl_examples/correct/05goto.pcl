@@ -4,8 +4,9 @@ program solve;
     begin;
         i := 0;
         goto a;
-        writeString("4");   
+        writeString("IGNORE");   
         a : i := i + 1; 
+        writeString("4");
         if i = 5 then
         begin; 
             goto b ; 

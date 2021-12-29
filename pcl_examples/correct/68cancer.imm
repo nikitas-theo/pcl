@@ -1,0 +1,163 @@
+; ModuleID = '68cancer'
+source_filename = "68cancer"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+
+@str = private unnamed_addr constant [39 x i8] c"Give a string with maximum length 30: \00", align 1
+@str.1 = private unnamed_addr constant [15 x i8] c"\0AIs cancer...\0A\00", align 1
+@str.2 = private unnamed_addr constant [19 x i8] c"\0AIs not cancer...\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %source = alloca [31 x i8]
+  %n = alloca i32
+  call void @writeString(i8* getelementptr inbounds ([39 x i8], [39 x i8]* @str, i32 0, i32 0))
+  %bitcast_special_ref = bitcast [31 x i8]* %source to i8*
+  call void @readString(i32 30, i8* %bitcast_special_ref)
+  store i32 0, i32* %n
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %arrAcc = load i32, i32* %n
+  %0 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr [31 x i8], [31 x i8]* %source, i64 0, i64 %0
+  %binop_l = load i8, i8* %arrayIdx
+  %neqtmp = icmp ne i8 %binop_l, 0
+  br i1 %neqtmp, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  %call = load i32, i32* %n
+  %bitcast_special_ref2 = bitcast [31 x i8]* %source to i8*
+  %1 = call i1 @is_it(%anon* %hidden_struct, i32 %call, i8* %bitcast_special_ref2)
+  %if_cond = icmp ne i1 %1, false
+  br i1 %if_cond, label %then, label %else
+
+body:                                             ; preds = %loop
+  %binop_l1 = load i32, i32* %n
+  %addtmp = add i32 %binop_l1, 1
+  store i32 %addtmp, i32* %n
+  br label %loop
+
+then:                                             ; preds = %endloop
+  call void @writeString(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @str.1, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  ret void
+
+else:                                             ; preds = %endloop
+  call void @writeString(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @str.2, i32 0, i32 0))
+  br label %endif
+}
+
+define i1 @is_it(%anon* %0, i32 %1, i8* %2) {
+entry:
+  %n = alloca i32
+  store i32 %1, i32* %n
+  %hidden_struct = alloca %anon.0
+  %3 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %result = alloca i1
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %endif, %entry
+  %binop_l = load i32, i32* %n
+  %divtmp = sdiv i32 %binop_l, 2
+  %binop_l1 = load i32, i32* %i
+  %4 = icmp slt i32 %binop_l1, %divtmp
+  br i1 %4, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  store i1 true, i1* %result
+  %fdef = load i1, i1* %result
+  ret i1 %fdef
+
+body:                                             ; preds = %loop
+  %arrAcc = load i32, i32* %i
+  %5 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i8, i8* %2, i64 %5
+  %binop_r = load i32, i32* %i
+  %binop_l2 = load i32, i32* %n
+  %addtmp = sub i32 %binop_l2, %binop_r
+  %addtmp3 = sub i32 %addtmp, 1
+  %6 = sext i32 %addtmp3 to i64
+  %arrayIdx4 = getelementptr i8, i8* %2, i64 %6
+  %binop_r5 = load i8, i8* %arrayIdx4
+  %binop_l6 = load i8, i8* %arrayIdx
+  %neqtmp = icmp ne i8 %binop_l6, %binop_r5
+  %if_cond = icmp ne i1 %neqtmp, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %body
+  store i1 false, i1* %result
+  %return = load i1, i1* %result
+  ret i1 %return
+
+endif:                                            ; preds = %else
+  %binop_l7 = load i32, i32* %i
+  %addtmp8 = add i32 %binop_l7, 1
+  store i32 %addtmp8, i32* %i
+  br label %loop
+
+else:                                             ; preds = %body
+  br label %endif
+}

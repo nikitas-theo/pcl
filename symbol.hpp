@@ -154,17 +154,34 @@ class SymbolTable
 
 class CodeGenEntry {
   public:
-    int offset;
-    llvm::Value* value; 
-    PassMode pass_by;
-    bool is_library_fun = false; 
-    std::vector<PassMode> arguments; 
-    std::vector<Stype> types; 
-    int nesting_level;
-    Label* label;
-    std::vector<GoTo*> goto_nodes;
+    Value* value; 
     CodeGenEntry() {}
-    CodeGenEntry(llvm::Value* v, int ofs, PassMode pb) : value(v), offset(ofs), pass_by(pb) {}
+    CodeGenEntry(Value* v) : value(v) {};
+};
+
+class FunctionGenEntry : public CodeGenEntry{
+    public : 
+        bool is_library_fun; 
+        std::vector<PassMode> arguments; 
+        std::vector<Stype> types; 
+        int nesting_level;
+        FunctionGenEntry(Value* v,  std::vector<PassMode> args, std::vector<Stype> types, 
+            bool is_lib = false, int nesting_level = 0) : CodeGenEntry(v), 
+            arguments(args), types(types), nesting_level(nesting_level), is_library_fun(is_lib) {};
+};
+
+
+class LabelGenEntry : public CodeGenEntry{
+    public : 
+        Label* label;
+        std::vector<GoTo*> goto_nodes;
+        LabelGenEntry() : CodeGenEntry(nullptr) {};
+};
+
+class VariableGenEntry : public CodeGenEntry{
+    public : 
+        PassMode pass_by;
+        VariableGenEntry(Value* v, PassMode pb = PASS_BY_VALUE) : CodeGenEntry(v), pass_by(pb) {};
 };
 
 
@@ -172,10 +189,7 @@ class CodeGenScope {
 
   public:
 
-    CodeGenScope() : locals(), offset(-1), size(0) {}
-    CodeGenScope(int ofs) : locals(), offset(ofs), size(0) {}
-    
-    int getOffset() const { return offset; }
+    CodeGenScope() : locals(), size(0) {}    
     int getSize() const { return size; }
 
     // we need label names to jump to label defined afterwards 
@@ -186,12 +200,11 @@ class CodeGenScope {
     FunctionDef *function; 
 
     CodeGenEntry *lookup(std::string name);
-    int insert(std::string name, llvm::Value* v, PassMode pb);
+    void insert(std::string name, CodeGenEntry* e);
 
   private:
 
-    std::map<std::string, CodeGenEntry> locals;
-    int offset;
+    std::map<std::string, CodeGenEntry*> locals;
     int size;
 
 };
@@ -213,8 +226,8 @@ class CodeGenTable {
 
     int getSizeOfCurrentScope();
     int getNumScopes();
-    int insert(std::string name, llvm::Value* v,PassMode pb = PASS_BY_VALUE);
 
+    void insert(std::string name, CodeGenEntry* e);
   private:
     std::list<CodeGenScope> scopes;
 

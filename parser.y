@@ -274,27 +274,33 @@ int main(int argc, char *argv[])
     int parseReturnCode;
     
     TheProgram = new Program();
-
+    bool interactive = false; 
     for (int i = 0; i < argc; i++) {
         std::string arg(argv[i]);
         if (arg.find("-O") != std::string::npos)
             TheProgram->mark_optimizable();
-        if (arg.find("-i") != std::string::npos)
+        if (arg.find("-i") != std::string::npos){
             TheProgram->mark_console_interactive();
+            interactive = true; 
+        }
         if (arg.find("--ast") != std::string::npos)
             TheProgram->mark_printable();
     }
+    if (argc == 1 && ! interactive){
+          std::cerr << "Need to provide atleast one file if you don't specify -i flag\n";
+          std::exit(1);
 
+    }
     std::string file(argv[1]);
     std::filesystem::path p(file);
     std::string filename = p.stem();
+    TheProgram->parent_path = p.parent_path();
     if (!TheProgram->is_console_interactive()) {
         TheProgram->set_name_if_blank(filename);
-
         yyin = fopen(argv[1], "r");
         if (! yyin){
           std::cerr << "File doesn't exist\n";
-          exit(1);
+          std::exit(1);
         }
     }
     else {
@@ -318,5 +324,6 @@ int main(int argc, char *argv[])
     TheProgram->compile_initalize();
     TheProgram->compile_run();
     TheProgram->compile_finalize();
-    
+
+    return 0; 
 }

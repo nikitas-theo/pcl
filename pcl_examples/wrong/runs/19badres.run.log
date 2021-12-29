@@ -1,1 +1,1 @@
-bash: ./19badres.out: No such file or directory
+bash: ./pcl_examples/wrong/19badres.out: No such file or directory

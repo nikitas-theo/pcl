@@ -593,9 +593,9 @@ class Program
 
         inline std::list<ParameterGroup*>* make_single_parameter(Stype type, PassMode pm);
         void add_lib_func_semantic(std::string name, Stype resultType, std::list<ParameterGroup*>* parameters);
-    
+
     public:
-        // Program(std::string name, AST* root) : program_name(name), rootNode(root), optimize(false), imm_stdout(false) {}
+        std::string parent_path; 
         Program() : optimize(false), imm_stdout(false), print_ast(false) {}
         FunctionDef* main_obj; 
 

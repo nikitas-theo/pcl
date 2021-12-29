@@ -1,0 +1,114 @@
+; ModuleID = '83array3'
+source_filename = "83array3"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+
+@str = private unnamed_addr constant [11 x i8] c"Position: \00", align 1
+@str.1 = private unnamed_addr constant [9 x i8] c" Value: \00", align 1
+@str.2 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %x = alloca [2 x i32]
+  %arrayIdx = getelementptr [2 x i32], [2 x i32]* %x, i64 0, i64 0
+  store i32 1, i32* %arrayIdx
+  %arrayIdx1 = getelementptr [2 x i32], [2 x i32]* %x, i64 0, i64 1
+  store i32 2, i32* %arrayIdx1
+  %bitcast_special_ref = bitcast [2 x i32]* %x to i32*
+  call void @print_array(%anon* %hidden_struct, i32* %bitcast_special_ref, i32 2)
+  ret void
+}
+
+define void @print_array(%anon* %0, i32* %1, i32 %2) {
+entry:
+  %len = alloca i32
+  store i32 %2, i32* %len
+  %hidden_struct = alloca %anon.0
+  %3 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %binop_r = load i32, i32* %len
+  %binop_l = load i32, i32* %i
+  %4 = icmp slt i32 %binop_l, %binop_r
+  br i1 %4, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  ret void
+
+body:                                             ; preds = %loop
+  call void @writeString(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @str, i32 0, i32 0))
+  %call = load i32, i32* %i
+  call void @writeInteger(i32 %call)
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str.1, i32 0, i32 0))
+  %arrAcc = load i32, i32* %i
+  %5 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i32, i32* %1, i64 %5
+  %call1 = load i32, i32* %arrayIdx
+  call void @writeInteger(i32 %call1)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.2, i32 0, i32 0))
+  %binop_l2 = load i32, i32* %i
+  %addtmp = add i32 %binop_l2, 1
+  store i32 %addtmp, i32* %i
+  br label %loop
+}

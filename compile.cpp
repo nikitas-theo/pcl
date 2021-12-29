@@ -29,7 +29,7 @@ Function* GC_Malloc;
 Function* GC_Init;
 Function* GC_Free;
 
-CodeGenTable *ct = new CodeGenTable();
+CodeGenTable ct = CodeGenTable();
 
 bool BBended;
 
@@ -64,12 +64,13 @@ ConstantPointerNull * c_point_void(Type* ptr){
 
 inline void Program::add_func_llvm(FunctionType *type, std::string name, 
     std::vector<PassMode> args, std::vector<Stype> types)
-{
-    ct->insert(name, Function::Create(type, Function::ExternalLinkage, name, TheModule));
-    CodeGenEntry* e = ct->lookup(name);
-    e->arguments = args;
-    e->types = types; 
-    e->is_library_fun = true; 
+{   
+
+    Value* v = Function::Create(type, Function::ExternalLinkage, name, TheModule);
+    bool is_library_fun = true;
+    FunctionGenEntry* f = new FunctionGenEntry(v, args, types, is_library_fun, 0);
+    ct.insert(name, f);
+
 }
 ;
 
@@ -117,21 +118,17 @@ void Program::add_libs_llvm()
         FunctionType::get(i32,{r64},false), 
         Function::ExternalLinkage, "truncFunc", TheModule);
 
-    ct->insert("trunc",trunc);
-    CodeGenEntry* e = ct->lookup("trunc");
-    e->arguments = {PASS_BY_VALUE};
-    e->types = {typeReal};     
-    e->is_library_fun = true; 
+    FunctionGenEntry* f_trunc = new FunctionGenEntry(trunc , {PASS_BY_VALUE}, {typeReal},
+    true, 0);
+    ct.insert("trunc",f_trunc);
 
     Function *round = Function::Create(
         FunctionType::get(i32,{r64},false), 
         Function::ExternalLinkage, "roundFunc", TheModule);
-    ct->insert("round",round);
-    e = ct->lookup("round");
-    e->arguments = {PASS_BY_VALUE};
-    e->types = {typeReal}; 
-    e->is_library_fun = true; 
 
+    FunctionGenEntry* f_round = new FunctionGenEntry(round , {PASS_BY_VALUE}, {typeReal},
+    true, 0);
+    ct.insert("round",f_round);
 
 };
 
@@ -178,10 +175,10 @@ void Program::compile_initalize()
     */
     main_obj->set_struct_ty();
 
-    ct->openScope(nullptr);
+    ct.openScope(nullptr);
     // add external libraries 
     add_libs_llvm();
-    ct->openScope(main_obj);
+    ct.openScope(main_obj);
 
     // add main 
     main = Function::Create(
@@ -204,7 +201,7 @@ void Program::compile_finalize()
 {
 
     Builder.CreateRet(nullptr);
-    ct->closeScope();
+    ct.closeScope();
 
     // verify module for badly formed IR
     bool failed = verifyModule(*TheModule,&errs());
@@ -240,12 +237,19 @@ void Program::compile_finalize()
 
         // print IR to file 
         std::error_code EC;
-        raw_ostream * out = new raw_fd_ostream(program_name + ".ll",EC);
+        std::string imm_path = parent_path + "/" + program_name + ".ll";
+        std::string out_path = parent_path + "/" + program_name + ".out";
+        std::string imm_path_final = parent_path + "/" + program_name + ".imm";
+
+        raw_ostream * out = new raw_fd_ostream(imm_path,EC);
         TheModule->print(*out,nullptr);
 
         // print bin to file 
-        std::string cmd = "clang " + program_name + ".ll libs.c -lm -lgc -o " +  program_name + ".out" + " -g";
+        std::string cmd = "clang " + imm_path + " libs.c -lm -lgc -o " + out_path + " -g";
         system(cmd.c_str());
+        cmd = "mv " + imm_path + " " + imm_path_final ;
+        system(cmd.c_str());
+
     }
 }
 
@@ -451,7 +455,7 @@ Value* UnOp::compile()
 Value* Id::compile() 
 {
     Value *val;
-    FunctionDef *fun = ct->get_fun(); 
+    FunctionDef *fun = ct.get_fun(); 
     std::map<std::string, DepenVar*>::iterator it;
     if ( fun != nullptr && ((it = fun->requests.find(name)) != fun->requests.end())){
         DepenVar* v = it->second; 
@@ -465,7 +469,7 @@ Value* Id::compile()
         val = Builder.CreateLoad(pos);
     }
     else {
-        CodeGenEntry* entry = ct->lookup(name);
+        CodeGenEntry* entry = ct.lookup(name);
         val = entry->value;
     }    
     return val; 
@@ -474,7 +478,7 @@ Value* Id::compile()
 
 Value* Result::compile()
 {
-    return ct->lookup("result")->value;
+    return ct.lookup("result")->value;
 }
 
 Value* Const::compile() 
@@ -497,7 +501,7 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
     // parameters : from the call 
     // arguments - pasMode  : from definitin
     // sem_types - types    : from definition
-    CodeGenEntry* called = (CodeGenEntry *) ct->lookup(fname); 
+    FunctionGenEntry* called = (FunctionGenEntry *) ct.lookup(fname); 
     Value* func = called->value;
     
     std::vector<PassMode> arguments = called->arguments;
@@ -509,7 +513,7 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
 
         // now fix our own dependencies
         // by storing from the allocas we calculated 
-        FunctionDef* caller = ct->get_fun();
+        FunctionDef* caller = ct.get_fun();
         int number_load = caller->nesting_level - called->nesting_level  +1;
         Value *ss; 
         if (number_load > 0){
@@ -524,7 +528,7 @@ Value* create_call(std::string fname, ASTnodeCollection *parameters){
         else { 
             for (auto const&  x : caller->provides){
                 Value *pos = Builder.CreateGEP(caller->hidden_struct, { c_i32(0), c_i32(x.second->struct_idx) });
-                Value * val = ct->lookup(x.second->name)->value;
+                Value * val = ct.lookup(x.second->name)->value;
                 Builder.CreateStore(val, pos);
             }
 
@@ -647,7 +651,9 @@ Value* Variable::compile()
     Value* value; 
     value = Builder.CreateAlloca(TypeConvert(type, true), 0, name.c_str());    
     //value = Builder.CreatePointerCast(value, TypeConvert(type), "bitcast");   
-    ct->insert(name,value);
+    VariableGenEntry* v = new VariableGenEntry(value);
+    ct.insert(name, v);
+
     return nullptr; 
 }
 
@@ -667,8 +673,10 @@ Value* VarDef::compile()
 Value* LabelDef::compile() 
 {   
     for (std::string label : labels){
-        ct->insert(label, nullptr);
-        ct->addLabel(label);
+        LabelGenEntry* l = new LabelGenEntry();
+        ct.insert(label,l);
+        // labels also need special storage
+        ct.addLabel(label);
     }
     // nothing to do, label is just basic block
     return nullptr;
@@ -708,7 +716,7 @@ Value* FunctionDef::compile()
 {
 
     // this is important for overriding functions, e.g. override writeString()
-    CodeGenEntry* f = ct->lookup(name, LOOKUP_CURRENT_SCOPE);
+    FunctionGenEntry* f = (FunctionGenEntry*) ct.lookup(name, LOOKUP_CURRENT_SCOPE);
     // first time defining 
     Function *routine;
  
@@ -743,20 +751,17 @@ Value* FunctionDef::compile()
             Function::ExternalLinkage,name,TheModule
         );
         // insert function in current scope 
-        ct->insert(name,routine);
-        f = ct->lookup(name);
-        f->arguments = param_pass;
-        f->types = sem_types; 
-
+        f = new FunctionGenEntry(routine, param_pass, sem_types);
         // also here 
-        nesting_level = ct->getNumScopes();
-
+        nesting_level = ct.getNumScopes();
         f->nesting_level = nesting_level;
+
+        ct.insert(name,f);
 
     }
 
     // important, need to do this in both forward and body declaration
-    nesting_level = ct->getNumScopes();
+    nesting_level = ct.getNumScopes();
 
     // add only function for forward definitions
     if (body == nullptr) return nullptr;
@@ -771,7 +776,7 @@ Value* FunctionDef::compile()
     BasicBlock * BB = BasicBlock::Create(TheContext,"entry",routine);
     Builder.SetInsertPoint(BB);
     // create a new scope
-    ct->openScope(this);
+    ct.openScope(this);
 
     auto param_iter = routine->arg_begin(); 
     // first position is struct
@@ -790,7 +795,8 @@ Value* FunctionDef::compile()
             else {
                 value = param_iter; 
             }
-            ct->insert(name, value, param->pmode);
+            VariableGenEntry *v = new VariableGenEntry(value, param->pmode);
+            ct.insert(name, v);
             param_iter++;
         }
     }
@@ -815,21 +821,22 @@ Value* FunctionDef::compile()
     // type void means its a procedure 
     if (! type->equals(typeVoid)) {
         Value* value = Builder.CreateAlloca(TypeConvert(type), 0, "result");
-        ct->insert("result",value);
+        VariableGenEntry* v = new VariableGenEntry(value);
+        ct.insert("result",v);
     }
 
 
     body->compile(); 
     if (! BBended){   
         if (! type->equals(typeVoid)){
-            Value* ret = ct->lookup("result")->value;
+            Value* ret = ct.lookup("result")->value;
             Value* l = Builder.CreateLoad(ret, "fdef");
             Builder.CreateRet(l);    
         }
         else Builder.CreateRetVoid();
     }
     else BBended = false; 
-    ct->closeScope();
+    ct.closeScope();
     Builder.SetInsertPoint(parentBB);
     return nullptr; 
 }
@@ -928,7 +935,7 @@ Value* Label::compile()
     // save basic block a goto would jump to 
     basic_block = LabelBB; 
 
-    CodeGenEntry* l = ct->lookup(label);
+    LabelGenEntry* l = (LabelGenEntry*) ct.lookup(label);
     l->label = this; 
 
     target->compile();          
@@ -940,7 +947,7 @@ Value* GoTo::compile()
 {
     insert_point = Builder.GetInsertPoint();
     insert_block = Builder.GetInsertBlock();
-    ct->addToLabel(label, this); 
+    ct.addToLabel(label, this); 
     
     // create a stray basic block to handle code 
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -962,7 +969,7 @@ void GoTo::compile_final(Label* label_node)
 Value* ReturnStmt::compile() 
 {
 
-    CodeGenEntry* e  = ct->lookup("result");
+    CodeGenEntry* e  = ct.lookup("result");
     if (e == nullptr){
         Builder.CreateRet(nullptr);
     }

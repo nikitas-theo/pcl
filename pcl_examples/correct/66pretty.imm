@@ -1,0 +1,211 @@
+; ModuleID = '66pretty'
+source_filename = "66pretty"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+%anon.1 = type { %anon* }
+%anon.2 = type { %anon* }
+
+@str = private unnamed_addr constant [17 x i8] c"Give me a word: \00", align 1
+@str.1 = private unnamed_addr constant [27 x i8] c"Let's print this nice...\0A\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %sym = alloca [20 x i8]
+  %size = alloca i32
+  call void @writeString(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @str, i32 0, i32 0))
+  %bitcast_special_ref = bitcast [20 x i8]* %sym to i8*
+  call void @readString(i32 20, i8* %bitcast_special_ref)
+  %bitcast_special_ref1 = bitcast [20 x i8]* %sym to i8*
+  %0 = call i32 @length(%anon* %hidden_struct, i8* %bitcast_special_ref1)
+  store i32 %0, i32* %size
+  call void @writeString(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @str.1, i32 0, i32 0))
+  %binop_r = load i32, i32* %size
+  %addtmp = mul i32 4, %binop_r
+  %addtmp2 = add i32 %addtmp, 1
+  call void @starLine(%anon* %hidden_struct, i8 42, i32 %addtmp2)
+  call void @writeChar(i8 10)
+  %bitcast_special_ref3 = bitcast [20 x i8]* %sym to i8*
+  %call = load i32, i32* %size
+  call void @starChar(%anon* %hidden_struct, i8* %bitcast_special_ref3, i8 42, i32 %call)
+  call void @writeChar(i8 10)
+  %binop_r4 = load i32, i32* %size
+  %addtmp5 = mul i32 4, %binop_r4
+  %addtmp6 = add i32 %addtmp5, 1
+  call void @starLine(%anon* %hidden_struct, i8 42, i32 %addtmp6)
+  call void @writeChar(i8 10)
+  call void @writeChar(i8 10)
+  %binop_r7 = load i32, i32* %size
+  %addtmp8 = mul i32 4, %binop_r7
+  %addtmp9 = add i32 %addtmp8, 1
+  call void @starLine(%anon* %hidden_struct, i8 35, i32 %addtmp9)
+  call void @writeChar(i8 10)
+  %bitcast_special_ref10 = bitcast [20 x i8]* %sym to i8*
+  %call11 = load i32, i32* %size
+  call void @starChar(%anon* %hidden_struct, i8* %bitcast_special_ref10, i8 45, i32 %call11)
+  call void @writeChar(i8 10)
+  %binop_r12 = load i32, i32* %size
+  %addtmp13 = mul i32 4, %binop_r12
+  %addtmp14 = add i32 %addtmp13, 1
+  call void @starLine(%anon* %hidden_struct, i8 35, i32 %addtmp14)
+  call void @writeChar(i8 10)
+  ret void
+}
+
+define i32 @length(%anon* %0, i8* %1) {
+entry:
+  %hidden_struct = alloca %anon.0
+  %2 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %2
+  %result = alloca i32
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %arrAcc = load i32, i32* %i
+  %3 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i8, i8* %1, i64 %3
+  %binop_l = load i8, i8* %arrayIdx
+  %neqtmp = icmp ne i8 %binop_l, 0
+  br i1 %neqtmp, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  %assign = load i32, i32* %i
+  store i32 %assign, i32* %result
+  %fdef = load i32, i32* %result
+  ret i32 %fdef
+
+body:                                             ; preds = %loop
+  %binop_l1 = load i32, i32* %i
+  %addtmp = add i32 %binop_l1, 1
+  store i32 %addtmp, i32* %i
+  br label %loop
+}
+
+define void @starLine(%anon* %0, i8 %1, i32 %2) {
+entry:
+  %ch = alloca i8
+  store i8 %1, i8* %ch
+  %size = alloca i32
+  store i32 %2, i32* %size
+  %hidden_struct = alloca %anon.1
+  %3 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %binop_r = load i32, i32* %size
+  %binop_l = load i32, i32* %i
+  %4 = icmp slt i32 %binop_l, %binop_r
+  br i1 %4, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  ret void
+
+body:                                             ; preds = %loop
+  %call = load i8, i8* %ch
+  call void @writeChar(i8 %call)
+  %binop_l1 = load i32, i32* %i
+  %addtmp = add i32 %binop_l1, 1
+  store i32 %addtmp, i32* %i
+  br label %loop
+}
+
+define void @starChar(%anon* %0, i8* %1, i8 %2, i32 %3) {
+entry:
+  %ch = alloca i8
+  store i8 %2, i8* %ch
+  %size = alloca i32
+  store i32 %3, i32* %size
+  %hidden_struct = alloca %anon.2
+  %4 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %4
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %binop_r = load i32, i32* %size
+  %binop_l = load i32, i32* %i
+  %5 = icmp slt i32 %binop_l, %binop_r
+  br i1 %5, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  %call3 = load i8, i8* %ch
+  call void @writeChar(i8 %call3)
+  ret void
+
+body:                                             ; preds = %loop
+  %call = load i8, i8* %ch
+  call void @writeChar(i8 %call)
+  call void @writeChar(i8 32)
+  %arrAcc = load i32, i32* %i
+  %6 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr i8, i8* %1, i64 %6
+  %call1 = load i8, i8* %arrayIdx
+  call void @writeChar(i8 %call1)
+  call void @writeChar(i8 32)
+  %binop_l2 = load i32, i32* %i
+  %addtmp = add i32 %binop_l2, 1
+  store i32 %addtmp, i32* %i
+  br label %loop
+}

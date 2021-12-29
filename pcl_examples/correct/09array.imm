@@ -1,0 +1,79 @@
+; ModuleID = '09array'
+source_filename = "09array"
+
+%anon = type { <{}>* }
+
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %a = alloca [32 x i32]
+  %arrayIdx = getelementptr [32 x i32], [32 x i32]* %a, i64 0, i64 0
+  store i32 14, i32* %arrayIdx
+  %arrayIdx1 = getelementptr [32 x i32], [32 x i32]* %a, i64 0, i64 24
+  store i32 28, i32* %arrayIdx1
+  %arrayIdx2 = getelementptr [32 x i32], [32 x i32]* %a, i64 0, i64 0
+  %arrayIdx3 = getelementptr [32 x i32], [32 x i32]* %a, i64 0, i64 24
+  %binop_r = load i32, i32* %arrayIdx3
+  %binop_l = load i32, i32* %arrayIdx2
+  %addtmp = add i32 %binop_l, %binop_r
+  call void @writeInteger(i32 %addtmp)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  ret void
+}

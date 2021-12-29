@@ -1,1 +1,1 @@
-bash: ./02refpar.out: No such file or directory
+bash: ./pcl_examples/wrong/02refpar.out: No such file or directory

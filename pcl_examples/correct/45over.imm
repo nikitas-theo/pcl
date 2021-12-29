@@ -1,0 +1,99 @@
+; ModuleID = '45over'
+source_filename = "45over"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+%anon.1 = type { %anon* }
+%anon.2 = type { %anon.1* }
+
+@str = private unnamed_addr constant [10 x i8] c"wrong!!!\0A\00", align 1
+@str.2 = private unnamed_addr constant [4 x i8] c"42\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  call void @g(%anon* %hidden_struct)
+  ret void
+}
+
+define void @f(%anon* %0) {
+entry:
+  %hidden_struct = alloca %anon.0
+  %1 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %1
+  call void @writeString(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0))
+  ret void
+}
+
+define void @g(%anon* %0) {
+entry:
+  %hidden_struct = alloca %anon.1
+  %1 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %1
+  call void @f.1(%anon.1* %hidden_struct)
+  ret void
+}
+
+define void @f.1(%anon.1* %0) {
+entry:
+  %hidden_struct = alloca %anon.2
+  %1 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  store %anon.1* %0, %anon.1** %1
+  call void @writeString(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.2, i32 0, i32 0))
+  ret void
+}

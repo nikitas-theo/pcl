@@ -1,0 +1,100 @@
+; ModuleID = '75collatz'
+source_filename = "75collatz"
+
+%anon = type { <{}>* }
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %x = alloca i32
+  store i32 6, i32* %x
+  br label %loop
+
+loop:                                             ; preds = %endif, %entry
+  %binop_l = load i32, i32* %x
+  %0 = icmp sgt i32 %binop_l, 1
+  br i1 %0, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  ret void
+
+body:                                             ; preds = %loop
+  %call = load i32, i32* %x
+  call void @writeInteger(i32 %call)
+  %binop_l1 = load i32, i32* %x
+  %modtmp = srem i32 %binop_l1, 2
+  %eqtmp = icmp eq i32 %modtmp, 0
+  %if_cond = icmp ne i1 %eqtmp, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %body
+  %binop_l2 = load i32, i32* %x
+  %divtmp = sdiv i32 %binop_l2, 2
+  store i32 %divtmp, i32* %x
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  br label %loop
+
+else:                                             ; preds = %body
+  %binop_r = load i32, i32* %x
+  %addtmp = mul i32 3, %binop_r
+  %addtmp3 = add i32 %addtmp, 1
+  store i32 %addtmp3, i32* %x
+  br label %endif
+}

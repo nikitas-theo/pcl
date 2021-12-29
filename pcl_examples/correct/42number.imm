@@ -1,0 +1,159 @@
+; ModuleID = '42number'
+source_filename = "42number"
+
+%anon = type { <{}>* }
+
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %i = alloca i32
+  %j = alloca i32
+  %k = alloca i32
+  store i32 1, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %endloop2, %entry
+  %binop_l = load i32, i32* %i
+  %0 = icmp slt i32 %binop_l, 10
+  br i1 %0, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  ret void
+
+body:                                             ; preds = %loop
+  store i32 0, i32* %j
+  br label %loop1
+
+loop1:                                            ; preds = %endloop6, %body
+  %binop_l4 = load i32, i32* %j
+  %1 = icmp slt i32 %binop_l4, 10
+  br i1 %1, label %body3, label %endloop2
+
+endloop2:                                         ; preds = %loop1
+  %binop_l42 = load i32, i32* %i
+  %addtmp43 = add i32 %binop_l42, 1
+  store i32 %addtmp43, i32* %i
+  br label %loop
+
+body3:                                            ; preds = %loop1
+  store i32 0, i32* %k
+  br label %loop5
+
+loop5:                                            ; preds = %endif, %body3
+  %binop_l8 = load i32, i32* %k
+  %2 = icmp slt i32 %binop_l8, 10
+  br i1 %2, label %body7, label %endloop6
+
+endloop6:                                         ; preds = %loop5
+  %binop_l40 = load i32, i32* %j
+  %addtmp41 = add i32 %binop_l40, 1
+  store i32 %addtmp41, i32* %j
+  br label %loop1
+
+body7:                                            ; preds = %loop5
+  %binop_r = load i32, i32* %i
+  %addtmp = mul i32 100, %binop_r
+  %binop_r9 = load i32, i32* %j
+  %addtmp10 = mul i32 10, %binop_r9
+  %addtmp11 = add i32 %addtmp, %addtmp10
+  %binop_r12 = load i32, i32* %k
+  %addtmp13 = add i32 %addtmp11, %binop_r12
+  %binop_r14 = load i32, i32* %i
+  %binop_l15 = load i32, i32* %i
+  %addtmp16 = mul i32 %binop_l15, %binop_r14
+  %binop_r17 = load i32, i32* %i
+  %addtmp18 = mul i32 %addtmp16, %binop_r17
+  %binop_r19 = load i32, i32* %j
+  %binop_l20 = load i32, i32* %j
+  %addtmp21 = mul i32 %binop_l20, %binop_r19
+  %binop_r22 = load i32, i32* %j
+  %addtmp23 = mul i32 %addtmp21, %binop_r22
+  %addtmp24 = add i32 %addtmp18, %addtmp23
+  %binop_r25 = load i32, i32* %k
+  %binop_l26 = load i32, i32* %k
+  %addtmp27 = mul i32 %binop_l26, %binop_r25
+  %binop_r28 = load i32, i32* %k
+  %addtmp29 = mul i32 %addtmp27, %binop_r28
+  %addtmp30 = add i32 %addtmp24, %addtmp29
+  %eqtmp = icmp eq i32 %addtmp13, %addtmp30
+  %if_cond = icmp ne i1 %eqtmp, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %body7
+  %binop_r31 = load i32, i32* %i
+  %addtmp32 = mul i32 100, %binop_r31
+  %binop_r33 = load i32, i32* %j
+  %addtmp34 = mul i32 10, %binop_r33
+  %addtmp35 = add i32 %addtmp32, %addtmp34
+  %binop_r36 = load i32, i32* %k
+  %addtmp37 = add i32 %addtmp35, %binop_r36
+  call void @writeInteger(i32 %addtmp37)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %binop_l38 = load i32, i32* %k
+  %addtmp39 = add i32 %binop_l38, 1
+  store i32 %addtmp39, i32* %k
+  br label %loop5
+
+else:                                             ; preds = %body7
+  br label %endif
+}

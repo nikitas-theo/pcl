@@ -1,0 +1,91 @@
+; ModuleID = '79gcd'
+source_filename = "79gcd"
+
+%anon = type { <{}>* }
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %a = alloca i32
+  %b = alloca i32
+  %t = alloca i32
+  store i32 12, i32* %b
+  store i32 16, i32* %a
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %binop_l = load i32, i32* %b
+  %0 = icmp sge i32 %binop_l, 1
+  br i1 %0, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  %call = load i32, i32* %a
+  call void @writeInteger(i32 %call)
+  ret void
+
+body:                                             ; preds = %loop
+  %assign = load i32, i32* %b
+  store i32 %assign, i32* %t
+  %binop_r = load i32, i32* %b
+  %binop_l1 = load i32, i32* %a
+  %modtmp = srem i32 %binop_l1, %binop_r
+  store i32 %modtmp, i32* %b
+  %assign2 = load i32, i32* %t
+  store i32 %assign2, i32* %a
+  br label %loop
+}

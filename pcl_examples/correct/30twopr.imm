@@ -1,0 +1,291 @@
+; ModuleID = '30twopr'
+source_filename = "30twopr"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+%anon.1 = type { %anon* }
+
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@str.1 = private unnamed_addr constant [8 x i8] c"Limit: \00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %max2prime = alloca i32
+  %i = alloca i32
+  call void @writeString(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @str.1, i32 0, i32 0))
+  %0 = call i32 @readInteger()
+  store i32 %0, i32* %max2prime
+  store i32 6, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %endif11, %entry
+  %binop_r = load i32, i32* %max2prime
+  %binop_l = load i32, i32* %i
+  %1 = icmp sle i32 %binop_l, %binop_r
+  br i1 %1, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  ret void
+
+body:                                             ; preds = %loop
+  %binop_l1 = load i32, i32* %i
+  %addtmp = sub i32 %binop_l1, 1
+  %2 = call i1 @is2prime(%anon* %hidden_struct, i32 %addtmp)
+  %if_cond = icmp ne i1 %2, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %body
+  %binop_l2 = load i32, i32* %i
+  %addtmp3 = sub i32 %binop_l2, 1
+  call void @output(%anon* %hidden_struct, i32 %addtmp3)
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %binop_l4 = load i32, i32* %i
+  %addtmp5 = add i32 %binop_l4, 1
+  %binop_r6 = load i32, i32* %max2prime
+  %3 = icmp sle i32 %addtmp5, %binop_r6
+  %4 = icmp eq i1 %3, false
+  br i1 %4, label %short_and, label %full_and
+
+else:                                             ; preds = %body
+  br label %endif
+
+short_and:                                        ; preds = %endif
+  br label %end_and
+
+full_and:                                         ; preds = %endif
+  %binop_l7 = load i32, i32* %i
+  %addtmp8 = add i32 %binop_l7, 1
+  %5 = call i1 @is2prime(%anon* %hidden_struct, i32 %addtmp8)
+  %andtmp = and i1 %3, %5
+  br label %end_and
+
+end_and:                                          ; preds = %full_and, %short_and
+  %phi_and = phi i1 [ false, %short_and ], [ %andtmp, %full_and ]
+  %if_cond9 = icmp ne i1 %phi_and, false
+  br i1 %if_cond9, label %then10, label %else12
+
+then10:                                           ; preds = %end_and
+  %binop_l13 = load i32, i32* %i
+  %addtmp14 = add i32 %binop_l13, 1
+  call void @output(%anon* %hidden_struct, i32 %addtmp14)
+  br label %endif11
+
+endif11:                                          ; preds = %else12, %then10
+  %binop_l15 = load i32, i32* %i
+  %addtmp16 = add i32 %binop_l15, 6
+  store i32 %addtmp16, i32* %i
+  br label %loop
+
+else12:                                           ; preds = %end_and
+  br label %endif11
+}
+
+define i1 @is2prime(%anon* %0, i32 %1) {
+entry:
+  %primeprime = alloca i32
+  store i32 %1, i32* %primeprime
+  %hidden_struct = alloca %anon.0
+  %2 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %2
+  %result = alloca i1
+  %more = alloca i1
+  %num = alloca i32
+  %sqrt = alloca i32
+  %odd = alloca i32
+  %sum = alloca i32
+  %divisor = alloca i32
+  %quotient = alloca i32
+  %assign = load i32, i32* %primeprime
+  store i32 %assign, i32* %num
+  store i1 true, i1* %more
+  br label %loop
+
+loop:                                             ; preds = %endloop19, %entry
+  %binop_l = load i1, i1* %more
+  %3 = icmp eq i1 %binop_l, false
+  br i1 %3, label %short_and, label %full_and
+
+endloop:                                          ; preds = %end_and4
+  %assign39 = load i1, i1* %more
+  store i1 %assign39, i1* %result
+  %fdef = load i1, i1* %result
+  ret i1 %fdef
+
+body:                                             ; preds = %end_and4
+  store i32 0, i32* %sqrt
+  store i32 1, i32* %odd
+  store i32 1, i32* %sum
+  br label %loop8
+
+short_and:                                        ; preds = %loop
+  br label %end_and
+
+full_and:                                         ; preds = %loop
+  %binop_l1 = load i32, i32* %num
+  %neqtmp = icmp ne i32 %binop_l1, 2
+  %andtmp = and i1 %binop_l, %neqtmp
+  br label %end_and
+
+end_and:                                          ; preds = %full_and, %short_and
+  %phi_and = phi i1 [ false, %short_and ], [ %andtmp, %full_and ]
+  %4 = icmp eq i1 %phi_and, false
+  br i1 %4, label %short_and2, label %full_and3
+
+short_and2:                                       ; preds = %end_and
+  br label %end_and4
+
+full_and3:                                        ; preds = %end_and
+  %binop_l5 = load i32, i32* %num
+  %5 = icmp sgt i32 %binop_l5, 0
+  %andtmp6 = and i1 %phi_and, %5
+  br label %end_and4
+
+end_and4:                                         ; preds = %full_and3, %short_and2
+  %phi_and7 = phi i1 [ false, %short_and2 ], [ %andtmp6, %full_and3 ]
+  br i1 %phi_and7, label %body, label %endloop
+
+loop8:                                            ; preds = %body10, %body
+  %binop_r = load i32, i32* %num
+  %binop_l11 = load i32, i32* %sum
+  %6 = icmp sle i32 %binop_l11, %binop_r
+  br i1 %6, label %body10, label %endloop9
+
+endloop9:                                         ; preds = %loop8
+  store i32 3, i32* %divisor
+  br label %loop18
+
+body10:                                           ; preds = %loop8
+  %binop_l12 = load i32, i32* %sqrt
+  %addtmp = add i32 %binop_l12, 1
+  store i32 %addtmp, i32* %sqrt
+  %binop_l13 = load i32, i32* %odd
+  %addtmp14 = add i32 %binop_l13, 2
+  store i32 %addtmp14, i32* %odd
+  %binop_r15 = load i32, i32* %odd
+  %binop_l16 = load i32, i32* %sum
+  %addtmp17 = add i32 %binop_l16, %binop_r15
+  store i32 %addtmp17, i32* %sum
+  br label %loop8
+
+loop18:                                           ; preds = %endif, %endloop9
+  %binop_l21 = load i1, i1* %more
+  %7 = icmp eq i1 %binop_l21, false
+  br i1 %7, label %short_and22, label %full_and23
+
+endloop19:                                        ; preds = %end_and24
+  %binop_l37 = load i32, i32* %num
+  %divtmp38 = sdiv i32 %binop_l37, 10
+  store i32 %divtmp38, i32* %num
+  br label %loop
+
+body20:                                           ; preds = %end_and24
+  %binop_r29 = load i32, i32* %divisor
+  %binop_l30 = load i32, i32* %num
+  %divtmp = sdiv i32 %binop_l30, %binop_r29
+  store i32 %divtmp, i32* %quotient
+  %binop_r31 = load i32, i32* %quotient
+  %binop_l32 = load i32, i32* %divisor
+  %addtmp33 = mul i32 %binop_l32, %binop_r31
+  %binop_l34 = load i32, i32* %num
+  %eqtmp = icmp eq i32 %binop_l34, %addtmp33
+  %if_cond = icmp ne i1 %eqtmp, false
+  br i1 %if_cond, label %then, label %else
+
+short_and22:                                      ; preds = %loop18
+  br label %end_and24
+
+full_and23:                                       ; preds = %loop18
+  %binop_r25 = load i32, i32* %sqrt
+  %binop_l26 = load i32, i32* %divisor
+  %8 = icmp sle i32 %binop_l26, %binop_r25
+  %andtmp27 = and i1 %binop_l21, %8
+  br label %end_and24
+
+end_and24:                                        ; preds = %full_and23, %short_and22
+  %phi_and28 = phi i1 [ false, %short_and22 ], [ %andtmp27, %full_and23 ]
+  br i1 %phi_and28, label %body20, label %endloop19
+
+then:                                             ; preds = %body20
+  store i1 false, i1* %more
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  br label %loop18
+
+else:                                             ; preds = %body20
+  %binop_l35 = load i32, i32* %divisor
+  %addtmp36 = add i32 %binop_l35, 2
+  store i32 %addtmp36, i32* %divisor
+  br label %endif
+}
+
+define void @output(%anon* %0, i32 %1) {
+entry:
+  %n = alloca i32
+  store i32 %1, i32* %n
+  %hidden_struct = alloca %anon.1
+  %2 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %2
+  %call = load i32, i32* %n
+  call void @writeInteger(i32 %call)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  ret void
+}

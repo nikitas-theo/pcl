@@ -1,0 +1,9 @@
+program add;
+   var x : array [50] of array [50] of char; 
+begin
+   x[1][0] := '4';
+   x[1][1] := '2';
+   x[1][2] := '\0';
+   writeString(x[1]);
+end.
+

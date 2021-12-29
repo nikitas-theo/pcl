@@ -1,5 +1,0 @@
-program array2;
-
-begin
-  "TEST"[0] := 'c';
-end.

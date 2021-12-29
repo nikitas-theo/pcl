@@ -1,0 +1,96 @@
+; ModuleID = '19array'
+source_filename = "19array"
+
+%anon = type { <{}>* }
+
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %i = alloca i32
+  %a = alloca [10 x i32]
+  store i32 0, i32* %i
+  br label %loop
+
+loop:                                             ; preds = %body, %entry
+  %binop_l = load i32, i32* %i
+  %0 = icmp slt i32 %binop_l, 10
+  br i1 %0, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  %arrayIdx6 = getelementptr [10 x i32], [10 x i32]* %a, i64 0, i64 6
+  %call = load i32, i32* %arrayIdx6
+  call void @writeInteger(i32 %call)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  ret void
+
+body:                                             ; preds = %loop
+  %arrAcc = load i32, i32* %i
+  %1 = sext i32 %arrAcc to i64
+  %arrayIdx = getelementptr [10 x i32], [10 x i32]* %a, i64 0, i64 %1
+  %binop_l1 = load i32, i32* %i
+  %addtmp = add i32 %binop_l1, 1
+  %binop_l2 = load i32, i32* %i
+  %addtmp3 = mul i32 %binop_l2, %addtmp
+  store i32 %addtmp3, i32* %arrayIdx
+  %binop_l4 = load i32, i32* %i
+  %addtmp5 = add i32 %binop_l4, 1
+  store i32 %addtmp5, i32* %i
+  br label %loop
+}

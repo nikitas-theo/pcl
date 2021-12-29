@@ -1,0 +1,257 @@
+; ModuleID = '63gcd'
+source_filename = "63gcd"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+%anon.1 = type { %anon* }
+%anon.2 = type { %anon* }
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %0 = call i32 @stupid(%anon* %hidden_struct, i32 100, i32 932)
+  call void @writeInteger(i32 %0)
+  %1 = call i32 @clever(%anon* %hidden_struct, i32 288, i32 118)
+  call void @writeInteger(i32 %1)
+  %2 = call i32 @clever(%anon* %hidden_struct, i32 26910, i32 3130)
+  %3 = call i8 @chr(i32 %2)
+  call void @writeChar(i8 %3)
+  ret void
+}
+
+define i32 @stupid(%anon* %0, i32 %1, i32 %2) {
+entry:
+  %a = alloca i32
+  store i32 %1, i32* %a
+  %b = alloca i32
+  store i32 %2, i32* %b
+  %hidden_struct = alloca %anon.0
+  %3 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %result = alloca i32
+  %i = alloca i32
+  %binop_r = load i32, i32* %b
+  %binop_l = load i32, i32* %a
+  %4 = icmp sgt i32 %binop_l, %binop_r
+  %if_cond = icmp ne i1 %4, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %entry
+  %assign = load i32, i32* %a
+  store i32 %assign, i32* %i
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  br label %loop
+
+else:                                             ; preds = %entry
+  %assign1 = load i32, i32* %b
+  store i32 %assign1, i32* %i
+  br label %endif
+
+loop:                                             ; preds = %endif11, %endif
+  %binop_l2 = load i32, i32* %i
+  %5 = icmp sgt i32 %binop_l2, 1
+  br i1 %5, label %body, label %endloop
+
+endloop:                                          ; preds = %loop
+  store i32 1, i32* %result
+  %fdef = load i32, i32* %result
+  ret i32 %fdef
+
+body:                                             ; preds = %loop
+  %binop_r3 = load i32, i32* %i
+  %binop_l4 = load i32, i32* %a
+  %modtmp = srem i32 %binop_l4, %binop_r3
+  %eqtmp = icmp eq i32 %modtmp, 0
+  %6 = icmp eq i1 %eqtmp, false
+  br i1 %6, label %short_and, label %full_and
+
+short_and:                                        ; preds = %body
+  br label %end_and
+
+full_and:                                         ; preds = %body
+  %binop_r5 = load i32, i32* %i
+  %binop_l6 = load i32, i32* %b
+  %modtmp7 = srem i32 %binop_l6, %binop_r5
+  %eqtmp8 = icmp eq i32 %modtmp7, 0
+  %andtmp = and i1 %eqtmp, %eqtmp8
+  br label %end_and
+
+end_and:                                          ; preds = %full_and, %short_and
+  %phi_and = phi i1 [ false, %short_and ], [ %andtmp, %full_and ]
+  %if_cond9 = icmp ne i1 %phi_and, false
+  br i1 %if_cond9, label %then10, label %else12
+
+then10:                                           ; preds = %end_and
+  %assign13 = load i32, i32* %i
+  store i32 %assign13, i32* %result
+  %return = load i32, i32* %result
+  ret i32 %return
+
+endif11:                                          ; preds = %else12
+  %binop_l14 = load i32, i32* %i
+  %addtmp = sub i32 %binop_l14, 1
+  store i32 %addtmp, i32* %i
+  br label %loop
+
+else12:                                           ; preds = %end_and
+  br label %endif11
+}
+
+define i32 @euclid(%anon* %0, i32 %1, i32 %2) {
+entry:
+  %a = alloca i32
+  store i32 %1, i32* %a
+  %b = alloca i32
+  store i32 %2, i32* %b
+  %hidden_struct = alloca %anon.1
+  %3 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %result = alloca i32
+  %binop_l = load i32, i32* %a
+  %eqtmp = icmp eq i32 %binop_l, 0
+  %if_cond = icmp ne i1 %eqtmp, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %entry
+  %assign = load i32, i32* %b
+  store i32 %assign, i32* %result
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %fdef = load i32, i32* %result
+  ret i32 %fdef
+
+else:                                             ; preds = %entry
+  %4 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  %5 = load %anon*, %anon** %4
+  %binop_r = load i32, i32* %a
+  %binop_l1 = load i32, i32* %b
+  %modtmp = srem i32 %binop_l1, %binop_r
+  %call = load i32, i32* %a
+  %6 = call i32 @euclid(%anon* %5, i32 %modtmp, i32 %call)
+  store i32 %6, i32* %result
+  br label %endif
+}
+
+define i32 @clever(%anon* %0, i32 %1, i32 %2) {
+entry:
+  %a = alloca i32
+  store i32 %1, i32* %a
+  %b = alloca i32
+  store i32 %2, i32* %b
+  %hidden_struct = alloca %anon.2
+  %3 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %3
+  %result = alloca i32
+  %binop_l = load i32, i32* %a
+  %eqtmp = icmp eq i32 %binop_l, 0
+  %4 = icmp eq i1 %eqtmp, false
+  br i1 %4, label %short_and, label %full_and
+
+short_and:                                        ; preds = %entry
+  br label %end_and
+
+full_and:                                         ; preds = %entry
+  %binop_l1 = load i32, i32* %b
+  %eqtmp2 = icmp eq i32 %binop_l1, 0
+  %andtmp = and i1 %eqtmp, %eqtmp2
+  br label %end_and
+
+end_and:                                          ; preds = %full_and, %short_and
+  %phi_and = phi i1 [ false, %short_and ], [ %andtmp, %full_and ]
+  %if_cond = icmp ne i1 %phi_and, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %end_and
+  store i32 0, i32* %result
+  br label %endif
+
+endif:                                            ; preds = %endif6, %then
+  %fdef = load i32, i32* %result
+  ret i32 %fdef
+
+else:                                             ; preds = %end_and
+  %binop_r = load i32, i32* %b
+  %binop_l3 = load i32, i32* %a
+  %5 = icmp sle i32 %binop_l3, %binop_r
+  %if_cond4 = icmp ne i1 %5, false
+  br i1 %if_cond4, label %then5, label %else7
+
+then5:                                            ; preds = %else
+  %6 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  %7 = load %anon*, %anon** %6
+  %call = load i32, i32* %a
+  %call8 = load i32, i32* %b
+  %8 = call i32 @euclid(%anon* %7, i32 %call, i32 %call8)
+  store i32 %8, i32* %result
+  br label %endif6
+
+endif6:                                           ; preds = %else7, %then5
+  br label %endif
+
+else7:                                            ; preds = %else
+  %9 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  %10 = load %anon*, %anon** %9
+  %call9 = load i32, i32* %b
+  %call10 = load i32, i32* %a
+  %11 = call i32 @euclid(%anon* %10, i32 %call9, i32 %call10)
+  store i32 %11, i32* %result
+  br label %endif6
+}

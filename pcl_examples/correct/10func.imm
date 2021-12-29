@@ -1,0 +1,142 @@
+; ModuleID = '10func'
+source_filename = "10func"
+
+%anon = type { <{}>* }
+%anon.0 = type { %anon* }
+%anon.1 = type { %anon* }
+%anon.2 = type { %anon* }
+
+@str = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+
+declare i8* @GC_malloc(i64)
+
+declare void @GC_init()
+
+declare void @GC_free(i8*)
+
+declare void @writeInteger(i32)
+
+declare void @writeBoolean(i1)
+
+declare void @writeChar(i8)
+
+declare void @writeReal(double)
+
+declare void @writeString(i8*)
+
+declare i32 @readInteger()
+
+declare i1 @readBoolean()
+
+declare i8 @readChar()
+
+declare double @readReal()
+
+declare void @readString(i32, i8*)
+
+declare i32 @abs(i32)
+
+declare double @fabs(double)
+
+declare double @sqrt(double)
+
+declare double @sin(double)
+
+declare double @cos(double)
+
+declare double @tan(double)
+
+declare double @arctan(double)
+
+declare double @exp(double)
+
+declare double @ln(double)
+
+declare double @pi()
+
+declare i32 @ord(i8)
+
+declare i8 @chr(i32)
+
+declare i32 @truncFunc(double)
+
+declare i32 @roundFunc(double)
+
+define void @main() {
+entry:
+  call void @GC_init()
+  %hidden_struct = alloca %anon
+  %x = alloca i32
+  %0 = call i32 @f(%anon* %hidden_struct, i32 6)
+  store i32 %0, i32* %x
+  %call = load i32, i32* %x
+  call void @writeInteger(i32 %call)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i32 0, i32 0))
+  ret void
+}
+
+define i32 @inc(%anon* %0, i32 %1) {
+entry:
+  %x = alloca i32
+  store i32 %1, i32* %x
+  %hidden_struct = alloca %anon.0
+  %2 = getelementptr %anon.0, %anon.0* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %2
+  %result = alloca i32
+  %binop_l = load i32, i32* %x
+  %addtmp = add i32 %binop_l, 1
+  store i32 %addtmp, i32* %result
+  %fdef = load i32, i32* %result
+  ret i32 %fdef
+}
+
+define i1 @odd(%anon* %0, i32 %1) {
+entry:
+  %x = alloca i32
+  store i32 %1, i32* %x
+  %hidden_struct = alloca %anon.1
+  %2 = getelementptr %anon.1, %anon.1* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %2
+  %result = alloca i1
+  %binop_l = load i32, i32* %x
+  %modtmp = srem i32 %binop_l, 2
+  %neqtmp = icmp ne i32 %modtmp, 0
+  store i1 %neqtmp, i1* %result
+  %fdef = load i1, i1* %result
+  ret i1 %fdef
+}
+
+define i32 @f(%anon* %0, i32 %1) {
+entry:
+  %x = alloca i32
+  store i32 %1, i32* %x
+  %hidden_struct = alloca %anon.2
+  %2 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  store %anon* %0, %anon** %2
+  %result = alloca i32
+  %3 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  %4 = load %anon*, %anon** %3
+  %call = load i32, i32* %x
+  %5 = call i1 @odd(%anon* %4, i32 %call)
+  %if_cond = icmp ne i1 %5, false
+  br i1 %if_cond, label %then, label %else
+
+then:                                             ; preds = %entry
+  %assign = load i32, i32* %x
+  store i32 %assign, i32* %result
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %fdef = load i32, i32* %result
+  ret i32 %fdef
+
+else:                                             ; preds = %entry
+  %6 = getelementptr %anon.2, %anon.2* %hidden_struct, i32 0, i32 0
+  %7 = load %anon*, %anon** %6
+  %call1 = load i32, i32* %x
+  %8 = call i32 @inc(%anon* %7, i32 %call1)
+  %binop_l = load i32, i32* %x
+  %addtmp = mul i32 %binop_l, %8
+  store i32 %addtmp, i32* %result
+  br label %endif
+}

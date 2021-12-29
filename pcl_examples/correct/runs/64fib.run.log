@@ -1,4 +1,4 @@
-How many Fibonacci numbers do you want to compute? 4
+How many Fibonacci numbers do you want to compute? 3
 
 
 	I 	 Fibonacci(I) 
@@ -6,4 +6,3 @@ How many Fibonacci numbers do you want to compute? 4
 	1 	   1
 	2 	   1
 	3 	   2
-	4 	   3

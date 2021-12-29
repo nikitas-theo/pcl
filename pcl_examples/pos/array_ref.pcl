@@ -1,7 +1,0 @@
-program array_ref;
-
-procedure foo(var s: array of char);
-begin
-end;
-begin
-end.
