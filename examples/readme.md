@@ -1,1 +1,1 @@
-Some example programs written in the PCL language.
+Some example programs written in the PCL language. Disclaimer: most of these examples are written by other people and passed on to me as a means of evalauting the compiler. 
