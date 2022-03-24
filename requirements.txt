@@ -1,6 +1,6 @@
 c++ std==17
 bison
-lexer
+flex
 llvm-10 
 libgc-dev
 clang 

@@ -13,6 +13,7 @@ lexer.cpp
 *.o
 *.ll
 *.out
+*.imm
 # ignore test and dev files
 *_test.*
 *_dev*
