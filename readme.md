@@ -12,7 +12,7 @@ The PCL language is a strict subset of the pascal programming language, enriched
 
 A key challenge when desining a compiler for the PCL language is the use of static scoping as in the Pascal language. Function definitions can be nested and a function `f` can define another funciton `g` in it's local variables; the function `g` can then access all variables in the outer scopes enclosing it. This is a challenging feature to implement in llvm IR because of the C-style structure of llvm functions. Different solutions where discussed for the problem e.g. [here](https://stackoverflow.com/questions/55736390/llvm-how-to-make-a-nested-function-see-an-outside-functions-variables) or [here](https://www.reddit.com/r/LLVM/comments/g7qcwo/nested_scopes/?utm_source=share&utm_medium=web2x&context=3).  
 
-In the end I opted for the solution detailed in the text ([link](https://www.theseus.fi/bitstream/handle/10024/166119/Nguyen_Anh%20.pdf;jsessionid=97A6A61F9CF3E811E7BBB6F4A5E86EAA?sequence=2)) by Anh Nguyen in paragraph 6.2.9 - Nested functions. Essentially each function carries a hidden argument which is a struct with any extra variables needed from an outside scope, the hidden struct type is defined at compile time. This seemed the most elegant, generally applicable and true to the language semantics solution. 
+In the end I opted for the solution detailed in this text ([link](https://www.theseus.fi/bitstream/handle/10024/166119/Nguyen_Anh%20.pdf;jsessionid=97A6A61F9CF3E811E7BBB6F4A5E86EAA?sequence=2)) by Anh Nguyen in paragraph 6.2.9 - Nested functions. Essentially each function carries a hidden argument which is a struct with any extra variables needed from an outside scope, the hidden struct type is defined at compile time. This seemed the most elegant, generally applicable and true to the language semantics solution. 
 
 Although the language supports manual dynamic memory allocation and freeing, we have included the [Boehm](https://hboehm.info/gc/) garbage collector. 
 
@@ -61,6 +61,6 @@ lexer.cpp, parser.hpp/cpp are automatically derived files, lexer.hpp is needed t
 
 -------------------
 Special thanks to: 
-* [Lykourgos Mastorou](https://github.com/lykmast) for the many invaluable discussions during this project. 
+* [Lykmast](https://github.com/lykmast) for the many invaluable discussions during this project. 
 * [Petros Tzathas](https://github.com/pettza) for all the help during my studies on programming languages
 * [Christos Serafeidis](https://github.com/chriserafi) for co-starting the project and work on semantic analysis. 
